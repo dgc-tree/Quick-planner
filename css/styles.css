@@ -319,13 +319,13 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .hidden { display: none !important; }
 
 /* === Main === */
-main { padding: 20px 24px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* === Kanban Board === */
 .kanban-board {
   display: flex;
   gap: 16px;
-  padding-bottom: 20px;
+  padding-bottom: 0;
   align-items: stretch;
   flex: 1;
   min-height: 0;
@@ -1122,8 +1122,11 @@ main { padding: 20px 24px; flex: 1; min-height: 0; display: flex; flex-direction
   .toolbar { gap: 10px; }
   .filters { flex-wrap: wrap; }
   main { padding: 12px 16px; }
-  .kanban-board { flex-direction: column; overflow-x: visible; }
-  .kanban-column { min-width: 0; width: 100%; flex: none; max-height: none; }
+  body { height: auto !important; overflow-y: auto !important; overflow-x: hidden !important; }
+  main { flex: none; overflow: visible; }
+  .kanban-board { flex-direction: column; overflow: visible; }
+  .kanban-column { min-width: 0; width: 100%; max-width: 100%; flex: none; max-height: none; overflow: visible; }
+  .kanban-column-header { position: static; }
   .planner-label-col, .planner-label { width: 150px; }
   .modal-btn { min-height: 44px; }
   .modal-field input, .modal-field select { min-height: 44px; }
