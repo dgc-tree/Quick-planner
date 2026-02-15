@@ -73,7 +73,7 @@ function setupFilters() {
 
 function getModalOptions() {
   const opts = buildFilterOptions(allTasks);
-  return { categories: opts.categories, assignees: opts.assigned, allTasks };
+  return { categories: opts.categories, assignees: opts.assigned, rooms: opts.rooms, allTasks };
 }
 
 function handleTaskEdit(task) {
@@ -103,7 +103,38 @@ function handleTaskEdit(task) {
         }
       })
       .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
-  });
+  }, handleRoomChange);
+}
+
+async function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
+  if (action === 'rename') {
+    // Optimistic local rename
+    affectedTasks.forEach(t => { t.room = newRoom; });
+    setupFilters();
+    render();
+    // Batch write to sheet
+    let ok = 0, fail = 0;
+    for (const t of affectedTasks) {
+      try {
+        const res = await updateTask(t.task, { room: newRoom });
+        if (res && res.success) ok++; else fail++;
+      } catch { fail++; }
+    }
+    showToast(`Room renamed: ${ok} updated${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+  } else if (action === 'delete') {
+    // Clear room on affected tasks
+    affectedTasks.forEach(t => { t.room = ''; });
+    setupFilters();
+    render();
+    let ok = 0, fail = 0;
+    for (const t of affectedTasks) {
+      try {
+        const res = await updateTask(t.task, { room: '' });
+        if (res && res.success) ok++; else fail++;
+      } catch { fail++; }
+    }
+    showToast(`Room deleted: ${ok} cleared${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+  }
 }
 
 function handleStatusChange(task, newStatus) {
@@ -126,6 +157,7 @@ function handleStatusChange(task, newStatus) {
 
 function applyLocalUpdate(task, fields) {
   if (fields.task) task.task = fields.task;
+  if (fields.room !== undefined) task.room = fields.room;
   if (fields.category) task.category = fields.category;
   task.assigned = fields.assigned || '';
   if (fields.status) task.status = fields.status;

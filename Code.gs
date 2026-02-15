@@ -77,6 +77,7 @@ function processUpdate(body) {
   // Map of field names to sheet column headers
   var fieldMap = {
     'task':         'Task',
+    'room':         'Room',
     'category':     'Category',
     'assigned':     'Assigned',
     'status':       'Status',

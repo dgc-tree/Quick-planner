@@ -7,10 +7,11 @@ let modalEl = null;
 /**
  * Open an edit modal pre-filled with task data.
  * @param {object} task       — the task object
- * @param {object} options    — { categories: string[], assignees: string[], allTasks: object[] }
+ * @param {object} options    — { categories: string[], assignees: string[], rooms: string[], allTasks: object[] }
  * @param {function} onSave   — called with { originalTask, updatedFields }
+ * @param {function} onRoomChange — called with { action, oldRoom, newRoom, affectedTasks }
  */
-export function openEditModal(task, options, onSave) {
+export function openEditModal(task, options, onSave, onRoomChange) {
   if (!modalEl) {
     modalEl = document.createElement('div');
     modalEl.id = 'edit-modal';
@@ -30,35 +31,61 @@ export function openEditModal(task, options, onSave) {
   const assignedText = typeof rawColor === 'object' ? rawColor.text : '#fff';
   const initials = task.assigned ? task.assigned.slice(0, 2).toUpperCase() : '?';
 
+  const rooms = options.rooms || [];
+
+  // Snapshot initial values for dirty checking
+  const initial = {
+    room: task.room || '',
+    task: task.task || '',
+    category: task.category || '',
+    status: task.status || '',
+    startDate: fmtDate(task.startDate),
+    endDate: fmtDate(task.endDate),
+    dependencies: task.dependencies || '',
+    assigned: task.assigned || '',
+  };
+
   modalEl.className = 'modal-overlay';
   modalEl.innerHTML = `
     <div class="modal-dialog" role="dialog" aria-label="Edit task">
       <div class="modal-header">
         <h2 class="modal-title">Edit Task</h2>
-        <div class="modal-header-right">
-          <div class="modal-avatar-wrap">
-            <button type="button" class="modal-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned || 'Unassigned')}">
-              ${initials}
-            </button>
-            <select class="modal-avatar-select" name="assigned">
-              <option value="">Unassigned</option>
-              ${options.assignees.map(a =>
-                `<option value="${esc(a)}"${a === task.assigned ? ' selected' : ''}>${esc(a)}</option>`
-              ).join('')}
-            </select>
-          </div>
-          <button type="button" class="modal-close" aria-label="Close">&times;</button>
-        </div>
       </div>
       <form class="modal-form" autocomplete="off">
-        <label class="modal-field">
-          <span>Task</span>
-          <input type="text" name="task" value="${esc(task.task)}">
-        </label>
-        <label class="modal-field">
+        <div class="modal-field">
           <span>Room</span>
-          <input type="text" value="${esc(task.room)}" disabled>
-        </label>
+          <div class="room-field-wrap" id="room-field-wrap">
+            <select name="room">
+              ${rooms.map(r =>
+                `<option value="${esc(r)}"${r === task.room ? ' selected' : ''}>${esc(r)}</option>`
+              ).join('')}
+              <option value="__new__">+ New Room</option>
+            </select>
+            <button type="button" class="room-action-btn" id="room-edit-btn" title="Rename room">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="modal-row">
+          <label class="modal-field" style="flex:1;min-width:0">
+            <span>Task</span>
+            <input type="text" name="task" value="${esc(task.task)}">
+          </label>
+          <div class="modal-field" style="flex:0 0 auto">
+            <span>Assigned</span>
+            <div class="modal-avatar-wrap">
+              <button type="button" class="modal-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned || 'Unassigned')}">
+                ${initials}
+              </button>
+              <select class="modal-avatar-select" name="assigned">
+                <option value="">Unassigned</option>
+                ${options.assignees.map(a =>
+                  `<option value="${esc(a)}"${a === task.assigned ? ' selected' : ''}>${esc(a)}</option>`
+                ).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
         <div class="modal-row">
           <label class="modal-field">
             <span>Category</span>
@@ -105,6 +132,113 @@ export function openEditModal(task, options, onSave) {
   `;
 
   modalEl.classList.add('open');
+
+  // --- Dirty checking ---
+  const avatarSelect = modalEl.querySelector('.modal-avatar-select');
+  const form = modalEl.querySelector('form');
+
+  function isDirty() {
+    const fd = new FormData(form);
+    if ((fd.get('room') || '') !== initial.room) return true;
+    if ((fd.get('task') || '') !== initial.task) return true;
+    if ((fd.get('category') || '') !== initial.category) return true;
+    if ((fd.get('status') || '') !== initial.status) return true;
+    if ((fd.get('startDate') || '') !== initial.startDate) return true;
+    if ((fd.get('endDate') || '') !== initial.endDate) return true;
+    if ((fd.get('dependencies') || '') !== initial.dependencies) return true;
+    if ((avatarSelect.value || '') !== initial.assigned) return true;
+    return false;
+  }
+
+  const close = () => {
+    modalEl.classList.remove('open');
+    document.removeEventListener('keydown', onKey);
+  };
+
+  const tryClose = () => {
+    if (isDirty()) {
+      if (!confirm('You have unsaved changes. Close without saving?')) return;
+    }
+    close();
+  };
+
+  // --- Room management ---
+  const roomWrap = modalEl.querySelector('#room-field-wrap');
+  const roomSelect = roomWrap.querySelector('select[name="room"]');
+  const roomEditBtn = modalEl.querySelector('#room-edit-btn');
+
+  roomSelect.addEventListener('change', () => {
+    if (roomSelect.value === '__new__') {
+      showRoomInlineInput('', (newName) => {
+        if (!newName) {
+          roomSelect.value = task.room || rooms[0] || '';
+          return;
+        }
+        const opt = document.createElement('option');
+        opt.value = newName;
+        opt.textContent = newName;
+        roomSelect.insertBefore(opt, roomSelect.querySelector('option[value="__new__"]'));
+        roomSelect.value = newName;
+      });
+    }
+  });
+
+  roomEditBtn.addEventListener('click', () => {
+    const currentRoom = roomSelect.value;
+    if (!currentRoom || currentRoom === '__new__') return;
+    showRoomInlineInput(currentRoom, (newName) => {
+      if (!newName || newName === currentRoom) return;
+      const affectedTasks = (options.allTasks || []).filter(t => t.room === currentRoom);
+      if (onRoomChange) {
+        onRoomChange({ action: 'rename', oldRoom: currentRoom, newRoom: newName, affectedTasks });
+      }
+      const opt = roomSelect.querySelector(`option[value="${CSS.escape(currentRoom)}"]`);
+      if (opt) {
+        opt.value = newName;
+        opt.textContent = newName;
+      }
+      roomSelect.value = newName;
+    });
+  });
+
+  function showRoomInlineInput(prefill, onDone) {
+    const existing = roomWrap.querySelector('.room-inline-input');
+    if (existing) existing.remove();
+
+    roomSelect.style.display = 'none';
+    roomEditBtn.style.display = 'none';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'room-inline-input';
+    wrap.innerHTML = `
+      <input type="text" value="${esc(prefill)}" placeholder="Room name...">
+      <button type="button" class="room-confirm-btn" title="Confirm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </button>
+      <button type="button" class="room-cancel-btn" title="Cancel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    `;
+    roomWrap.appendChild(wrap);
+
+    const inp = wrap.querySelector('input');
+    inp.focus();
+    inp.select();
+
+    const finish = (val) => {
+      wrap.remove();
+      roomSelect.style.display = '';
+      roomEditBtn.style.display = '';
+      onDone(val ? val.trim() : '');
+    };
+
+    wrap.querySelector('.room-confirm-btn').addEventListener('click', () => finish(inp.value));
+    wrap.querySelector('.room-cancel-btn').addEventListener('click', () => finish(''));
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); finish(inp.value); }
+      if (e.key === 'Escape') finish('');
+    });
+  }
 
   // --- Searchable dependency picker ---
   const depHidden = modalEl.querySelector('input[name="dependencies"]');
@@ -164,14 +298,8 @@ export function openEditModal(task, options, onSave) {
   renderDepChips();
   syncDepHidden();
 
-  const form = modalEl.querySelector('form');
-  const close = () => {
-    modalEl.classList.remove('open');
-  };
-
   // Avatar-based assignee picker
   const avatarBtn = modalEl.querySelector('.modal-avatar');
-  const avatarSelect = modalEl.querySelector('.modal-avatar-select');
   avatarBtn.addEventListener('click', () => avatarSelect.click());
   avatarSelect.addEventListener('change', () => {
     const name = avatarSelect.value;
@@ -184,21 +312,17 @@ export function openEditModal(task, options, onSave) {
     avatarBtn.title = name || 'Unassigned';
   });
 
-  // Cancel / Close
-  modalEl.querySelector('.modal-cancel').addEventListener('click', close);
-  modalEl.querySelector('.modal-close').addEventListener('click', close);
+  // Cancel
+  modalEl.querySelector('.modal-cancel').addEventListener('click', tryClose);
 
   // Backdrop click
   modalEl.addEventListener('click', (e) => {
-    if (e.target === modalEl) close();
+    if (e.target === modalEl) tryClose();
   });
 
   // Escape key
   const onKey = (e) => {
-    if (e.key === 'Escape') {
-      close();
-      document.removeEventListener('keydown', onKey);
-    }
+    if (e.key === 'Escape') tryClose();
   };
   document.addEventListener('keydown', onKey);
 
@@ -207,13 +331,12 @@ export function openEditModal(task, options, onSave) {
     e.preventDefault();
     const fd = new FormData(form);
     const updatedFields = {};
-    const fieldNames = ['task', 'category', 'status', 'startDate', 'endDate', 'dependencies'];
+    const fieldNames = ['task', 'room', 'category', 'status', 'startDate', 'endDate', 'dependencies'];
     for (const name of fieldNames) {
       updatedFields[name] = fd.get(name) || '';
     }
     updatedFields.assigned = avatarSelect.value || '';
     close();
-    document.removeEventListener('keydown', onKey);
     onSave({ originalTask: task.task, updatedFields });
   });
 
