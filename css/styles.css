@@ -3,16 +3,18 @@
 
 :root {
   --font: 'DM Sans', system-ui, -apple-system, sans-serif;
-  --bg: #F7F8FA;
-  --surface: #FFFFFF;
-  --border: #E4E7EB;
+  --bg: #F0F1F5;
+  --surface: rgba(255,255,255,0.65);
+  --surface-solid: #FFFFFF;
+  --border: rgba(200,205,215,0.5);
   --text: #1F2937;
   --text-secondary: #6B7280;
-  --radius: 8px;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
-  --header-bg: #FFFFFF;
+  --radius: 12px;
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.03);
+  --shadow-hover: 0 6px 20px rgba(0,0,0,0.08);
+  --header-bg: rgba(255,255,255,0.7);
   --accent: #0073EA;
+  --blur: 16px;
 }
 
 html { font-size: 14px; }
@@ -26,6 +28,8 @@ body {
 /* === Header === */
 .app-header {
   background: var(--header-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
   border-bottom: 1px solid var(--border);
   padding: 16px 24px;
   position: sticky;
@@ -35,15 +39,16 @@ body {
 
 /* === Dark Theme === */
 [data-theme="dark"] {
-  --bg: #1A1D23;
-  --surface: #23272F;
-  --border: #333842;
+  --bg: #15171C;
+  --surface: rgba(30,33,40,0.7);
+  --surface-solid: #23272F;
+  --border: rgba(55,60,72,0.5);
   --text: #E4E7EB;
   --text-secondary: #9CA3AF;
-  --header-bg: #1E2128;
+  --header-bg: rgba(24,26,32,0.75);
   --accent: #4DA3FF;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-hover: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-hover: 0 6px 20px rgba(0,0,0,0.35);
 }
 
 [data-theme="dark"] .planner-row { border-bottom-color: #2A2E36; }
@@ -54,7 +59,6 @@ body {
 
 /* === Theme Toggle === */
 .theme-toggle {
-  margin-left: auto;
   background: none;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -74,7 +78,7 @@ body {
 
 .header-top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 16px;
   margin-bottom: 12px;
 }
@@ -107,7 +111,10 @@ body {
 /* === View Toggle === */
 .view-toggle {
   display: flex;
-  background: var(--bg);
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 4px;
   align-self: flex-start;
@@ -168,17 +175,30 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   font-weight: 500;
 }
 
-/* === Sync Controls === */
-.sync-controls {
+/* === Header Actions === */
+.header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-left: auto;
+}
+
+/* === Sync Controls === */
+.sync-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .last-synced {
-  font-size: 0.75rem;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   font-weight: 500;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .refresh-btn {
@@ -252,16 +272,16 @@ main { padding: 20px 24px; }
 .kanban-board {
   display: flex;
   gap: 16px;
-  overflow-x: auto;
   padding-bottom: 20px;
   align-items: flex-start;
 }
 
 .kanban-column {
-  min-width: 280px;
-  max-width: 320px;
-  flex-shrink: 0;
-  background: var(--bg);
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
@@ -276,27 +296,12 @@ main { padding: 20px 24px; }
 
 .column-title {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.35rem;
   color: var(--text);
 }
 
-.column-count {
-  display: none;
-  background: var(--border);
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.kanban-column-header.status-colored .column-title,
-.kanban-column-header.status-colored .column-count {
+.kanban-column-header.status-colored .column-title {
   color: inherit;
-}
-
-.kanban-column-header.status-colored .column-count {
-  background: rgba(255,255,255,0.2);
 }
 
 .kanban-cards {
@@ -316,6 +321,9 @@ main { padding: 20px 24px; }
 /* === Card === */
 .kanban-card {
   background: var(--surface);
+  backdrop-filter: blur(calc(var(--blur) / 2));
+  -webkit-backdrop-filter: blur(calc(var(--blur) / 2));
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
   box-shadow: var(--shadow-card);
@@ -388,6 +396,7 @@ main { padding: 20px 24px; }
   font-size: 0.75rem;
   color: var(--text-secondary);
   font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .card-footer {
@@ -634,11 +643,14 @@ main { padding: 20px 24px; }
 
 .modal-dialog {
   background: var(--surface);
-  border-radius: 12px;
+  backdrop-filter: blur(calc(var(--blur) * 2));
+  -webkit-backdrop-filter: blur(calc(var(--blur) * 2));
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 24px 28px;
   width: 90%;
   max-width: 480px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -933,7 +945,8 @@ main { padding: 20px 24px; }
   .toolbar { gap: 10px; }
   .filters { flex-wrap: wrap; }
   main { padding: 12px 16px; }
-  .kanban-column { min-width: 260px; }
+  .kanban-board { flex-direction: column; overflow-x: visible; }
+  .kanban-column { min-width: 0; }
   .planner-label-col, .planner-label { width: 150px; }
   .modal-btn { min-height: 44px; }
   .modal-field input, .modal-field select { min-height: 44px; }

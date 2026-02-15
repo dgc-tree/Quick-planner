@@ -54,7 +54,6 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
     }
     header.innerHTML = `
       <span class="column-title">${esc(groupName)}</span>
-      <span class="column-count">${groupTasks.length}</span>
     `;
 
     const cardList = document.createElement('div');
@@ -98,13 +97,11 @@ function createCard(task) {
   }
 
   card.innerHTML = `
+    <div class="card-room">${esc(task.room)}</div>
     <span class="category-badge" style="background:${cat.bg};color:${cat.text}">
       ${esc(task.category)}
     </span>
     <div class="card-title">${esc(task.task)}</div>
-    <div class="card-meta">
-      <span class="card-room">${esc(task.room)}</span>
-    </div>
     <div class="card-footer">
       <span class="card-dates">${dates}</span>
       <span class="card-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned)}">
@@ -147,11 +144,6 @@ function createCard(task) {
       // Remove all drop highlights
       document.querySelectorAll('.kanban-cards.drag-over').forEach(el => {
         el.classList.remove('drag-over');
-      });
-      // Update column counts
-      document.querySelectorAll('.kanban-column').forEach(col => {
-        const count = col.querySelector('.kanban-cards').children.length;
-        col.querySelector('.column-count').textContent = count;
       });
     });
   }
