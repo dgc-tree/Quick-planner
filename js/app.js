@@ -2,6 +2,8 @@ import { fetchSheetData } from './data.js';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner } from './planner.js';
+import { openEditModal } from './modal.js';
+import { updateTask } from './sheet-writer.js';
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -19,7 +21,6 @@ async function init() {
     updateSummary();
     setupFilters();
     render();
-    updateLastSynced();
   } catch (err) {
     showError(err.message);
   }
@@ -59,7 +60,8 @@ function updateLastSynced() {
   const el = $('#last-synced');
   const now = new Date();
   el.textContent = `Synced ${now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}`;
-  el.title = `Auto-syncs every 5 minutes. Last: ${now.toLocaleString('en-AU')}`;
+  el.title = `Last: ${now.toLocaleString('en-AU')}`;
+  el.classList.remove('hidden');
 }
 
 function setupFilters() {
@@ -67,6 +69,69 @@ function setupFilters() {
   populateDropdown($('#filter-room'), opts.rooms, 'Rooms');
   populateDropdown($('#filter-category'), opts.categories, 'Categories');
   populateDropdown($('#filter-assigned'), opts.assigned, 'Assigned');
+}
+
+function getModalOptions() {
+  const opts = buildFilterOptions(allTasks);
+  return { categories: opts.categories, assignees: opts.assigned, allTasks };
+}
+
+function handleTaskEdit(task) {
+  openEditModal(task, getModalOptions(), ({ originalTask, updatedFields }) => {
+    // Format dates for sheet (dd/mm)
+    const sheetUpdates = { ...updatedFields };
+    if (sheetUpdates.startDate) {
+      const d = new Date(sheetUpdates.startDate);
+      sheetUpdates.startDate = `${d.getDate()}/${d.getMonth() + 1}`;
+    }
+    if (sheetUpdates.endDate) {
+      const d = new Date(sheetUpdates.endDate);
+      sheetUpdates.endDate = `${d.getDate()}/${d.getMonth() + 1}`;
+    }
+
+    // Optimistic local update
+    applyLocalUpdate(task, updatedFields);
+    render();
+
+    // Async write to sheet
+    updateTask(originalTask, sheetUpdates)
+      .then(res => {
+        if (res && res.success) {
+          showToast('Saved to sheet', 'success');
+        } else {
+          showToast(res?.error || 'Save may have failed', 'error');
+        }
+      })
+      .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+  });
+}
+
+function handleStatusChange(task, newStatus) {
+  const sheetUpdates = { status: newStatus };
+
+  // Optimistic local update
+  task.status = newStatus;
+
+  // Async write to sheet
+  updateTask(task.task, sheetUpdates)
+    .then(res => {
+      if (res && res.success) {
+        showToast('Status updated', 'success');
+      } else {
+        showToast(res?.error || 'Save may have failed', 'error');
+      }
+    })
+    .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+}
+
+function applyLocalUpdate(task, fields) {
+  if (fields.task) task.task = fields.task;
+  if (fields.category) task.category = fields.category;
+  task.assigned = fields.assigned || '';
+  if (fields.status) task.status = fields.status;
+  task.startDate = fields.startDate ? new Date(fields.startDate) : null;
+  task.endDate = fields.endDate ? new Date(fields.endDate) : null;
+  task.dependencies = fields.dependencies || '';
 }
 
 function render() {
@@ -78,18 +143,21 @@ function render() {
     kanbanContainer.classList.remove('hidden');
     plannerContainer.classList.add('hidden');
     const groupBy = $('#group-by').value;
-    renderKanban(kanbanContainer, filtered, groupBy);
+    renderKanban(kanbanContainer, filtered, groupBy, {
+      onCardClick: handleTaskEdit,
+      onStatusChange: handleStatusChange,
+    });
   } else {
     kanbanContainer.classList.add('hidden');
     plannerContainer.classList.remove('hidden');
-    renderPlanner(plannerContainer, filtered);
+    renderPlanner(plannerContainer, filtered, {
+      onBarClick: handleTaskEdit,
+    });
   }
 }
 
-function updateSummary() {
-  const rooms = new Set(allTasks.map(t => t.room)).size;
-  $('#summary').textContent = `${allTasks.length} tasks across ${rooms} rooms`;
-}
+function updateSummary() {}
+
 
 function showLoading(show) {
   $('#loading').classList.toggle('hidden', !show);
@@ -103,6 +171,19 @@ function showError(msg) {
   const el = $('#error');
   el.textContent = `Failed to load data: ${msg}. Check the sheet is publicly shared.`;
   el.classList.remove('hidden');
+}
+
+function showToast(message, type = 'success') {
+  const root = document.getElementById('toast-root');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  root.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

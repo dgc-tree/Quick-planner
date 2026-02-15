@@ -18,7 +18,7 @@ function normaliseRows(rows) {
     return {
       id: i,
       room: currentRoom,
-      status: (row['Status'] || '').trim(),
+      status: (row['Status'] || '').trim() === 'Backlog' ? 'To Do' : (row['Status'] || '').trim(),
       task: (row['Task'] || '').trim(),
       dependencies: (row['Dependencies'] || '').trim(),
       category: (row['Category'] || '').trim(),

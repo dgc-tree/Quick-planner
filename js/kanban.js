@@ -1,12 +1,19 @@
 import { CATEGORY_COLORS, ASSIGNED_COLORS, STATUS_COLORS } from './theme.js';
 
-const STATUS_ORDER = ['Backlog', 'To Do', 'In Progress', 'Blocked/Waiting', 'Done'];
+const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done'];
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 let draggedCard = null;
 let draggedTaskId = null;
 let placeholder = null;
+let _callbacks = {};
+let _currentGroupBy = 'room';
+let _tasks = [];
 
-export function renderKanban(container, tasks, groupBy = 'room') {
+export function renderKanban(container, tasks, groupBy = 'room', callbacks = {}) {
+  _callbacks = callbacks;
+  _currentGroupBy = groupBy;
+  _tasks = tasks;
   const groups = new Map();
   for (const task of tasks) {
     const key = task[groupBy] || 'Ungrouped';
@@ -41,6 +48,7 @@ export function renderKanban(container, tasks, groupBy = 'room') {
     header.className = 'kanban-column-header';
     const statusColor = groupBy === 'status' ? STATUS_COLORS[groupName] : null;
     if (statusColor) {
+      header.classList.add('status-colored');
       header.style.background = statusColor.bg;
       header.style.color = statusColor.text;
     }
@@ -57,11 +65,13 @@ export function renderKanban(container, tasks, groupBy = 'room') {
       cardList.appendChild(createCard(task));
     }
 
-    // Drop zone events on the card list
-    cardList.addEventListener('dragover', handleDragOver);
-    cardList.addEventListener('dragenter', handleDragEnter);
-    cardList.addEventListener('dragleave', handleDragLeave);
-    cardList.addEventListener('drop', handleDrop);
+    // Drop zone events on the card list (desktop only)
+    if (!isTouchDevice) {
+      cardList.addEventListener('dragover', handleDragOver);
+      cardList.addEventListener('dragenter', handleDragEnter);
+      cardList.addEventListener('dragleave', handleDragLeave);
+      cardList.addEventListener('drop', handleDrop);
+    }
 
     col.appendChild(header);
     col.appendChild(cardList);
@@ -71,13 +81,15 @@ export function renderKanban(container, tasks, groupBy = 'room') {
 
 function createCard(task) {
   const cat = CATEGORY_COLORS[task.category] || { bg: '#E2E8F0', text: '#4A5568' };
-  const assignedColor = ASSIGNED_COLORS[task.assigned] || '#A0AEC0';
+  const rawColor = ASSIGNED_COLORS[task.assigned] || '#222222';
+  const assignedBg = typeof rawColor === 'object' ? rawColor.bg : rawColor;
+  const assignedText = typeof rawColor === 'object' ? rawColor.text : '#fff';
   const initials = getInitials(task.assigned);
   const dates = formatDateRange(task.startDate, task.endDate);
 
   const card = document.createElement('div');
   card.className = 'kanban-card';
-  card.draggable = true;
+  if (!isTouchDevice) card.draggable = true;
   card.dataset.taskId = task.id;
 
   let depsHTML = '';
@@ -95,48 +107,54 @@ function createCard(task) {
     </div>
     <div class="card-footer">
       <span class="card-dates">${dates}</span>
-      <span class="card-avatar" style="background:${assignedColor}" title="${esc(task.assigned)}">
+      <span class="card-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned)}">
         ${initials}
       </span>
     </div>
     ${depsHTML}
   `;
 
-  // Expand on click
+  // Click — open edit modal or expand
   card.addEventListener('click', (e) => {
     if (card.classList.contains('dragging')) return;
-    card.classList.toggle('expanded');
+    if (_callbacks.onCardClick) {
+      _callbacks.onCardClick(task);
+    } else {
+      card.classList.toggle('expanded');
+    }
   });
 
-  // Drag events
-  card.addEventListener('dragstart', (e) => {
-    draggedCard = card;
-    draggedTaskId = task.id;
-    card.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', task.id);
-    // Slight delay so the browser captures the card image before we ghost it
-    requestAnimationFrame(() => {
-      card.style.opacity = '0.4';
+  // Drag events (desktop only — draggable suppresses click on touch devices)
+  if (!isTouchDevice) {
+    card.addEventListener('dragstart', (e) => {
+      draggedCard = card;
+      draggedTaskId = task.id;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', task.id);
+      // Slight delay so the browser captures the card image before we ghost it
+      requestAnimationFrame(() => {
+        card.style.opacity = '0.4';
+      });
     });
-  });
 
-  card.addEventListener('dragend', () => {
-    card.classList.remove('dragging');
-    card.style.opacity = '';
-    draggedCard = null;
-    draggedTaskId = null;
-    removePlaceholder();
-    // Remove all drop highlights
-    document.querySelectorAll('.kanban-cards.drag-over').forEach(el => {
-      el.classList.remove('drag-over');
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      card.style.opacity = '';
+      draggedCard = null;
+      draggedTaskId = null;
+      removePlaceholder();
+      // Remove all drop highlights
+      document.querySelectorAll('.kanban-cards.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+      });
+      // Update column counts
+      document.querySelectorAll('.kanban-column').forEach(col => {
+        const count = col.querySelector('.kanban-cards').children.length;
+        col.querySelector('.column-count').textContent = count;
+      });
     });
-    // Update column counts
-    document.querySelectorAll('.kanban-column').forEach(col => {
-      const count = col.querySelector('.kanban-cards').children.length;
-      col.querySelector('.column-count').textContent = count;
-    });
-  });
+  }
 
   return card;
 }
@@ -191,6 +209,15 @@ function handleDrop(e) {
     cardList.insertBefore(draggedCard, afterElement);
   } else {
     cardList.appendChild(draggedCard);
+  }
+
+  // When grouped by status, notify about status change
+  if (_currentGroupBy === 'status' && _callbacks.onStatusChange) {
+    const newStatus = cardList.dataset.group;
+    const task = _tasks.find(t => t.id === draggedTaskId);
+    if (task && task.status !== newStatus) {
+      _callbacks.onStatusChange(task, newStatus);
+    }
   }
 }
 

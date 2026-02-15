@@ -1,6 +1,9 @@
 import { CATEGORY_COLORS, ASSIGNED_COLORS } from './theme.js';
 
-export function renderPlanner(container, tasks) {
+let _plannerCallbacks = {};
+
+export function renderPlanner(container, tasks, callbacks = {}) {
+  _plannerCallbacks = callbacks;
   const scheduled = tasks.filter(t => t.startDate && t.endDate);
   const unscheduled = tasks.filter(t => !t.startDate || !t.endDate);
 
@@ -49,11 +52,23 @@ export function renderPlanner(container, tasks) {
       <div class="unscheduled-section">
         <h3>Unscheduled (${unscheduled.length})</h3>
         <div class="unscheduled-list">
-          ${unscheduled.map(t => `<span class="unscheduled-chip">${esc(t.task)} <small>(${esc(t.room)})</small></span>`).join('')}
+          ${unscheduled.map(t => `<span class="unscheduled-chip" data-task-id="${t.id}">${esc(t.task)} <small>(${esc(t.room)})</small></span>`).join('')}
         </div>
       </div>
     ` : ''}
   `;
+
+  // Delegated click for bars and unscheduled chips
+  const allTasks = [...scheduled, ...unscheduled];
+  container.addEventListener('click', (e) => {
+    const bar = e.target.closest('.planner-bar');
+    const chip = e.target.closest('.unscheduled-chip');
+    const el = bar || chip;
+    if (!el || !_plannerCallbacks.onBarClick) return;
+    const taskId = parseInt(el.dataset.taskId, 10);
+    const task = allTasks.find(t => t.id === taskId);
+    if (task) _plannerCallbacks.onBarClick(task);
+  });
 }
 
 function taskRowHTML(task, minDate, totalDays) {
@@ -63,16 +78,18 @@ function taskRowHTML(task, minDate, totalDays) {
   const leftPct = (startOffset / totalDays) * 100;
   const widthPct = Math.max((duration / totalDays) * 100, 1);
   const initials = task.assigned ? task.assigned.slice(0, 2).toUpperCase() : '';
-  const assignedColor = ASSIGNED_COLORS[task.assigned] || '#A0AEC0';
+  const rawColor = ASSIGNED_COLORS[task.assigned] || '#222222';
+  const assignedBg = typeof rawColor === 'object' ? rawColor.bg : rawColor;
+  const assignedText = typeof rawColor === 'object' ? rawColor.text : '#fff';
 
   return `
     <div class="planner-row">
       <div class="planner-label" title="${esc(task.task)}">${esc(task.task)}</div>
       <div class="planner-bar-container">
-        <div class="planner-bar" style="left:${leftPct}%;width:${widthPct}%;background:${cat.bg};color:${cat.text};border-left:3px solid ${cat.text}"
+        <div class="planner-bar" data-task-id="${task.id}" style="left:${leftPct}%;width:${widthPct}%;background:${cat.bg};color:${cat.text};border-left:3px solid ${cat.text};cursor:pointer"
              title="${esc(task.task)} (${esc(task.category)}) - ${esc(task.assigned)}">
           <span class="bar-label">${esc(task.task)}</span>
-          <span class="bar-avatar" style="background:${assignedColor}">${initials}</span>
+          <span class="bar-avatar" style="background:${assignedBg};color:${assignedText}">${initials}</span>
         </div>
       </div>
     </div>
