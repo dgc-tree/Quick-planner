@@ -20,7 +20,7 @@ export const ASSIGNED_COLORS = {
 
 export const STATUS_COLORS = {
   'To Do':           { bg: '#2B6CB0', text: '#FFFFFF' },
-  'In Progress':     { bg: '#C05621', text: '#FFFFFF' },
+  'In Progress':     { bg: 'rgb(170, 51, 208)', text: '#FFFFFF' },
   'Blocked':         { bg: '#C53030', text: '#FFFFFF' },
   'Done':            { bg: '#276749', text: '#FFFFFF' },
 };
