@@ -1,6 +1,19 @@
-import { ASSIGNED_COLORS } from './theme.js';
+import { esc, getInitials, getAssignedColor } from './utils.js';
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Blocked', 'Done'];
+
+function displayDate(d) {
+  if (!d) return 'Set date';
+  const day = d.getDate();
+  const mon = d.toLocaleString('en-AU', { month: 'short' });
+  const yr = String(d.getFullYear()).slice(-2);
+  return `${day} ${mon} ${yr}`;
+}
+
+function ariaDate(label, d) {
+  if (!d) return label;
+  return `${label}: ${d.getDate()} ${d.toLocaleString('en-AU', { month: 'long' })} ${d.getFullYear()}`;
+}
 
 let modalEl = null;
 
@@ -26,10 +39,8 @@ export function openEditModal(task, options, onSave, onRoomChange) {
     return `${y}-${m}-${day}`;
   };
 
-  const rawColor = ASSIGNED_COLORS[task.assigned] || '#6B7280';
-  const assignedBg = typeof rawColor === 'object' ? rawColor.bg : rawColor;
-  const assignedText = typeof rawColor === 'object' ? rawColor.text : '#fff';
-  const initials = task.assigned ? task.assigned.slice(0, 2).toUpperCase() : '?';
+  const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
+  const initials = getInitials(task.assigned);
 
   const rooms = options.rooms || [];
 
@@ -62,7 +73,7 @@ export function openEditModal(task, options, onSave, onRoomChange) {
               <option value="__new__">+ New Room</option>
             </select>
             <button type="button" class="room-action-btn" id="room-edit-btn" title="Rename room">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
             </button>
           </div>
         </div>
@@ -107,11 +118,19 @@ export function openEditModal(task, options, onSave, onRoomChange) {
         <div class="modal-row">
           <label class="modal-field">
             <span>Start Date</span>
-            <input type="date" name="startDate" value="${fmtDate(task.startDate)}">
+            <div class="date-picker-wrap">
+              <button type="button" class="date-display${task.startDate ? '' : ' empty'}" data-for="startDate">${displayDate(task.startDate)}</button>
+              <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}"
+                     aria-label="${ariaDate('Start Date', task.startDate)}">
+            </div>
           </label>
           <label class="modal-field">
             <span>End Date</span>
-            <input type="date" name="endDate" value="${fmtDate(task.endDate)}">
+            <div class="date-picker-wrap">
+              <button type="button" class="date-display${task.endDate ? '' : ' empty'}" data-for="endDate">${displayDate(task.endDate)}</button>
+              <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}"
+                     aria-label="${ariaDate('End Date', task.endDate)}">
+            </div>
           </label>
         </div>
         <div class="modal-field">
@@ -213,10 +232,10 @@ export function openEditModal(task, options, onSave, onRoomChange) {
     wrap.innerHTML = `
       <input type="text" value="${esc(prefill)}" placeholder="Room name...">
       <button type="button" class="room-confirm-btn" title="Confirm">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.75 6 6 9-13.5"/></svg>
       </button>
       <button type="button" class="room-cancel-btn" title="Cancel">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 18 6M6 6l12 12"/></svg>
       </button>
     `;
     roomWrap.appendChild(wrap);
@@ -303,13 +322,35 @@ export function openEditModal(task, options, onSave, onRoomChange) {
   avatarBtn.addEventListener('click', () => avatarSelect.click());
   avatarSelect.addEventListener('change', () => {
     const name = avatarSelect.value;
-    const rc = ASSIGNED_COLORS[name] || '#6B7280';
-    const bg = typeof rc === 'object' ? rc.bg : rc;
-    const text = typeof rc === 'object' ? rc.text : '#fff';
+    const { bg, text } = getAssignedColor(name);
     avatarBtn.style.background = bg;
     avatarBtn.style.color = text;
-    avatarBtn.textContent = name ? name.slice(0, 2).toUpperCase() : '?';
+    avatarBtn.textContent = getInitials(name);
     avatarBtn.title = name || 'Unassigned';
+  });
+
+  // Date picker wiring
+  modalEl.querySelectorAll('.date-picker-wrap').forEach(wrap => {
+    const btn = wrap.querySelector('.date-display');
+    const native = wrap.querySelector('.date-native');
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      native.showPicker ? native.showPicker() : native.click();
+    });
+    native.addEventListener('change', () => {
+      if (native.value) {
+        const d = new Date(native.value + 'T00:00:00');
+        btn.textContent = displayDate(d);
+        btn.classList.remove('empty');
+        const label = btn.dataset.for === 'startDate' ? 'Start Date' : 'End Date';
+        native.setAttribute('aria-label', ariaDate(label, d));
+      } else {
+        btn.textContent = 'Set date';
+        btn.classList.add('empty');
+        const label = btn.dataset.for === 'startDate' ? 'Start Date' : 'End Date';
+        native.setAttribute('aria-label', label);
+      }
+    });
   });
 
   // Cancel
@@ -342,10 +383,4 @@ export function openEditModal(task, options, onSave, onRoomChange) {
 
   // Focus first input
   setTimeout(() => modalEl.querySelector('input[name="task"]').focus(), 50);
-}
-
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
 }

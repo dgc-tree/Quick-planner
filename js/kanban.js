@@ -1,4 +1,5 @@
-import { CATEGORY_COLORS, ASSIGNED_COLORS, STATUS_COLORS } from './theme.js';
+import { STATUS_COLORS } from './theme.js';
+import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
 
 const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done'];
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -79,10 +80,8 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
 }
 
 function createCard(task) {
-  const cat = CATEGORY_COLORS[task.category] || { bg: '#E2E8F0', text: '#4A5568' };
-  const rawColor = ASSIGNED_COLORS[task.assigned] || '#222222';
-  const assignedBg = typeof rawColor === 'object' ? rawColor.bg : rawColor;
-  const assignedText = typeof rawColor === 'object' ? rawColor.text : '#fff';
+  const cat = getCategoryColor(task.category);
+  const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
   const initials = getInitials(task.assigned);
   const dates = formatDateRange(task.startDate, task.endDate);
 
@@ -235,23 +234,4 @@ function removePlaceholder() {
   if (placeholder && placeholder.parentNode) {
     placeholder.parentNode.removeChild(placeholder);
   }
-}
-
-function formatDateRange(start, end) {
-  const opts = { day: 'numeric', month: 'short' };
-  if (!start && !end) return 'TBD';
-  if (start && end) return `${start.toLocaleDateString('en-AU', opts)} - ${end.toLocaleDateString('en-AU', opts)}`;
-  if (start) return `From ${start.toLocaleDateString('en-AU', opts)}`;
-  return `Until ${end.toLocaleDateString('en-AU', opts)}`;
-}
-
-function getInitials(name) {
-  if (!name) return '?';
-  return name.slice(0, 2).toUpperCase();
-}
-
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
 }

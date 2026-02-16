@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organisms — Design Preview</title>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    body { overflow: auto; padding: 40px; display: block; }
+    .section { max-width: 900px; margin: 0 auto 40px; }
+    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
+    .kanban-preview { display: flex; gap: 16px; }
+    .kanban-column { flex: 1; max-width: 280px; }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <a href="index.html" class="back-link">Back to overview</a>
+
+    <h2>Kanban Columns (Status Grouped)</h2>
+    <div class="kanban-preview">
+      <div class="kanban-column">
+        <div class="kanban-column-header status-colored" style="background:var(--status-todo-bg);color:var(--status-todo-text)">
+          <span class="column-title">To Do</span>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="card-room">Kitchen</div>
+            <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
+            <div class="card-title">Clean behind fridge</div>
+            <div class="card-footer">
+              <span class="card-dates">TBD</span>
+              <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kanban-column">
+        <div class="kanban-column-header status-colored" style="background:var(--status-in-progress-bg);color:var(--status-in-progress-text)">
+          <span class="column-title">In Progress</span>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="card-room">Bathroom</div>
+            <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
+            <div class="card-title">Paint walls</div>
+            <div class="card-footer">
+              <span class="card-dates">10 Feb - 14 Feb</span>
+              <span class="card-avatar" style="background:#1A1A1A;color:#fff">SI</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kanban-column">
+        <div class="kanban-column-header status-colored" style="background:var(--status-done-bg);color:var(--status-done-text)">
+          <span class="column-title">Done</span>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="card-room">Garage</div>
+            <span class="category-badge" style="background:var(--category-organising-bg);color:var(--category-organising-text)">Organising</span>
+            <div class="card-title">Sort tool shelf</div>
+            <div class="card-footer">
+              <span class="card-dates">1 Jan - 3 Jan</span>
+              <span class="card-avatar" style="background:#1A1A1A;color:#fff">DG</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:40px">Modal</h2>
+    <div class="modal-dialog" style="position:static;margin:0 auto">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span class="modal-title">Edit Task</span>
+        <div class="modal-avatar-wrap">
+          <div class="modal-avatar" style="background:#1A1A1A">DA</div>
+        </div>
+      </div>
+      <div class="modal-form">
+        <div class="modal-field"><span>Task</span><input type="text" value="Clean behind fridge"></div>
+        <div class="modal-row">
+          <div class="modal-field"><span>Start</span><input type="date" value="2026-02-15"></div>
+          <div class="modal-field"><span>End</span><input type="date" value="2026-02-20"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-cancel">Cancel</button>
+          <button class="modal-btn modal-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('qp-theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { CATEGORY_COLORS, ASSIGNED_COLORS } from './theme.js';
+import { esc, getInitials, getAssignedColor, getCategoryColor } from './utils.js';
 
 let _plannerCallbacks = {};
 
@@ -72,15 +72,13 @@ export function renderPlanner(container, tasks, callbacks = {}) {
 }
 
 function taskRowHTML(task, minDate, totalDays) {
-  const cat = CATEGORY_COLORS[task.category] || { bg: '#E2E8F0', text: '#4A5568' };
+  const cat = getCategoryColor(task.category);
   const startOffset = daysBetween(minDate, task.startDate);
   const duration = daysBetween(task.startDate, task.endDate);
   const leftPct = (startOffset / totalDays) * 100;
   const widthPct = Math.max((duration / totalDays) * 100, 1);
-  const initials = task.assigned ? task.assigned.slice(0, 2).toUpperCase() : '';
-  const rawColor = ASSIGNED_COLORS[task.assigned] || '#222222';
-  const assignedBg = typeof rawColor === 'object' ? rawColor.bg : rawColor;
-  const assignedText = typeof rawColor === 'object' ? rawColor.text : '#fff';
+  const initials = getInitials(task.assigned);
+  const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
 
   return `
     <div class="planner-row">
@@ -118,10 +116,4 @@ function getMonthHeaders(min, max) {
 
 function daysBetween(a, b) {
   return Math.max(1, Math.round((b - a) / (1000 * 60 * 60 * 24)));
-}
-
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
 }

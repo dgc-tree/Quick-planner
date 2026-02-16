@@ -2,8 +2,13 @@ import { fetchSheetData } from './data.js';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner } from './planner.js';
+import { renderTodoList, clearChecked } from './todolist.js';
 import { openEditModal } from './modal.js';
 import { updateTask } from './sheet-writer.js';
+import { initCustomColors, applyCustomColors, removeCustomColors } from './theme-customizer.js';
+import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
+import { createColorPicker } from './color-picker.js';
+import { loadCustomColors, saveCustomColors } from './storage.js';
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -170,20 +175,30 @@ function render() {
   const filtered = applyFilters(allTasks, filters);
   const kanbanContainer = $('#kanban-view');
   const plannerContainer = $('#planner-view');
+  const todolistContainer = $('#todolist-view');
+
+  kanbanContainer.classList.add('hidden');
+  plannerContainer.classList.add('hidden');
+  todolistContainer.classList.add('hidden');
 
   if (currentView === 'kanban') {
     kanbanContainer.classList.remove('hidden');
-    plannerContainer.classList.add('hidden');
     const groupBy = $('#group-by').value;
     renderKanban(kanbanContainer, filtered, groupBy, {
       onCardClick: handleTaskEdit,
       onStatusChange: handleStatusChange,
     });
-  } else {
-    kanbanContainer.classList.add('hidden');
+  } else if (currentView === 'planner') {
     plannerContainer.classList.remove('hidden');
     renderPlanner(plannerContainer, filtered, {
       onBarClick: handleTaskEdit,
+    });
+  } else if (currentView === 'todolist') {
+    clearChecked();
+    todolistContainer.classList.remove('hidden');
+    renderTodoList(todolistContainer, filtered, {
+      onStatusChange: handleStatusChange,
+      onTaskClick: handleTaskEdit,
     });
   }
 }
@@ -196,6 +211,7 @@ function showLoading(show) {
   if (show) {
     $('#kanban-view').classList.add('hidden');
     $('#planner-view').classList.add('hidden');
+    $('#todolist-view').classList.add('hidden');
   }
 }
 
@@ -218,8 +234,61 @@ function showToast(message, type = 'success') {
   }, 3000);
 }
 
+function setupSettingsPanel() {
+  const modal = $('#settings-modal');
+  const container = $('#settings-pickers');
+  const saved = loadCustomColors() || { primary1: '#00E3FF', secondary1: null, secondary2: null };
+  const colors = { ...saved };
+
+  const pickers = [
+    { label: 'Primary', key: 'primary1' },
+    { label: 'Secondary 1', key: 'secondary1' },
+    { label: 'Secondary 2', key: 'secondary2' },
+  ];
+
+  container.innerHTML = '';
+  for (const p of pickers) {
+    const picker = createColorPicker({
+      label: p.label,
+      value: colors[p.key],
+      onChange: (hex) => {
+        colors[p.key] = hex;
+        applyCustomColors(colors);
+      },
+    });
+    container.appendChild(picker);
+  }
+
+  $('#settings-btn').addEventListener('click', () => {
+    modal.classList.add('open');
+  });
+
+  $('#settings-close').addEventListener('click', () => {
+    saveCustomColors(colors);
+    modal.classList.remove('open');
+  });
+
+  $('#settings-reset').addEventListener('click', () => {
+    removeCustomColors();
+    modal.classList.remove('open');
+    // Reload to get default tokens
+    location.reload();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply saved custom colors before first render
+  initCustomColors();
+
   init();
+
+  // Onboarding for first-time visitors
+  if (shouldShowOnboarding()) {
+    showOnboarding();
+  }
+
+  // Settings panel
+  setupSettingsPanel();
 
   // View toggles
   document.querySelectorAll('.view-btn').forEach(btn => {
@@ -242,6 +311,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Group by
   $('#group-by').addEventListener('change', () => render());
+
+  // Mobile hamburger menu
+  const menuBtn = $('#mobile-menu-btn');
+  const menuOverlay = $('#mobile-menu-overlay');
+  const closeMenu = () => {
+    menuBtn.classList.remove('open');
+    menuBtn.setAttribute('aria-expanded', 'false');
+    menuOverlay.classList.remove('open');
+  };
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = menuBtn.classList.toggle('open');
+    menuBtn.setAttribute('aria-expanded', String(isOpen));
+    menuOverlay.classList.toggle('open', isOpen);
+  });
+  menuOverlay.addEventListener('click', (e) => {
+    if (e.target === menuOverlay) closeMenu();
+  });
+  // Wire fullscreen menu items to existing buttons
+  const mobileSettingsBtn = $('#mobile-settings-btn');
+  const mobileThemeBtn = $('#mobile-theme-btn');
+  const mobileSyncBtn = $('#mobile-sync-btn');
+  if (mobileSettingsBtn) mobileSettingsBtn.addEventListener('click', () => {
+    closeMenu();
+    $('#settings-btn').click();
+  });
+  const updateThemeLabel = () => {
+    const label = document.querySelector('.mobile-theme-label');
+    if (!label) return;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    label.textContent = isDark ? 'Light mode' : 'Dark mode';
+  };
+  updateThemeLabel();
+  if (mobileThemeBtn) mobileThemeBtn.addEventListener('click', () => {
+    closeMenu();
+    $('#theme-toggle').click();
+    updateThemeLabel();
+  });
+  if (mobileSyncBtn) mobileSyncBtn.addEventListener('click', () => {
+    closeMenu();
+    $('#refresh-btn').click();
+  });
 
   // Manual refresh
   $('#refresh-btn').addEventListener('click', () => {

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Planner — Design Preview</title>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    body { overflow: auto; padding: 40px; display: block; }
+    .preview-nav { max-width: 600px; margin: 0 auto; }
+    .preview-nav h1 { font-size: 1.8rem; margin-bottom: 8px; color: var(--text); }
+    .preview-nav p { color: var(--text-secondary); margin-bottom: 24px; }
+    .preview-links { display: flex; flex-direction: column; gap: 12px; }
+    .preview-link {
+      display: block;
+      padding: 16px 20px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-glass);
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 1.05rem;
+      transition: all 0.2s ease;
+    }
+    .preview-link:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+    .preview-link small { display: block; font-weight: 400; color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="preview-nav">
+    <h1>Design System Preview</h1>
+    <p>Atomic design component library for Quick Planner.</p>
+    <div class="preview-links">
+      <a href="atoms.html" class="preview-link">Atoms <small>Buttons, text styles, inputs, icons, badges</small></a>
+      <a href="molecules.html" class="preview-link">Molecules <small>Kanban cards, badges, dropdowns</small></a>
+      <a href="organisms.html" class="preview-link">Organisms <small>Kanban columns, modals, header</small></a>
+      <a href="templates.html" class="preview-link">Templates <small>Full page layouts</small></a>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const saved = localStorage.getItem('qp-theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
+</body>
+</html>

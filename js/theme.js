@@ -1,14 +1,14 @@
 export const CATEGORY_COLORS = {
-  'Cleaning':      { bg: '#C3EFFF', text: '#0073B1' },
-  'Packing':       { bg: '#E8D5F5', text: '#7B2CBF' },
-  'Organising':    { bg: '#C7F9E5', text: '#0A8754' },
-  'Painting':      { bg: '#FFE0C2', text: '#B54708' },
-  'Basic repairs': { bg: '#FFF3C4', text: '#92400E' },
-  'Trade Quote':   { bg: '#FFD6D6', text: '#C53030' },
-  'Buy new':       { bg: '#D4EDDA', text: '#276749' },
-  'Selling':       { bg: '#FDE2FF', text: '#9B2C8F' },
-  'In progress':   { bg: '#D6DFFF', text: '#3730A3' },
-  'We have these': { bg: '#E2E8F0', text: '#4A5568' },
+  'Cleaning':      { bg: 'var(--category-cleaning-bg)',      text: 'var(--category-cleaning-text)' },
+  'Packing':       { bg: 'var(--category-packing-bg)',       text: 'var(--category-packing-text)' },
+  'Organising':    { bg: 'var(--category-organising-bg)',    text: 'var(--category-organising-text)' },
+  'Painting':      { bg: 'var(--category-painting-bg)',      text: 'var(--category-painting-text)' },
+  'Basic repairs': { bg: 'var(--category-basic-repairs-bg)', text: 'var(--category-basic-repairs-text)' },
+  'Trade Quote':   { bg: 'var(--category-trade-quote-bg)',   text: 'var(--category-trade-quote-text)' },
+  'Buy new':       { bg: 'var(--category-buy-new-bg)',       text: 'var(--category-buy-new-text)' },
+  'Selling':       { bg: 'var(--category-selling-bg)',       text: 'var(--category-selling-text)' },
+  'In progress':   { bg: 'var(--category-in-progress-bg)',   text: 'var(--category-in-progress-text)' },
+  'We have these': { bg: 'var(--category-we-have-these-bg)', text: 'var(--category-we-have-these-text)' },
 };
 
 export const ASSIGNED_COLORS = {
@@ -19,8 +19,8 @@ export const ASSIGNED_COLORS = {
 };
 
 export const STATUS_COLORS = {
-  'To Do':           { bg: '#2B6CB0', text: '#FFFFFF' },
-  'In Progress':     { bg: 'rgb(170, 51, 208)', text: '#FFFFFF' },
-  'Blocked':         { bg: '#C53030', text: '#FFFFFF' },
-  'Done':            { bg: '#276749', text: '#FFFFFF' },
+  'To Do':           { bg: 'var(--status-todo-bg)',        text: 'var(--status-todo-text)' },
+  'In Progress':     { bg: 'var(--status-in-progress-bg)', text: 'var(--status-in-progress-text)' },
+  'Blocked':         { bg: 'var(--status-blocked-bg)',      text: 'var(--status-blocked-text)' },
+  'Done':            { bg: 'var(--status-done-bg)',         text: 'var(--status-done-text)' },
 };

@@ -8,7 +8,7 @@ export function buildFilterOptions(tasks) {
 }
 
 export function populateDropdown(selectEl, options, label) {
-  selectEl.innerHTML = `<option value="">All ${label}</option>` +
+  selectEl.innerHTML = `<option value="">All</option>` +
     options.map(o => `<option value="${o}">${o}</option>`).join('');
 }
 

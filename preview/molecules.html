@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Molecules — Design Preview</title>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    body { overflow: auto; padding: 40px; display: block; }
+    .section { max-width: 700px; margin: 0 auto 40px; }
+    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <a href="index.html" class="back-link">Back to overview</a>
+
+    <h2>Kanban Cards</h2>
+    <div class="card-grid">
+      <div class="kanban-card">
+        <div class="card-room">Kitchen</div>
+        <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
+        <div class="card-title">Deep clean the oven and rangehood</div>
+        <div class="card-footer">
+          <span class="card-dates">15 Jan - 20 Jan</span>
+          <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+        </div>
+      </div>
+
+      <div class="kanban-card">
+        <div class="card-room">Bathroom</div>
+        <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
+        <div class="card-title">Paint bathroom ceiling and trim</div>
+        <div class="card-footer">
+          <span class="card-dates">22 Jan - 25 Jan</span>
+          <span class="card-avatar" style="background:#1A1A1A;color:#fff">SI</span>
+        </div>
+        <div class="card-deps">Depends on: Repair ceiling crack</div>
+      </div>
+
+      <div class="kanban-card">
+        <div class="card-room">Living Room</div>
+        <span class="category-badge" style="background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text)">Trade Quote</span>
+        <div class="card-title">Get quote for new flooring installation</div>
+        <div class="card-footer">
+          <span class="card-dates">TBD</span>
+          <span class="card-avatar" style="background:#E2E8F0;color:#1A1A1A">SG</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>Dependency Chips</h2>
+    <div class="dep-selected" style="margin-top:0">
+      <span class="dep-chip">Clean gutters <button class="dep-chip-remove">&times;</button></span>
+      <span class="dep-chip">Fix downpipe <button class="dep-chip-remove">&times;</button></span>
+    </div>
+
+    <h2 style="margin-top:32px">Toast Notifications</h2>
+    <div style="position:relative;display:flex;flex-direction:column;gap:8px;max-width:320px">
+      <div class="toast success" style="animation:none;position:static">Saved to sheet</div>
+      <div class="toast error" style="animation:none;position:static">Sheet write failed</div>
+    </div>
+
+    <h2 style="margin-top:32px">Unscheduled Chips</h2>
+    <div class="unscheduled-list">
+      <span class="unscheduled-chip">Fix letterbox <small>(Front yard)</small></span>
+      <span class="unscheduled-chip">Buy curtain rods <small>(Bedroom)</small></span>
+      <span class="unscheduled-chip">Patch drywall <small>(Hallway)</small></span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('qp-theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
+</body>
+</html>

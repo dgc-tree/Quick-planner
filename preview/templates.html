@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Templates — Design Preview</title>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    body { overflow: auto; padding: 40px; display: block; }
+    .section { max-width: 1000px; margin: 0 auto 40px; }
+    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
+    .template-frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 32px; }
+    .template-frame iframe { width: 100%; height: 600px; border: none; }
+    .note { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <a href="index.html" class="back-link">Back to overview</a>
+
+    <h2>Full App Layout</h2>
+    <p class="note">Live embed of the main application.</p>
+    <div class="template-frame">
+      <iframe src="../index.html"></iframe>
+    </div>
+
+    <h2>Token Ramp Overview</h2>
+    <p class="note">All generated color ramps at a glance.</p>
+    <div id="all-ramps"></div>
+  </div>
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('qp-theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+
+      const ramps = ['neutral', 'primary1', 'secondary1', 'secondary2'];
+      const steps = [100,200,300,400,500,600,700,800,900,1000,1100,1200,1300];
+      const container = document.getElementById('all-ramps');
+
+      for (const ramp of ramps) {
+        const label = document.createElement('div');
+        label.style.cssText = 'font-weight:600;font-size:0.85rem;color:var(--text-secondary);margin:12px 0 6px';
+        label.textContent = ramp;
+        container.appendChild(label);
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px';
+        for (const step of steps) {
+          const swatch = document.createElement('div');
+          swatch.style.cssText = `width:50px;height:40px;border-radius:6px;background:var(--color-${ramp}-${step});border:1px solid var(--border);display:flex;align-items:flex-end;justify-content:center;font-size:0.55rem;color:var(--text-secondary);padding:2px`;
+          swatch.textContent = step;
+          row.appendChild(swatch);
+        }
+        container.appendChild(row);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atoms — Design Preview</title>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    body { overflow: auto; padding: 40px; display: block; }
+    .section { max-width: 700px; margin: 0 auto 40px; }
+    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .swatch { width: 60px; height: 60px; border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: center; font-size: 0.6rem; padding: 4px; color: var(--text-secondary); }
+    .label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; }
+    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <a href="index.html" class="back-link">Back to overview</a>
+
+    <h2>Color Ramps</h2>
+    <div class="label">Neutral</div>
+    <div class="row" id="neutral-ramp"></div>
+    <div class="label">Primary 1</div>
+    <div class="row" id="primary1-ramp"></div>
+
+    <h2>Semantic Surfaces</h2>
+    <div class="row">
+      <div class="swatch" style="background:var(--surface-canvas)">canvas</div>
+      <div class="swatch" style="background:var(--surface-base)">base</div>
+      <div class="swatch" style="background:var(--surface-raised)">raised</div>
+      <div class="swatch" style="background:var(--surface-sunken)">sunken</div>
+      <div class="swatch" style="background:var(--surface-highlight)">highlight</div>
+      <div class="swatch" style="background:var(--surface-header)">header</div>
+    </div>
+
+    <h2>Content Colors</h2>
+    <div class="row">
+      <span style="color:var(--content-primary);font-weight:700;font-size:1.1rem">Primary text</span>
+      <span style="color:var(--content-secondary);font-weight:500">Secondary text</span>
+      <span style="color:var(--content-tertiary)">Tertiary text</span>
+    </div>
+
+    <h2>Buttons</h2>
+    <div class="row">
+      <button class="modal-btn modal-save">Primary Button</button>
+      <button class="modal-btn modal-cancel">Secondary Button</button>
+      <button class="refresh-btn">
+        <svg class="refresh-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.65 2.35A7.96 7.96 0 008 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14 6 6 0 012 8a6 6 0 016-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/></svg>
+        Sync
+      </button>
+    </div>
+
+    <h2>Inputs</h2>
+    <div class="row" style="flex-direction:column;max-width:300px">
+      <div class="modal-field">
+        <span>Text input</span>
+        <input type="text" value="Sample text">
+      </div>
+      <div class="modal-field">
+        <span>Select</span>
+        <select><option>Option 1</option><option>Option 2</option></select>
+      </div>
+    </div>
+
+    <h2>Category Badges</h2>
+    <div class="row">
+      <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
+      <span class="category-badge" style="background:var(--category-packing-bg);color:var(--category-packing-text)">Packing</span>
+      <span class="category-badge" style="background:var(--category-organising-bg);color:var(--category-organising-text)">Organising</span>
+      <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
+      <span class="category-badge" style="background:var(--category-basic-repairs-bg);color:var(--category-basic-repairs-text)">Basic Repairs</span>
+      <span class="category-badge" style="background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text)">Trade Quote</span>
+      <span class="category-badge" style="background:var(--category-buy-new-bg);color:var(--category-buy-new-text)">Buy New</span>
+      <span class="category-badge" style="background:var(--category-selling-bg);color:var(--category-selling-text)">Selling</span>
+    </div>
+
+    <h2>Status Colors</h2>
+    <div class="row">
+      <span class="category-badge" style="background:var(--status-todo-bg);color:var(--status-todo-text)">To Do</span>
+      <span class="category-badge" style="background:var(--status-in-progress-bg);color:var(--status-in-progress-text)">In Progress</span>
+      <span class="category-badge" style="background:var(--status-blocked-bg);color:var(--status-blocked-text)">Blocked</span>
+      <span class="category-badge" style="background:var(--status-done-bg);color:var(--status-done-text)">Done</span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('qp-theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      const steps = [100,200,300,400,500,600,700,800,900,1000,1100,1200,1300];
+      for (const ramp of ['neutral', 'primary1']) {
+        const container = document.getElementById(ramp + '-ramp');
+        for (const step of steps) {
+          const el = document.createElement('div');
+          el.className = 'swatch';
+          el.style.background = `var(--color-${ramp}-${step})`;
+          el.textContent = step;
+          container.appendChild(el);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
