@@ -62,9 +62,11 @@ export function renderTodoList(container, tasks, callbacks = {}) {
     room.className = 'todo-room';
     room.textContent = task.room;
 
+    const dateRange = formatDateRange(task.startDate, task.endDate);
     const dates = document.createElement('span');
     dates.className = 'todo-dates';
-    dates.textContent = formatDateRange(task.startDate, task.endDate);
+    dates.textContent = dateRange.text;
+    dates.setAttribute('aria-label', dateRange.aria);
 
     const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
     const avatar = document.createElement('span');

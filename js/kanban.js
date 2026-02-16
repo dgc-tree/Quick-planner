@@ -83,7 +83,7 @@ function createCard(task) {
   const cat = getCategoryColor(task.category);
   const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
   const initials = getInitials(task.assigned);
-  const dates = formatDateRange(task.startDate, task.endDate);
+  const { text: dates, aria: datesAria } = formatDateRange(task.startDate, task.endDate);
 
   const card = document.createElement('div');
   card.className = 'kanban-card';
@@ -102,7 +102,7 @@ function createCard(task) {
     </span>
     <div class="card-title">${esc(task.task)}</div>
     <div class="card-footer">
-      <span class="card-dates">${dates}</span>
+      <span class="card-dates" aria-label="${datesAria}">${dates}</span>
       <span class="card-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned)}">
         ${initials}
       </span>

@@ -60,7 +60,7 @@
   --surface-base: rgba(238,238,238,0.45);
   --surface-raised: rgba(238,238,238,0.6);
   --surface-sunken: #c0c0c0;
-  --surface-highlight: rgba(238,238,238,0.7);
+  --surface-highlight: rgba(238,238,238,0.35);
   --surface-header: rgba(238,238,238,0.55);
   --content-primary: #101010;
   --content-secondary: #565656;
@@ -112,7 +112,7 @@
   --surface-base: rgba(238,238,238,0.06);
   --surface-raised: rgba(238,238,238,0.09);
   --surface-sunken: #202020;
-  --surface-highlight: rgba(238,238,238,0.12);
+  --surface-highlight: rgba(238,238,238,0.06);
   --surface-header: rgba(16,16,16,0.7);
   --content-primary: #d7d7d7;
   --content-secondary: #949494;

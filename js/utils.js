@@ -24,8 +24,11 @@ export function getCategoryColor(category) {
 
 export function formatDateRange(start, end) {
   const opts = { day: 'numeric', month: 'short' };
-  if (!start && !end) return 'TBD';
-  if (start && end) return `${start.toLocaleDateString('en-AU', opts)} \u2013 ${end.toLocaleDateString('en-AU', opts)}`;
-  if (start) return `From ${start.toLocaleDateString('en-AU', opts)}`;
-  return `Until ${end.toLocaleDateString('en-AU', opts)}`;
+  const ariaOpts = { day: 'numeric', month: 'long' };
+  if (!start && !end) return { text: 'TBD', aria: 'To be decided' };
+  const fmt = (d) => d.toLocaleDateString('en-AU', opts);
+  const afmt = (d) => d.toLocaleDateString('en-AU', ariaOpts);
+  if (start && end) return { text: `${fmt(start)} \u2013 ${fmt(end)}`, aria: `${afmt(start)} to ${afmt(end)}` };
+  if (start) return { text: `From ${fmt(start)}`, aria: `From ${afmt(start)}` };
+  return { text: `Until ${fmt(end)}`, aria: `Until ${afmt(end)}` };
 }

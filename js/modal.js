@@ -12,7 +12,7 @@ function displayDate(d) {
 
 function ariaDate(label, d) {
   if (!d) return label;
-  return `${label}: ${d.getDate()} ${d.toLocaleString('en-AU', { month: 'long' })} ${d.getFullYear()}`;
+  return `${label}: ${d.getDate()} ${d.toLocaleString('en-AU', { month: 'long' })} ${String(d.getFullYear()).slice(-2)}`;
 }
 
 let modalEl = null;

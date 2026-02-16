@@ -105,7 +105,7 @@ function getMonthHeaders(min, max) {
     const leftPct = (daysBetween(min, monthStart) / totalDays) * 100;
     const widthPct = (daysBetween(monthStart, clampedEnd) / totalDays) * 100;
     headers.push({
-      label: d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' }),
+      label: d.toLocaleDateString('en-AU', { month: 'long', year: '2-digit' }),
       leftPct,
       widthPct,
     });
