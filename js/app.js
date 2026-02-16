@@ -39,9 +39,9 @@ function startAutoSync() {
 }
 
 async function refreshData(silent = false) {
-  const refreshBtn = $('#refresh-btn');
-  refreshBtn.classList.add('refreshing');
-  refreshBtn.disabled = true;
+  const sidebarSyncBtn = $('#sidebar-sync-btn');
+  sidebarSyncBtn.classList.add('refreshing');
+  sidebarSyncBtn.disabled = true;
   $('#error').classList.add('hidden');
 
   if (!silent) showLoading(true);
@@ -56,17 +56,17 @@ async function refreshData(silent = false) {
     if (!silent) showError(err.message);
   }
 
-  refreshBtn.classList.remove('refreshing');
-  refreshBtn.disabled = false;
+  sidebarSyncBtn.classList.remove('refreshing');
+  sidebarSyncBtn.disabled = false;
   if (!silent) showLoading(false);
 }
 
 function updateLastSynced() {
-  const el = $('#last-synced');
+  const el = $('#sidebar-last-synced');
   const now = new Date();
-  el.textContent = `Synced ${now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}`;
+  const timeStr = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+  el.textContent = `Synced ${timeStr}`;
   el.title = `Last: ${now.toLocaleString('en-AU')}`;
-  el.classList.remove('hidden');
 }
 
 function setupFilters() {
@@ -259,7 +259,7 @@ function setupSettingsPanel() {
     container.appendChild(picker);
   }
 
-  $('#settings-btn').addEventListener('click', () => {
+  $('#sidebar-settings-btn').addEventListener('click', () => {
     modal.classList.add('open');
   });
 
@@ -329,34 +329,59 @@ document.addEventListener('DOMContentLoaded', () => {
   menuOverlay.addEventListener('click', (e) => {
     if (e.target === menuOverlay) closeMenu();
   });
-  // Wire fullscreen menu items to existing buttons
+  // Theme toggle helper
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    localStorage.setItem('qp-theme', isDark ? 'light' : 'dark');
+    updateThemeLabels();
+  }
+
+  function updateThemeLabels() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const sidebarLabel = document.querySelector('.sidebar-theme-label');
+    const mobileLabel = document.querySelector('.mobile-theme-label');
+    if (sidebarLabel) sidebarLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
+    if (mobileLabel) mobileLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
+  }
+  updateThemeLabels();
+
+  // Sidebar buttons
+  $('#sidebar-theme-toggle').addEventListener('click', toggleTheme);
+  $('#sidebar-sync-btn').addEventListener('click', () => {
+    refreshData(false);
+    startAutoSync();
+  });
+
+  // Sidebar expand/collapse toggle (WCAG 1.4.13 keyboard accessible)
+  const sidebarRail = document.querySelector('.sidebar-rail');
+  const sidebarToggle = $('#sidebar-toggle');
+  const sidebarToggleLabel = sidebarToggle.querySelector('.sidebar-label');
+  sidebarToggle.addEventListener('click', () => {
+    const expanded = sidebarRail.classList.toggle('sidebar-expanded');
+    sidebarRail.classList.toggle('sidebar-pinned-closed', !expanded);
+    sidebarToggle.setAttribute('aria-expanded', String(expanded));
+    sidebarToggleLabel.textContent = expanded ? 'Hide menu' : 'Menu';
+  });
+  sidebarRail.addEventListener('mouseleave', () => {
+    sidebarRail.classList.remove('sidebar-pinned-closed');
+  });
+
+  // Wire mobile menu items
   const mobileSettingsBtn = $('#mobile-settings-btn');
   const mobileThemeBtn = $('#mobile-theme-btn');
   const mobileSyncBtn = $('#mobile-sync-btn');
   if (mobileSettingsBtn) mobileSettingsBtn.addEventListener('click', () => {
     closeMenu();
-    $('#settings-btn').click();
+    $('#sidebar-settings-btn').click();
   });
-  const updateThemeLabel = () => {
-    const label = document.querySelector('.mobile-theme-label');
-    if (!label) return;
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    label.textContent = isDark ? 'Light mode' : 'Dark mode';
-  };
-  updateThemeLabel();
   if (mobileThemeBtn) mobileThemeBtn.addEventListener('click', () => {
     closeMenu();
-    $('#theme-toggle').click();
-    updateThemeLabel();
+    toggleTheme();
   });
   if (mobileSyncBtn) mobileSyncBtn.addEventListener('click', () => {
     closeMenu();
-    $('#refresh-btn').click();
-  });
-
-  // Manual refresh
-  $('#refresh-btn').addEventListener('click', () => {
     refreshData(false);
-    startAutoSync(); // Reset the timer on manual refresh
+    startAutoSync();
   });
 });
