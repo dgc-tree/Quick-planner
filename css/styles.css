@@ -109,9 +109,9 @@ body {
 }
 
 .theme-toggle:hover {
-  color: var(--accent);
-  border-color: rgba(0,115,234,0.3);
-  background: var(--surface-raised);
+  background: var(--accent-primary1);
+  color: var(--on-accent-primary1);
+  border-color: var(--accent-primary1);
 }
 
 .icon-moon { display: none; }
@@ -273,9 +273,9 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 }
 
 .refresh-btn:hover {
-  border-color: rgba(0,115,234,0.3);
-  color: var(--accent);
-  background: var(--surface-raised);
+  background: var(--accent-primary1);
+  color: var(--on-accent-primary1);
+  border-color: var(--accent-primary1);
 }
 
 .refresh-btn:disabled {
@@ -343,7 +343,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.15);
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-glass), 0 4px 16px rgba(0,0,0,0.03);
+  box-shadow: var(--shadow-glass), 0 4px 16px rgba(0,0,0,0.03), inset 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .kanban-column-header {
