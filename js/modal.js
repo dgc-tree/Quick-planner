@@ -151,6 +151,8 @@ export function openEditModal(task, options, onSave, onRoomChange) {
   `;
 
   modalEl.classList.add('open');
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  if (menuBtn) menuBtn.style.display = 'none';
 
   // --- Dirty checking ---
   const avatarSelect = modalEl.querySelector('.modal-avatar-select');
@@ -171,6 +173,7 @@ export function openEditModal(task, options, onSave, onRoomChange) {
 
   const close = () => {
     modalEl.classList.remove('open');
+    if (menuBtn) menuBtn.style.display = '';
     document.removeEventListener('keydown', onKey);
   };
 
