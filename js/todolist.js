@@ -9,7 +9,6 @@ export function renderTodoList(container, tasks, callbacks = {}) {
   today.setHours(23, 59, 59, 999);
 
   const actionable = tasks.filter(t => {
-    if (t.status === 'Done' && !checkedItems.has(t.id)) return false;
     if (!t.startDate) return false;
     return t.startDate <= today;
   });
@@ -24,6 +23,9 @@ export function renderTodoList(container, tasks, callbacks = {}) {
   }
 
   for (const task of actionable) {
+    if (task.status === 'Done' && !checkedItems.has(task.id)) {
+      checkedItems.set(task.id, 'To Do');
+    }
     const isChecked = checkedItems.has(task.id) || task.status === 'Done';
     const row = document.createElement('div');
     row.className = 'todo-item' + (isChecked ? ' todo-done' : '');
@@ -120,6 +122,3 @@ export function renderTodoList(container, tasks, callbacks = {}) {
   }
 }
 
-export function clearChecked() {
-  checkedItems.clear();
-}

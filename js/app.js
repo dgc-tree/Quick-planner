@@ -2,7 +2,7 @@ import { fetchSheetData } from './data.js';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner } from './planner.js';
-import { renderTodoList, clearChecked } from './todolist.js';
+import { renderTodoList } from './todolist.js';
 import { openEditModal } from './modal.js';
 import { updateTask } from './sheet-writer.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
@@ -193,7 +193,6 @@ function render() {
       onBarClick: handleTaskEdit,
     });
   } else if (currentView === 'todolist') {
-    clearChecked();
     todolistContainer.classList.remove('hidden');
     renderTodoList(todolistContainer, filtered, {
       onStatusChange: handleStatusChange,
