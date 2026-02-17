@@ -108,7 +108,7 @@
 
 [data-theme="dark"] {
   /* === Semantic Roles (Dark) === */
-  --surface-canvas: #00252c;
+  --surface-canvas: #00626f;
   --surface-base: rgba(238,238,238,0.06);
   --surface-raised: rgba(238,238,238,0.09);
   --surface-sunken: #202020;

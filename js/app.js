@@ -5,10 +5,9 @@ import { renderPlanner } from './planner.js';
 import { renderTodoList, clearChecked } from './todolist.js';
 import { openEditModal } from './modal.js';
 import { updateTask } from './sheet-writer.js';
-import { initCustomColors, applyCustomColors, removeCustomColors } from './theme-customizer.js';
+import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
-import { createColorPicker } from './color-picker.js';
-import { loadCustomColors, saveCustomColors } from './storage.js';
+import { loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches } from './storage.js';
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -199,6 +198,14 @@ function render() {
     renderTodoList(todolistContainer, filtered, {
       onStatusChange: handleStatusChange,
       onTaskClick: handleTaskEdit,
+      onAssignChange: (task, newAssigned) => {
+        updateTask(task.task, { assigned: newAssigned })
+          .then(res => {
+            if (res && res.success) showToast(`Assigned to ${newAssigned}`, 'success');
+            else showToast(res?.error || 'Save may have failed', 'error');
+          })
+          .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+      },
     });
   }
 }
@@ -235,30 +242,173 @@ function showToast(message, type = 'success') {
 }
 
 function setupSettingsPanel() {
-  const modal = $('#settings-modal');
-  const container = $('#settings-pickers');
-  const saved = loadCustomColors() || { primary1: '#00E3FF', secondary1: null, secondary2: null };
-  const colors = { ...saved };
-
-  const pickers = [
-    { label: 'Primary', key: 'primary1' },
-    { label: 'Secondary 1', key: 'secondary1' },
-    { label: 'Secondary 2', key: 'secondary2' },
+  const PRESETS = [
+    { hex: '#00E3FF', label: 'Cyan' },
+    { hex: '#4F86F7', label: 'Blue' },
+    { hex: '#7C5CFC', label: 'Purple' },
+    { hex: '#E84393', label: 'Pink' },
+    { hex: '#FF6B35', label: 'Orange' },
+    { hex: '#2ECC71', label: 'Green' },
+    { hex: '#F1C40F', label: 'Gold' },
+    { hex: '#C9B458', label: 'Deep Gold' },
+    { hex: '#A8998A', label: 'Warm Grey' },
   ];
+  const DEFAULT_PRIMARY = '#00E3FF';
 
-  container.innerHTML = '';
-  for (const p of pickers) {
-    const picker = createColorPicker({
-      label: p.label,
-      value: colors[p.key],
-      onChange: (hex) => {
-        colors[p.key] = hex;
-        applyCustomColors(colors);
-      },
-    });
-    container.appendChild(picker);
+  const modal = $('#settings-modal');
+  const swatchContainer = $('#settings-swatches');
+  const userSwatchesWrap = $('#settings-user-swatches-wrap');
+  const userSwatchesContainer = $('#settings-user-swatches');
+  const customRow = $('#settings-custom-row');
+  const colorInput = $('#settings-color-input');
+  const saved = loadCustomColors() || { primary1: DEFAULT_PRIMARY, secondary1: null, secondary2: null };
+  const colors = { ...saved };
+  let selected = colors.primary1 || DEFAULT_PRIMARY;
+
+  function clearAllActive() {
+    swatchContainer.querySelectorAll('.onboarding-swatch').forEach(s => s.classList.remove('active'));
+    userSwatchesContainer.querySelectorAll('.onboarding-swatch').forEach(s => s.classList.remove('active'));
   }
 
+  function selectSwatch(hex) {
+    selected = hex;
+    colors.primary1 = hex;
+    applyCustomColors(colors);
+    clearAllActive();
+    // Highlight matching swatch in either container
+    const all = [...swatchContainer.querySelectorAll('.onboarding-swatch'), ...userSwatchesContainer.querySelectorAll('.onboarding-swatch')];
+    for (const s of all) {
+      if (s.dataset.hex === hex) s.classList.add('active');
+    }
+  }
+
+  // --- Preset swatches ---
+  swatchContainer.innerHTML = '';
+  PRESETS.forEach(p => {
+    const swatch = document.createElement('button');
+    swatch.className = 'onboarding-swatch' + (p.hex === selected ? ' active' : '');
+    swatch.dataset.hex = p.hex;
+    swatch.style.background = p.hex;
+    swatch.title = p.label;
+    swatch.setAttribute('aria-label', p.label);
+    swatch.addEventListener('click', () => {
+      customRow.style.display = 'none';
+      selectSwatch(p.hex);
+    });
+    swatchContainer.appendChild(swatch);
+  });
+
+  // "+" swatch to open custom picker
+  const plus = document.createElement('button');
+  plus.className = 'onboarding-swatch onboarding-swatch-plus';
+  plus.title = 'Custom color';
+  plus.setAttribute('aria-label', 'Custom color');
+  plus.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  plus.addEventListener('click', () => {
+    colorInput.value = selected;
+    customRow.style.display = 'flex';
+    clearAllActive();
+    plus.classList.add('active');
+  });
+  swatchContainer.appendChild(plus);
+
+  // --- User-saved swatches (long-press to delete) ---
+  function dismissConfirm() {
+    const old = userSwatchesContainer.querySelector('.swatch-remove-confirm');
+    if (old) old.remove();
+    userSwatchesContainer.querySelectorAll('.jiggling').forEach(el => el.classList.remove('jiggling'));
+  }
+
+  function renderUserSwatches() {
+    const userSwatches = loadUserSwatches();
+    userSwatchesContainer.innerHTML = '';
+    if (userSwatches.length === 0) {
+      userSwatchesWrap.style.display = 'none';
+      return;
+    }
+    userSwatchesWrap.style.display = '';
+    userSwatches.forEach((hex, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'swatch-removable';
+
+      const swatch = document.createElement('button');
+      swatch.className = 'onboarding-swatch' + (hex === selected ? ' active' : '');
+      swatch.dataset.hex = hex;
+      swatch.style.background = hex;
+      swatch.title = hex;
+      swatch.setAttribute('aria-label', `Custom color ${hex}`);
+
+      // Tap to select
+      let pressTimer = null;
+      let didLongPress = false;
+
+      function startPress() {
+        didLongPress = false;
+        pressTimer = setTimeout(() => {
+          didLongPress = true;
+          dismissConfirm();
+          wrap.classList.add('jiggling');
+          const confirm = document.createElement('button');
+          confirm.className = 'swatch-remove-confirm';
+          confirm.textContent = 'Remove';
+          confirm.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const swatches = loadUserSwatches();
+            swatches.splice(i, 1);
+            saveUserSwatches(swatches);
+            renderUserSwatches();
+          });
+          wrap.appendChild(confirm);
+        }, 500);
+      }
+      function cancelPress() {
+        clearTimeout(pressTimer);
+      }
+
+      swatch.addEventListener('pointerdown', startPress);
+      swatch.addEventListener('pointerup', cancelPress);
+      swatch.addEventListener('pointerleave', cancelPress);
+      swatch.addEventListener('click', (e) => {
+        if (didLongPress) { e.preventDefault(); return; }
+        dismissConfirm();
+        customRow.style.display = 'none';
+        selectSwatch(hex);
+      });
+
+      wrap.appendChild(swatch);
+      userSwatchesContainer.appendChild(wrap);
+    });
+  }
+  renderUserSwatches();
+
+  // Dismiss confirm popover when tapping elsewhere
+  modal.addEventListener('click', dismissConfirm);
+
+  // --- Custom color picker actions ---
+  $('#settings-custom-cancel').addEventListener('click', () => {
+    customRow.style.display = 'none';
+    selectSwatch(selected);
+  });
+  $('#settings-custom-save').addEventListener('click', () => {
+    const hex = colorInput.value;
+    customRow.style.display = 'none';
+    // Save to user swatches if not already a preset or saved
+    const allKnown = [...PRESETS.map(p => p.hex), ...loadUserSwatches()];
+    if (!allKnown.includes(hex)) {
+      const swatches = loadUserSwatches();
+      swatches.push(hex);
+      saveUserSwatches(swatches);
+      renderUserSwatches();
+    }
+    selectSwatch(hex);
+  });
+
+  colorInput.addEventListener('input', () => {
+    colors.primary1 = colorInput.value;
+    applyCustomColors(colors);
+  });
+
+  // --- Modal open/close ---
   $('#sidebar-settings-btn').addEventListener('click', () => {
     modal.classList.add('open');
   });
@@ -268,11 +418,14 @@ function setupSettingsPanel() {
     modal.classList.remove('open');
   });
 
+  // Reset selection to default cyan — does NOT delete user swatches
   $('#settings-reset').addEventListener('click', () => {
-    removeCustomColors();
-    modal.classList.remove('open');
-    // Reload to get default tokens
-    location.reload();
+    colors.primary1 = DEFAULT_PRIMARY;
+    colors.secondary1 = null;
+    colors.secondary2 = null;
+    saveCustomColors(colors);
+    applyCustomColors(colors);
+    selectSwatch(DEFAULT_PRIMARY);
   });
 }
 
@@ -318,12 +471,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeMenu = () => {
     menuBtn.classList.remove('open');
     menuBtn.setAttribute('aria-expanded', 'false');
+    menuBtn.title = 'Open menu';
+    menuBtn.setAttribute('aria-label', 'Open menu');
     menuOverlay.classList.remove('open');
   };
   menuBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const isOpen = menuBtn.classList.toggle('open');
     menuBtn.setAttribute('aria-expanded', String(isOpen));
+    const label = isOpen ? 'Close menu' : 'Open menu';
+    menuBtn.title = label;
+    menuBtn.setAttribute('aria-label', label);
     menuOverlay.classList.toggle('open', isOpen);
   });
   menuOverlay.addEventListener('click', (e) => {
@@ -348,7 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sidebar buttons
   $('#sidebar-theme-toggle').addEventListener('click', toggleTheme);
-  $('#sidebar-sync-btn').addEventListener('click', () => {
+  const sidebarSync = $('#sidebar-sync-btn');
+  if (sidebarSync) sidebarSync.addEventListener('click', () => {
     refreshData(false);
     startAutoSync();
   });
@@ -384,4 +543,50 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshData(false);
     startAutoSync();
   });
+
+  // Auto-hide primary nav on scroll (mobile only)
+  (function() {
+    const primaryNav = document.querySelector('.primary-nav');
+    const header = document.querySelector('.app-header');
+    const mainEl = document.querySelector('main');
+    const mq = window.matchMedia('(max-width: 768px), (orientation: landscape) and (max-height: 500px)');
+
+    let lastY = 0;
+    let ticking = false;
+
+    function updateHeaderPadding() {
+      if (mq.matches) {
+        const totalH = (primaryNav ? primaryNav.offsetHeight : 0) + header.offsetHeight;
+        mainEl.style.paddingTop = (totalH + 24) + 'px';
+      } else {
+        mainEl.style.paddingTop = '';
+      }
+    }
+
+    function onScroll() {
+      if (!mq.matches) return;
+      const y = window.scrollY;
+      const threshold = window.innerHeight * 0.5;
+
+      if (y > threshold && y > lastY) {
+        if (primaryNav) primaryNav.classList.add('header-hidden');
+        header.classList.add('secondary-raised');
+      } else if (y < lastY) {
+        if (primaryNav) primaryNav.classList.remove('header-hidden');
+        header.classList.remove('secondary-raised');
+      }
+      lastY = y;
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(() => { onScroll(); ticking = false; });
+        ticking = true;
+      }
+    }, { passive: true });
+
+    mq.addEventListener('change', updateHeaderPadding);
+    updateHeaderPadding();
+    window.addEventListener('resize', updateHeaderPadding);
+  })();
 });

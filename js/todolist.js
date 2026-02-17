@@ -1,6 +1,8 @@
 import { getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
+import { ASSIGNED_COLORS } from './theme.js';
 
 const checkedItems = new Map(); // taskId → previousStatus
+const assignedNames = Object.keys(ASSIGNED_COLORS);
 
 export function renderTodoList(container, tasks, callbacks = {}) {
   const today = new Date();
@@ -70,11 +72,25 @@ export function renderTodoList(container, tasks, callbacks = {}) {
 
     const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
     const avatar = document.createElement('span');
-    avatar.className = 'card-avatar';
+    avatar.className = 'card-avatar todo-avatar-tap';
     avatar.style.background = assignedBg;
     avatar.style.color = assignedText;
     avatar.title = task.assigned || '';
     avatar.textContent = getInitials(task.assigned);
+
+    avatar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const curIdx = assignedNames.indexOf(task.assigned);
+      const nextIdx = (curIdx + 1) % assignedNames.length;
+      const nextName = assignedNames[nextIdx];
+      task.assigned = nextName;
+      const { bg, text: txt } = getAssignedColor(nextName);
+      avatar.style.background = bg;
+      avatar.style.color = txt;
+      avatar.textContent = getInitials(nextName);
+      avatar.title = nextName;
+      if (callbacks.onAssignChange) callbacks.onAssignChange(task, nextName);
+    });
 
     const colMeta = document.createElement('div');
     colMeta.className = 'todo-col-meta';

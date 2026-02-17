@@ -60,7 +60,8 @@ export function applyCustomColors(colors) {
   if (colors.primary1) css += `  --on-accent-primary1: ${contrastTextColor(colors.primary1)};\n`;
   if (colors.secondary1) css += `  --on-accent-secondary1: ${contrastTextColor(colors.secondary1)};\n`;
   if (colors.secondary2) css += `  --on-accent-secondary2: ${contrastTextColor(colors.secondary2)};\n`;
-  css += `  --surface-canvas: var(--color-primary1-1100);\n`;
+  css += `  --surface-canvas: var(--color-primary1-800);\n`;
+  css += `  --surface-header: color-mix(in srgb, var(--color-primary1-1200) 70%, transparent);\n`;
   css += `}\n`;
 
   style.textContent = css;

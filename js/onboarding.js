@@ -1,34 +1,19 @@
 /**
- * First-visit onboarding flow — guides user through picking primary color.
+ * First-visit onboarding — single-step color picker with preset swatches.
  */
 import { hasVisited, markVisited, saveCustomColors } from './storage.js';
-import { createColorPicker } from './color-picker.js';
 import { applyCustomColors } from './theme-customizer.js';
 
-const STEPS = [
-  {
-    title: 'Welcome to Quick Planner',
-    body: 'Customise your theme colors, or skip to use the defaults.',
-    isIntro: true,
-  },
-  {
-    title: 'Pick your primary color',
-    body: 'This color will be used for accents, buttons, and highlights.',
-    colorKey: 'primary1',
-    defaultColor: '#00E3FF',
-  },
-  {
-    title: 'Secondary color (optional)',
-    body: 'Add a secondary accent, or leave blank to match neutral.',
-    colorKey: 'secondary1',
-    defaultColor: null,
-  },
-  {
-    title: 'Second secondary (optional)',
-    body: 'One more accent color, or leave blank.',
-    colorKey: 'secondary2',
-    defaultColor: null,
-  },
+const PRESETS = [
+  { hex: '#00E3FF', label: 'Cyan' },
+  { hex: '#4F86F7', label: 'Blue' },
+  { hex: '#7C5CFC', label: 'Purple' },
+  { hex: '#E84393', label: 'Pink' },
+  { hex: '#FF6B35', label: 'Orange' },
+  { hex: '#2ECC71', label: 'Green' },
+  { hex: '#F1C40F', label: 'Gold' },
+  { hex: '#C9B458', label: 'Deep Gold' },
+  { hex: '#A8998A', label: 'Warm Grey' },
 ];
 
 export function shouldShowOnboarding() {
@@ -37,82 +22,113 @@ export function shouldShowOnboarding() {
 
 export function showOnboarding() {
   const colors = { primary1: '#00E3FF', secondary1: null, secondary2: null };
-  let currentStep = 0;
+  let selected = '#00E3FF';
 
   const overlay = document.createElement('div');
   overlay.className = 'onboarding-overlay';
 
-  function renderStep() {
-    const step = STEPS[currentStep];
-    overlay.innerHTML = '';
+  const dialog = document.createElement('div');
+  dialog.className = 'onboarding-dialog';
 
-    const dialog = document.createElement('div');
-    dialog.className = 'onboarding-dialog';
+  dialog.innerHTML = `
+    <h2 class="onboarding-title">Welcome to Quick Planner</h2>
+    <p class="onboarding-body">Pick a theme color to get started.</p>
+    <div class="onboarding-swatches"></div>
+    <div class="onboarding-custom-row" style="display:none;">
+      <input type="color" class="onboarding-color-input">
+      <div class="onboarding-custom-actions">
+        <button class="modal-btn modal-cancel onboarding-custom-cancel">Cancel</button>
+        <button class="modal-btn modal-save onboarding-custom-save">Save</button>
+      </div>
+    </div>
+    <div class="onboarding-actions">
+      <button class="modal-btn modal-cancel onboarding-skip">Skip</button>
+      <button class="modal-btn modal-save onboarding-done">Done</button>
+    </div>
+  `;
 
-    const title = document.createElement('h2');
-    title.className = 'onboarding-title';
-    title.textContent = step.title;
+  const swatchContainer = dialog.querySelector('.onboarding-swatches');
+  const customRow = dialog.querySelector('.onboarding-custom-row');
+  const colorInput = dialog.querySelector('.onboarding-color-input');
 
-    const body = document.createElement('p');
-    body.className = 'onboarding-body';
-    body.textContent = step.body;
-
-    dialog.appendChild(title);
-    dialog.appendChild(body);
-
-    if (step.colorKey) {
-      const picker = createColorPicker({
-        label: '',
-        value: colors[step.colorKey],
-        onChange: (hex) => {
-          colors[step.colorKey] = hex;
-          applyCustomColors(colors);
-        },
-      });
-      dialog.appendChild(picker);
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'onboarding-actions';
-
-    if (currentStep > 0) {
-      const backBtn = document.createElement('button');
-      backBtn.className = 'modal-btn modal-cancel';
-      backBtn.textContent = 'Back';
-      backBtn.addEventListener('click', () => { currentStep--; renderStep(); });
-      actions.appendChild(backBtn);
-    }
-
-    const skipBtn = document.createElement('button');
-    skipBtn.className = 'modal-btn modal-cancel';
-    skipBtn.textContent = 'Skip';
-    skipBtn.addEventListener('click', finish);
-
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'modal-btn modal-save';
-    nextBtn.textContent = currentStep === STEPS.length - 1 ? 'Done' : 'Next';
-    nextBtn.addEventListener('click', () => {
-      if (currentStep === STEPS.length - 1) {
-        finish();
-      } else {
-        currentStep++;
-        renderStep();
-      }
+  function selectSwatch(hex) {
+    selected = hex;
+    colors.primary1 = hex;
+    applyCustomColors(colors);
+    swatchContainer.querySelectorAll('.onboarding-swatch').forEach(s => {
+      s.classList.toggle('active', s.dataset.hex === hex);
     });
-
-    actions.appendChild(skipBtn);
-    actions.appendChild(nextBtn);
-    dialog.appendChild(actions);
-    overlay.appendChild(dialog);
+    // deselect custom plus if a preset is chosen
+    const plus = swatchContainer.querySelector('.onboarding-swatch-plus');
+    if (plus) plus.classList.remove('active');
   }
 
+  // Render preset swatches
+  PRESETS.forEach(p => {
+    const swatch = document.createElement('button');
+    swatch.className = 'onboarding-swatch' + (p.hex === selected ? ' active' : '');
+    swatch.dataset.hex = p.hex;
+    swatch.style.background = p.hex;
+    swatch.title = p.label;
+    swatch.setAttribute('aria-label', p.label);
+    swatch.addEventListener('click', () => {
+      customRow.style.display = 'none';
+      selectSwatch(p.hex);
+    });
+    swatchContainer.appendChild(swatch);
+  });
+
+  // Custom "+" swatch
+  const plus = document.createElement('button');
+  plus.className = 'onboarding-swatch onboarding-swatch-plus';
+  plus.title = 'Custom color';
+  plus.setAttribute('aria-label', 'Custom color');
+  plus.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  plus.addEventListener('click', () => {
+    colorInput.value = selected;
+    customRow.style.display = 'flex';
+    // Deselect presets
+    swatchContainer.querySelectorAll('.onboarding-swatch').forEach(s => s.classList.remove('active'));
+    plus.classList.add('active');
+  });
+  swatchContainer.appendChild(plus);
+
+  // Custom color actions
+  dialog.querySelector('.onboarding-custom-cancel').addEventListener('click', () => {
+    customRow.style.display = 'none';
+    selectSwatch(selected); // revert visual selection
+  });
+  dialog.querySelector('.onboarding-custom-save').addEventListener('click', () => {
+    const hex = colorInput.value;
+    customRow.style.display = 'none';
+    plus.style.background = hex;
+    plus.innerHTML = '';
+    plus.dataset.hex = hex;
+    selectSwatch(hex);
+    plus.classList.add('active');
+    // deselect presets
+    swatchContainer.querySelectorAll('.onboarding-swatch:not(.onboarding-swatch-plus)').forEach(s => s.classList.remove('active'));
+  });
+
+  // Live preview while picking custom color
+  colorInput.addEventListener('input', () => {
+    colors.primary1 = colorInput.value;
+    applyCustomColors(colors);
+  });
+
+  // Done / Skip
   function finish() {
     saveCustomColors(colors);
     applyCustomColors(colors);
     markVisited();
     overlay.remove();
   }
+  dialog.querySelector('.onboarding-skip').addEventListener('click', () => {
+    colors.primary1 = '#00E3FF';
+    finish();
+  });
+  dialog.querySelector('.onboarding-done').addEventListener('click', finish);
 
-  renderStep();
+  overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 }

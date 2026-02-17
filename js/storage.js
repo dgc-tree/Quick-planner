@@ -18,6 +18,21 @@ export function clearCustomColors() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+const USER_SWATCHES_KEY = 'qp-user-swatches';
+
+export function loadUserSwatches() {
+  try {
+    const raw = localStorage.getItem(USER_SWATCHES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveUserSwatches(swatches) {
+  localStorage.setItem(USER_SWATCHES_KEY, JSON.stringify(swatches));
+}
+
 export function hasVisited() {
   return localStorage.getItem('qp-visited') === '1';
 }
