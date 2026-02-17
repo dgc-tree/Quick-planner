@@ -1,6 +1,9 @@
 import { esc, getInitials, getAssignedColor, getCategoryColor } from './utils.js';
 
 let _plannerCallbacks = {};
+let _viewSize = 'medium';
+
+export function setViewSize(size) { _viewSize = size; }
 
 export function renderPlanner(container, tasks, callbacks = {}) {
   _plannerCallbacks = callbacks;
@@ -30,9 +33,22 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     : null;
 
   container.innerHTML = `
-    <div class="planner-wrapper">
+    <div class="planner-wrapper" data-view-size="${_viewSize}">
+      <div class="planner-toolbar">
+        <span class="planner-toolbar-label">View size</span>
+        <div class="planner-view-size">
+          <button class="view-size-btn${_viewSize === 'large' ? ' active' : ''}" data-size="large">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/></svg>
+            Large
+          </button>
+          <button class="view-size-btn${_viewSize === 'medium' ? ' active' : ''}" data-size="medium">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="12" height="8" rx="1.5"/></svg>
+            Medium
+          </button>
+        </div>
+      </div>
       <div class="planner-header">
-        <div class="planner-label-col"></div>
+        <div class="planner-label-col"><span class="planner-toolbar-label">Month</span></div>
         <div class="planner-timeline-header">
           ${months.map(m => `<div class="month-header" style="left:${m.leftPct}%;width:${m.widthPct}%">${m.label}</div>`).join('')}
           ${todayPct !== null ? `<div class="today-marker-header" style="left:${todayPct}%"><span>Today</span></div>` : ''}
@@ -57,6 +73,18 @@ export function renderPlanner(container, tasks, callbacks = {}) {
       </div>
     ` : ''}
   `;
+
+  // View size buttons
+  container.querySelectorAll('.view-size-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _viewSize = btn.dataset.size;
+      const wrapper = container.querySelector('.planner-wrapper');
+      wrapper.dataset.viewSize = _viewSize;
+      container.querySelectorAll('.view-size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
 
   // Delegated click for bars and unscheduled chips
   const allTasks = [...scheduled, ...unscheduled];
@@ -104,8 +132,12 @@ function getMonthHeaders(min, max) {
     const clampedEnd = new Date(Math.min(monthEnd.getTime(), max.getTime()));
     const leftPct = (daysBetween(min, monthStart) / totalDays) * 100;
     const widthPct = (daysBetween(monthStart, clampedEnd) / totalDays) * 100;
+    const isMobile = window.innerWidth <= 768;
+    const monthStr = d.toLocaleDateString('en-AU', { month: isMobile ? 'short' : 'long', year: '2-digit' });
+    // Slice to 3 chars for short month to avoid locale inconsistency (May/June/July)
+    const label = isMobile ? monthStr.replace(/^(\w{3})\w*/, '$1') : monthStr;
     headers.push({
-      label: d.toLocaleDateString('en-AU', { month: 'long', year: '2-digit' }),
+      label,
       leftPct,
       widthPct,
     });

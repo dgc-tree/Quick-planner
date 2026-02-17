@@ -1,7 +1,7 @@
 import { fetchSheetData } from './data.js';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
-import { renderPlanner } from './planner.js';
+import { renderPlanner, setViewSize } from './planner.js';
 import { renderTodoList } from './todolist.js';
 import { openEditModal } from './modal.js';
 import { updateTask } from './sheet-writer.js';
@@ -12,7 +12,7 @@ import { loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 let allTasks = [];
-let currentView = 'kanban';
+let currentView = localStorage.getItem('qp-view') || 'kanban';
 let filters = { room: '', category: '', assigned: '' };
 let syncTimer = null;
 
@@ -213,17 +213,44 @@ function updateSummary() {}
 
 
 function showLoading(show) {
-  $('#loading').classList.toggle('hidden', !show);
+  const el = $('#loading');
   if (show) {
+    el.innerHTML = buildSkeleton(currentView);
+    el.classList.remove('hidden');
     $('#kanban-view').classList.add('hidden');
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
+  } else {
+    el.classList.add('hidden');
   }
+}
+
+function buildSkeleton(view) {
+  if (view === 'planner') {
+    const rows = Array(8).fill(0).map(() =>
+      `<div class="skeleton-row"><div class="skeleton-label skeleton-pulse"></div><div class="skeleton-bar skeleton-pulse" style="width:${30 + Math.random() * 50}%"></div></div>`
+    ).join('');
+    return `<div class="skeleton skeleton-planner"><div class="skeleton-header skeleton-pulse"></div>${rows}</div>`;
+  }
+  if (view === 'todolist') {
+    const cards = Array(6).fill(0).map(() =>
+      `<div class="skeleton-card skeleton-pulse"></div>`
+    ).join('');
+    return `<div class="skeleton skeleton-todolist">${cards}</div>`;
+  }
+  // kanban
+  const cols = Array(3).fill(0).map(() => {
+    const cards = Array(3 + Math.floor(Math.random() * 3)).fill(0).map(() =>
+      `<div class="skeleton-card skeleton-pulse"></div>`
+    ).join('');
+    return `<div class="skeleton-col"><div class="skeleton-col-header skeleton-pulse"></div>${cards}</div>`;
+  }).join('');
+  return `<div class="skeleton skeleton-kanban">${cols}</div>`;
 }
 
 function showError(msg) {
   const el = $('#error');
-  el.textContent = `Failed to load data: ${msg}. Check the sheet is publicly shared.`;
+  el.innerHTML = `<div class="notification-inner"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><div class="notification-text"><strong>Connection error</strong><span>${msg}. Check the sheet is publicly shared.</span></div></div>`;
   el.classList.remove('hidden');
 }
 
@@ -443,12 +470,23 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSettingsPanel();
 
   // View toggles
+  // Set active tab from saved view
+  document.querySelectorAll('.view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === currentView);
+  });
+  $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
+  $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
+
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentView = btn.dataset.view;
+      localStorage.setItem('qp-view', currentView);
       $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
+      $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
+      window.scrollTo(0, 0);
+      document.querySelector('main').scrollTop = 0;
       render();
     });
   });
@@ -463,6 +501,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Group by
   $('#group-by').addEventListener('change', () => render());
+
+  // View size (filter version, mobile)
+  document.querySelectorAll('#view-size-wrap .view-size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#view-size-wrap .view-size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setViewSize(btn.dataset.size);
+      render();
+    });
+  });
 
   // Mobile hamburger menu
   const menuBtn = $('#mobile-menu-btn');

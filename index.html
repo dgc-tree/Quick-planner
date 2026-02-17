@@ -53,7 +53,7 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="view-toggle">
-          <button class="view-btn active" data-view="kanban">
+          <button class="view-btn" data-view="kanban">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z"/></svg>
             Board
           </button>
@@ -70,15 +70,15 @@
         <div class="filters">
           <div class="filter-group">
             <label for="filter-room">Room</label>
-            <select id="filter-room"></select>
+            <select id="filter-room"><option value="">All</option></select>
           </div>
           <div class="filter-group">
             <label for="filter-category">Category</label>
-            <select id="filter-category"></select>
+            <select id="filter-category"><option value="">All</option></select>
           </div>
           <div class="filter-group">
             <label for="filter-assigned">Assigned</label>
-            <select id="filter-assigned"></select>
+            <select id="filter-assigned"><option value="">All</option></select>
           </div>
           <div id="group-by-wrap" class="filter-group">
             <label for="group-by">Group by</label>
@@ -89,18 +89,22 @@
               <option value="assigned">Assigned</option>
             </select>
           </div>
+          <div id="view-size-wrap" class="filter-group hidden">
+            <label>View size</label>
+            <div class="view-size-filter">
+              <button class="view-size-btn active" data-size="medium">Medium</button>
+              <button class="view-size-btn" data-size="large">Large</button>
+            </div>
+          </div>
         </div>
       </div>
 
     </div>
   </header>
 
-  <div id="loading" class="loading">
-    <div class="spinner"></div>
-    <span>Loading tasks from Google Sheets...</span>
-  </div>
+  <div id="loading" class="loading hidden"></div>
 
-  <div id="error" class="error-msg hidden"></div>
+  <div id="error" class="notification notification-error hidden"></div>
 
   <main>
     <div id="kanban-view" class="kanban-board"></div>
@@ -113,6 +117,9 @@
     (function() {
       const saved = localStorage.getItem('qp-theme');
       if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      const v = localStorage.getItem('qp-view') || 'kanban';
+      const btn = document.querySelector('.view-btn[data-view="' + v + '"]');
+      if (btn) btn.classList.add('active');
     })();
   </script>
   <div id="settings-modal" class="modal-overlay">
