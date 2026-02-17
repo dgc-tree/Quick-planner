@@ -1026,6 +1026,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 .modal-field input {
   font-family: var(--font);
   font-size: 0.95rem;
+  min-height: 44px;
   padding: 10px 14px;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -1045,6 +1046,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 .modal-field select {
   font-family: var(--font);
   font-size: 0.95rem;
+  min-height: 44px;
   padding: 10px 40px 10px 14px;
   border: 1px solid rgba(0,0,0,0.08);
   border-radius: 10px;
@@ -1081,6 +1083,20 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   flex: 1;
 }
 
+.modal-row:has(.modal-avatar-wrap) {
+  gap: 8px;
+}
+.modal-row:has(.modal-avatar-wrap) .modal-field:last-child {
+  flex: 0 0 52px !important;
+  align-items: center;
+}
+.modal-row:has(.modal-avatar-wrap) .modal-avatar-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1093,6 +1109,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   font-size: 0.95rem;
   font-weight: 600;
   min-width: 96px;
+  min-height: 44px;
   padding: 10px 22px;
   border-radius: 12px;
   cursor: pointer;
@@ -1286,8 +1303,8 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 /* === Room Management === */
 .room-field-wrap {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 
 .room-field-wrap select,
@@ -1300,7 +1317,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
+  width: 52px;
   height: auto;
   border: none;
   border-radius: 0;
@@ -1514,6 +1531,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   width: 100%;
   font-family: var(--font);
   font-size: 0.95rem;
+  min-height: 44px;
   padding: 10px 40px 10px 14px;
   border: 1px solid rgba(0,0,0,0.08);
   border-radius: 10px;
@@ -1662,33 +1680,6 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
     flex-direction: column;
     justify-content: center;
   }
-  .modal-btn { min-height: 44px; }
-  .modal-field input, .modal-field select { min-height: 44px; }
-  .date-display { min-height: 44px; }
-  .room-action-btn { width: auto; height: auto; }
-  .room-field-wrap { align-items: center; gap: 8px; }
-  .room-action-btn {
-    width: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-row:has(.modal-avatar-wrap) {
-    gap: 8px;
-  }
-  .modal-row:has(.modal-avatar-wrap) .modal-field:last-child {
-    flex: 0 0 52px !important;
-    align-items: center;
-  }
-  .modal-row:has(.modal-avatar-wrap) .modal-avatar-wrap {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .color-picker-swatch { min-width: 44px; min-height: 44px; }
-  .color-picker-hex { min-height: 44px; }
-  .color-picker-clear { min-height: 44px; }
 
   /* Hamburger button */
   .mobile-menu-btn {
@@ -1847,8 +1838,8 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 }
 
 .color-picker-swatch {
-  width: 44px;
-  height: 38px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 2px;
@@ -1860,6 +1851,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   flex: 1;
   font-family: var(--font);
   font-size: 0.95rem;
+  min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1872,6 +1864,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   font-family: var(--font);
   font-size: 0.8rem;
   font-weight: 500;
+  min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
