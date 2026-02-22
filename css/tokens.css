@@ -111,9 +111,9 @@
   --surface-canvas: #00626f;
   --surface-base: rgba(238,238,238,0.06);
   --surface-raised: rgba(238,238,238,0.09);
-  --surface-sunken: #202020;
+  --surface-sunken: #00252c;
   --surface-highlight: rgba(238,238,238,0.06);
-  --surface-header: rgba(16,16,16,0.7);
+  --surface-header: rgba(0,20,24,0.7);
   --content-primary: #d7d7d7;
   --content-secondary: #949494;
   --content-tertiary: #6a6a6a;

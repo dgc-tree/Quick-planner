@@ -13,7 +13,7 @@ export function renderTodoList(container, tasks, callbacks = {}) {
     return t.startDate <= today;
   });
 
-  actionable.sort((a, b) => a.startDate - b.startDate);
+  actionable.sort((a, b) => (a.endDate || a.startDate) - (b.endDate || b.startDate));
 
   container.innerHTML = '';
 
@@ -22,7 +22,23 @@ export function renderTodoList(container, tasks, callbacks = {}) {
     return;
   }
 
+  // Group by end-date month
+  const monthKey = (d) => d ? `${d.getFullYear()}-${d.getMonth()}` : 'no-date';
+  const monthLabel = (d) => {
+    if (!d) return 'No due date';
+    return 'Due ' + d.toLocaleDateString('en-AU', { month: 'long' });
+  };
+  let currentMonth = null;
+
   for (const task of actionable) {
+    const key = monthKey(task.endDate);
+    if (key !== currentMonth) {
+      currentMonth = key;
+      const header = document.createElement('div');
+      header.className = 'todo-month-header';
+      header.textContent = monthLabel(task.endDate);
+      container.appendChild(header);
+    }
     if (task.status === 'Done' && !checkedItems.has(task.id)) {
       checkedItems.set(task.id, 'To Do');
     }
