@@ -5,13 +5,12 @@
 - **One-shot CSS**: Check all override contexts (dark, mobile, responsive) and apply all changes in one round. Don't iterate with the user as debugger.
 
 ## Commit & Deploy
+This repo deploys directly via Cloudflare Pages. No separate deploy repo.
 When user says "commit and push":
-1. Commit source repo (`Quick planner/`)
-2. **Pre-deploy parity check**: Diff file lists between source and deploy (`ls js/` both sides). Any file in source must exist in deploy. A single missing ES module = blank page, no partial load.
-3. Copy ALL sync-eligible files to deploy repo — not just files changed in this commit
-4. Commit + push deploy repo
-- **Sync**: `css/styles.css`, `css/tokens.css`, `index.html`, `js/*.js`, `shared/ramp-generator.js`, `preview/`, `robots.txt`
-- **Never sync**: `Code.gs`, `CLAUDE.md`, `memory/`, `_claude-instructions/`, `tokens/`, `themes/`, `contrast/`, `scripts/`, `node_modules/`, `package.json`, `package-lock.json`, `Archive/`
+1. Commit and push this repo (`Quick planner/`). That's it.
+- **Live URL**: `planner.davegregurke.au` (Cloudflare Pages project: `quick-planner`)
+- **Old URL**: `davegregurke.au/pd2/` redirects via 301 to the new subdomain
+- Cloudflare auto-deploys from `main` branch within ~1 minute
 
 ## Communication
 - Be concise. Don't restate changes back. Don't explain CSS theory.
