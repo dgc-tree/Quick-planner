@@ -8,7 +8,11 @@ import { updateTask } from './sheet-writer.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
 import { loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches } from './storage.js';
-import { initBgEffects, getConfig, setConfig } from './bg-effects.js';
+// bg-effects: lazy-loaded so a failure never blocks data/rendering
+let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
+const bgFxReady = import('./bg-effects.js')
+  .then(m => { _bgFx = m; })
+  .catch(err => console.warn('bg-effects unavailable:', err));
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -31,7 +35,7 @@ async function init() {
   }
   showLoading(false);
   startAutoSync();
-  initBgEffects();
+  bgFxReady.then(() => _bgFx.initBgEffects());
 }
 
 function startAutoSync() {
@@ -444,7 +448,7 @@ function setupSettingsPanel() {
 
   // --- BG Effects toggle ---
   const $active = $('#bgfx-active');
-  $active.addEventListener('change', () => setConfig({ active: $active.checked }));
+  $active.addEventListener('change', () => _bgFx.setConfig({ active: $active.checked }));
 
   // --- Open / close settings view ---
   function showSettings() {
@@ -454,7 +458,7 @@ function setupSettingsPanel() {
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
     settingsView.classList.remove('hidden');
-    $active.checked = getConfig().active;
+    $active.checked = _bgFx.getConfig().active;
     window.scrollTo(0, 0);
   }
 
