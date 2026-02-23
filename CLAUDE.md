@@ -7,8 +7,9 @@
 ## Commit & Deploy
 When user says "commit and push":
 1. Commit source repo (`Quick planner/`)
-2. Copy files to deploy repo: `cp css/styles.css index.html js/*.js → /tmp/DGC-site_2025/pd2/`
-3. Commit + push deploy repo
+2. **Pre-deploy parity check**: Diff file lists between source and deploy (`ls js/` both sides). Any file in source must exist in deploy. A single missing ES module = blank page, no partial load.
+3. Copy ALL sync-eligible files to deploy repo — not just files changed in this commit
+4. Commit + push deploy repo
 - **Sync**: `css/styles.css`, `css/tokens.css`, `index.html`, `js/*.js`, `shared/ramp-generator.js`, `preview/`, `robots.txt`
 - **Never sync**: `Code.gs`, `CLAUDE.md`, `memory/`, `_claude-instructions/`, `tokens/`, `themes/`, `contrast/`, `scripts/`, `node_modules/`, `package.json`, `package-lock.json`, `Archive/`
 
