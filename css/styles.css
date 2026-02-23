@@ -1331,7 +1331,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 
 .modal-cancel {
   background: var(--surface);
-  color: var(--text-secondary);
+  color: var(--text);
   border-color: rgba(0,0,0,0.35);
   box-shadow: var(--shadow-glass);
 }
@@ -2221,6 +2221,53 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 
 .settings-bgfx-controls {
   margin-bottom: 4px;
+}
+
+/* Toggle switch */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--outline-muted, rgba(0,0,0,0.15));
+  border-radius: 12px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+.toggle-input:checked + .toggle-track {
+  background: var(--accent);
+}
+.toggle-input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(20px);
+}
+.toggle-input:focus-visible + .toggle-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .settings-swatch-group {
   padding: 16px;

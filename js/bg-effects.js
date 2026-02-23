@@ -20,12 +20,14 @@ let current = { x: 0, y: 0 };
 let raf = null;
 let running = false;
 let isMobile = false;
-let driftAngle = Math.random() * Math.PI * 2;
-let driftSpeed = 0.003;
-let driftTimer = 0;
-let nextTurn = 200 + Math.random() * 300; // frames until next direction change
+const DRIFT_SMOOTHING = 0.004; // slow interpolation toward waypoint
 
 /* ── Core ─────────────────────────────────────────── */
+
+function pickWaypoint() {
+  target.x = (Math.random() - 0.5) * 2; // range [-1, 1]
+  target.y = (Math.random() - 0.5) * 2;
+}
 
 function onMouseMove(e) {
   target.x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -33,25 +35,18 @@ function onMouseMove(e) {
 }
 
 function updateDrift() {
-  driftTimer++;
-  if (driftTimer >= nextTurn) {
-    driftTimer = 0;
-    nextTurn = 200 + Math.random() * 400;
-    // Gentle turn — adjust angle by up to ±90°
-    driftAngle += (Math.random() - 0.5) * Math.PI;
-  }
-  target.x += Math.cos(driftAngle) * driftSpeed;
-  target.y += Math.sin(driftAngle) * driftSpeed;
-  // Keep in bounds [-1, 1]
-  if (target.x > 1 || target.x < -1) { driftAngle = Math.PI - driftAngle; target.x = Math.max(-1, Math.min(1, target.x)); }
-  if (target.y > 1 || target.y < -1) { driftAngle = -driftAngle; target.y = Math.max(-1, Math.min(1, target.y)); }
+  // When close enough to waypoint, pick a new one
+  const dx = target.x - current.x;
+  const dy = target.y - current.y;
+  if (dx * dx + dy * dy < 0.01) pickWaypoint();
 }
 
 function tick() {
   if (isMobile) updateDrift();
 
-  current.x += (target.x - current.x) * cfg.smoothing;
-  current.y += (target.y - current.y) * cfg.smoothing;
+  const ease = isMobile ? DRIFT_SMOOTHING : cfg.smoothing;
+  current.x += (target.x - current.x) * ease;
+  current.y += (target.y - current.y) * ease;
 
   const dx = current.x * cfg.intensity;
   const dy = current.y * cfg.intensity;
@@ -74,7 +69,8 @@ function tick() {
 function start() {
   if (running) return;
   running = true;
-  if (!isMobile) document.addEventListener('mousemove', onMouseMove);
+  if (isMobile) pickWaypoint();
+  else document.addEventListener('mousemove', onMouseMove);
   raf = requestAnimationFrame(tick);
 }
 
