@@ -8,6 +8,7 @@ import { updateTask } from './sheet-writer.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
 import { loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches } from './storage.js';
+import { initBgEffects, getConfig, setConfig, resetConfig } from './bg-effects.js';
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -30,6 +31,7 @@ async function init() {
   }
   showLoading(false);
   startAutoSync();
+  initBgEffects();
 }
 
 function startAutoSync() {
@@ -281,7 +283,7 @@ function setupSettingsPanel() {
   ];
   const DEFAULT_PRIMARY = '#00E3FF';
 
-  const modal = $('#settings-modal');
+  const settingsView = $('#settings-view');
   const swatchContainer = $('#settings-swatches');
   const userSwatchesWrap = $('#settings-user-swatches-wrap');
   const userSwatchesContainer = $('#settings-user-swatches');
@@ -290,6 +292,7 @@ function setupSettingsPanel() {
   const saved = loadCustomColors() || { primary1: DEFAULT_PRIMARY, secondary1: null, secondary2: null };
   const colors = { ...saved };
   let selected = colors.primary1 || DEFAULT_PRIMARY;
+  let previousView = currentView;
 
   function clearAllActive() {
     swatchContainer.querySelectorAll('.onboarding-swatch').forEach(s => s.classList.remove('active'));
@@ -301,7 +304,6 @@ function setupSettingsPanel() {
     colors.primary1 = hex;
     applyCustomColors(colors);
     clearAllActive();
-    // Highlight matching swatch in either container
     const all = [...swatchContainer.querySelectorAll('.onboarding-swatch'), ...userSwatchesContainer.querySelectorAll('.onboarding-swatch')];
     for (const s of all) {
       if (s.dataset.hex === hex) s.classList.add('active');
@@ -324,11 +326,10 @@ function setupSettingsPanel() {
     swatchContainer.appendChild(swatch);
   });
 
-  // "+" swatch to open custom picker
   const plus = document.createElement('button');
   plus.className = 'onboarding-swatch onboarding-swatch-plus';
-  plus.title = 'Custom color';
-  plus.setAttribute('aria-label', 'Custom color');
+  plus.title = 'Custom colour';
+  plus.setAttribute('aria-label', 'Custom colour');
   plus.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
   plus.addEventListener('click', () => {
     colorInput.value = selected;
@@ -362,9 +363,8 @@ function setupSettingsPanel() {
       swatch.dataset.hex = hex;
       swatch.style.background = hex;
       swatch.title = hex;
-      swatch.setAttribute('aria-label', `Custom color ${hex}`);
+      swatch.setAttribute('aria-label', `Custom colour ${hex}`);
 
-      // Tap to select
       let pressTimer = null;
       let didLongPress = false;
 
@@ -407,10 +407,9 @@ function setupSettingsPanel() {
   }
   renderUserSwatches();
 
-  // Dismiss confirm popover when tapping elsewhere
-  modal.addEventListener('click', dismissConfirm);
+  settingsView.addEventListener('click', dismissConfirm);
 
-  // --- Custom color picker actions ---
+  // --- Custom colour picker actions ---
   $('#settings-custom-cancel').addEventListener('click', () => {
     customRow.style.display = 'none';
     selectSwatch(selected);
@@ -418,7 +417,6 @@ function setupSettingsPanel() {
   $('#settings-custom-save').addEventListener('click', () => {
     const hex = colorInput.value;
     customRow.style.display = 'none';
-    // Save to user swatches if not already a preset or saved
     const allKnown = [...PRESETS.map(p => p.hex), ...loadUserSwatches()];
     if (!allKnown.includes(hex)) {
       const swatches = loadUserSwatches();
@@ -434,17 +432,7 @@ function setupSettingsPanel() {
     applyCustomColors(colors);
   });
 
-  // --- Modal open/close ---
-  $('#sidebar-settings-btn').addEventListener('click', () => {
-    modal.classList.add('open');
-  });
-
-  $('#settings-close').addEventListener('click', () => {
-    saveCustomColors(colors);
-    modal.classList.remove('open');
-  });
-
-  // Reset selection to default cyan — does NOT delete user swatches
+  // Reset brand palette to default cyan
   $('#settings-reset').addEventListener('click', () => {
     colors.primary1 = DEFAULT_PRIMARY;
     colors.secondary1 = null;
@@ -453,6 +441,72 @@ function setupSettingsPanel() {
     applyCustomColors(colors);
     selectSwatch(DEFAULT_PRIMARY);
   });
+
+  // --- BG Effects controls ---
+  const $int = $('#bgfx-intensity');
+  const $intVal = $('#bgfx-intensity-val');
+  const $smooth = $('#bgfx-smoothing');
+  const $smoothVal = $('#bgfx-smoothing-val');
+  const $a1 = $('#bgfx-accent1');
+  const $a2 = $('#bgfx-accent2');
+  const $active = $('#bgfx-active');
+
+  function syncBgControls() {
+    const c = getConfig();
+    $int.value = c.intensity;
+    $intVal.textContent = c.intensity;
+    $smooth.value = c.smoothing;
+    $smoothVal.textContent = c.smoothing;
+    $a1.checked = c.accent1;
+    $a2.checked = c.accent2;
+    $active.checked = c.active;
+  }
+
+  $int.addEventListener('input', () => {
+    $intVal.textContent = $int.value;
+    setConfig({ intensity: +$int.value });
+  });
+  $smooth.addEventListener('input', () => {
+    $smoothVal.textContent = $smooth.value;
+    setConfig({ smoothing: +$smooth.value });
+  });
+  $a1.addEventListener('change', () => setConfig({ accent1: $a1.checked }));
+  $a2.addEventListener('change', () => setConfig({ accent2: $a2.checked }));
+  $active.addEventListener('change', () => setConfig({ active: $active.checked }));
+
+  $('#bgfx-reset').addEventListener('click', () => {
+    resetConfig();
+    syncBgControls();
+  });
+
+  // --- Open / close settings view ---
+  function showSettings() {
+    previousView = currentView;
+    // Hide toolbar + all content views
+    $('.app-header').classList.add('hidden');
+    $('#kanban-view').classList.add('hidden');
+    $('#planner-view').classList.add('hidden');
+    $('#todolist-view').classList.add('hidden');
+    settingsView.classList.remove('hidden');
+    syncBgControls();
+    window.scrollTo(0, 0);
+  }
+
+  function hideSettings() {
+    settingsView.classList.add('hidden');
+    $('.app-header').classList.remove('hidden');
+    saveCustomColors(colors);
+    // Restore previous view
+    currentView = previousView;
+    render();
+  }
+
+  $('#sidebar-settings-btn').addEventListener('click', showSettings);
+  $('#settings-back').addEventListener('click', hideSettings);
+  $('#settings-done').addEventListener('click', hideSettings);
+
+  // Expose for mobile menu
+  window._showSettings = showSettings;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -579,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileSyncBtn = $('#mobile-sync-btn');
   if (mobileSettingsBtn) mobileSettingsBtn.addEventListener('click', () => {
     closeMenu();
-    $('#sidebar-settings-btn').click();
+    if (window._showSettings) window._showSettings();
   });
   if (mobileThemeBtn) mobileThemeBtn.addEventListener('click', () => {
     closeMenu();

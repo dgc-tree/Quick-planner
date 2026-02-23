@@ -40,3 +40,18 @@ export function hasVisited() {
 export function markVisited() {
   localStorage.setItem('qp-visited', '1');
 }
+
+const BG_EFFECTS_KEY = 'qp-bg-effects';
+
+export function loadBgEffects() {
+  try {
+    const raw = localStorage.getItem(BG_EFFECTS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveBgEffects(cfg) {
+  localStorage.setItem(BG_EFFECTS_KEY, JSON.stringify(cfg));
+}

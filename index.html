@@ -110,6 +110,70 @@
     <div id="kanban-view" class="kanban-board"></div>
     <div id="planner-view" class="planner-container hidden"></div>
     <div id="todolist-view" class="todolist-container hidden"></div>
+    <div id="settings-view" class="settings-view hidden">
+      <div class="settings-page-header">
+        <button id="settings-back" class="settings-back-btn" title="Back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h2 class="settings-page-title">Settings</h2>
+        <button id="settings-done" class="settings-done-btn">Done</button>
+      </div>
+      <div class="settings-page-content">
+
+        <section class="settings-card">
+          <h3 class="settings-card-title">Brand Palette</h3>
+          <p class="settings-card-desc">Pick a theme colour.</p>
+          <div class="settings-swatch-group">
+            <div id="settings-swatches" class="onboarding-swatches"></div>
+            <div id="settings-custom-row" class="onboarding-custom-row" style="display:none;">
+              <input type="color" id="settings-color-input" class="onboarding-color-input">
+              <div class="onboarding-custom-actions">
+                <button id="settings-custom-cancel" class="modal-btn modal-cancel">Cancel</button>
+                <button id="settings-custom-save" class="modal-btn modal-save">Save</button>
+              </div>
+            </div>
+            <div id="settings-user-swatches-wrap" class="settings-user-swatches-wrap" style="display:none;">
+              <div class="settings-separator"></div>
+              <div id="settings-user-swatches" class="onboarding-swatches"></div>
+            </div>
+          </div>
+          <div class="settings-card-actions">
+            <button id="settings-reset" class="modal-btn modal-cancel">Reset to defaults</button>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <h3 class="settings-card-title">Background Effects</h3>
+          <p class="settings-card-desc">Cursor-reactive accent movement (desktop only).</p>
+          <div class="settings-bgfx-controls">
+            <label class="settings-slider-label">
+              <span>Intensity <span id="bgfx-intensity-val"></span></span>
+              <input type="range" id="bgfx-intensity" min="0" max="100" step="1">
+            </label>
+            <label class="settings-slider-label">
+              <span>Smoothing <span id="bgfx-smoothing-val"></span></span>
+              <input type="range" id="bgfx-smoothing" min="0.01" max="1" step="0.01">
+            </label>
+            <label class="settings-toggle-label">
+              <input type="checkbox" id="bgfx-accent1">
+              <span>Accent 1 (bottom-left warm)</span>
+            </label>
+            <label class="settings-toggle-label">
+              <input type="checkbox" id="bgfx-accent2">
+              <span>Accent 2 (top-right glow)</span>
+            </label>
+            <label class="settings-toggle-label">
+              <input type="checkbox" id="bgfx-active">
+              <span>Active</span>
+            </label>
+          </div>
+          <div class="settings-card-actions">
+            <button id="bgfx-reset" class="modal-btn modal-cancel">Reset to defaults</button>
+          </div>
+        </section>
+
+      </div>
+    </div>
   </main>
 
   <script>
@@ -122,32 +186,6 @@
       if (btn) btn.classList.add('active');
     })();
   </script>
-  <div id="settings-modal" class="modal-overlay">
-    <div class="modal-dialog settings-dialog">
-      <div class="modal-header">
-        <span class="modal-title">Color Settings</span>
-      </div>
-      <p class="settings-body">Pick a theme color.</p>
-      <div class="settings-swatch-group">
-        <div id="settings-swatches" class="onboarding-swatches"></div>
-        <div id="settings-custom-row" class="onboarding-custom-row" style="display:none;">
-          <input type="color" id="settings-color-input" class="onboarding-color-input">
-          <div class="onboarding-custom-actions">
-            <button id="settings-custom-cancel" class="modal-btn modal-cancel">Cancel</button>
-            <button id="settings-custom-save" class="modal-btn modal-save">Save</button>
-          </div>
-        </div>
-        <div id="settings-user-swatches-wrap" class="settings-user-swatches-wrap" style="display:none;">
-          <div class="settings-separator"></div>
-          <div id="settings-user-swatches" class="onboarding-swatches"></div>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button id="settings-reset" class="modal-btn modal-cancel">Reset to defaults</button>
-        <button id="settings-close" class="modal-btn modal-save">Done</button>
-      </div>
-    </div>
-  </div>
   <div id="mobile-menu-overlay" class="mobile-menu-overlay">
     <nav class="mobile-menu-nav">
       <button class="mobile-menu-item" data-action="settings" id="mobile-settings-btn">
