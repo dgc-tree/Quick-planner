@@ -111,7 +111,7 @@
   --surface-canvas: #00626f;
   --surface-base: rgba(238,238,238,0.06);
   --surface-raised: rgba(238,238,238,0.09);
-  --surface-sunken: #00252c;
+  --surface-sunken: var(--color-primary1-1100, #00252c);
   --surface-highlight: rgba(238,238,238,0.06);
   --surface-header: rgba(0,20,24,0.7);
   --content-primary: #d7d7d7;
@@ -123,4 +123,11 @@
   --accent-secondary2: #949494;
   --outline-default: rgba(238,238,238,0.1);
   --outline-muted: rgba(238,238,238,0.06);
+  /* Dark surface tokens — default cyan, overridden by theme-customizer */
+  --dark-card: var(--color-primary1-1000, #003841);
+  --dark-card-hover: var(--color-primary1-900, #004d57);
+  --dark-surface: var(--color-primary1-1100, #00252c);
+  --dark-surface-deep: var(--color-primary1-1200, #001418);
+  --dark-surface-deepest: var(--color-primary1-1300, #000509);
+  --dark-border: var(--color-primary1-1000, #003841);
 }

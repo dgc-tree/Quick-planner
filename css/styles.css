@@ -93,7 +93,7 @@ body {
   height: 28px;
   border-radius: 6px;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent-primary1);
   font-family: var(--font);
   font-size: 0.85rem;
   font-weight: 700;
@@ -224,39 +224,39 @@ body {
   background:
     radial-gradient(ellipse 60% 50% at var(--bg-a1-x) var(--bg-a1-y), rgba(67,67,67,1) 0%, transparent 70%),
     radial-gradient(ellipse 50% 60% at var(--bg-a2-x) var(--bg-a2-y), color-mix(in srgb, var(--bg-accent-glow) 21%, transparent) 0%, transparent 70%),
-    linear-gradient(135deg, #001418 0%, #00252c 40%, #1A1520 100%);
+    linear-gradient(135deg, var(--dark-surface-deep) 0%, var(--dark-surface) 40%, #1A1520 100%);
   background-attachment: fixed;
 }
 
 [data-theme="dark"] .modal-overlay {
-  background: rgba(0,14,18,0.5);
+  background: color-mix(in srgb, var(--dark-surface-deepest) 50%, transparent);
 }
 [data-theme="dark"] .onboarding-overlay {
-  background: rgba(0,14,18,0.5);
+  background: color-mix(in srgb, var(--dark-surface-deepest) 50%, transparent);
 }
 [data-theme="dark"] .modal-dialog {
-  background: rgba(0,25,30,0.85);
+  background: color-mix(in srgb, var(--dark-surface) 85%, transparent);
   border-color: rgba(255,255,255,0.15);
 }
 [data-theme="dark"] .modal-field span { color: #D1D5DB; }
 [data-theme="dark"] .modal-field input,
 [data-theme="dark"] .modal-field select {
-  background-color: rgba(0,25,30,0.93);
+  background-color: color-mix(in srgb, var(--dark-surface) 93%, transparent);
   border-color: rgba(255,255,255,0.15);
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
 }
 [data-theme="dark"] .modal-field input:hover,
-[data-theme="dark"] .modal-field select:hover { background-color: rgba(0,33,40,0.96); }
-[data-theme="dark"] .kanban-column { background: rgba(0,20,24,0.05); }
-[data-theme="dark"] .kanban-column::after { background: linear-gradient(to top, rgba(0,20,24,0.4), transparent); }
-[data-theme="dark"] .kanban-card { background: rgba(0,56,65,0.92); }
-[data-theme="dark"] .kanban-card:hover { background: rgba(0,66,75,0.95); }
+[data-theme="dark"] .modal-field select:hover { background-color: color-mix(in srgb, var(--dark-card) 96%, transparent); }
+[data-theme="dark"] .kanban-column { background: color-mix(in srgb, var(--dark-surface-deep) 5%, transparent); }
+[data-theme="dark"] .kanban-column::after { background: linear-gradient(to top, color-mix(in srgb, var(--dark-surface-deep) 40%, transparent), transparent); }
+[data-theme="dark"] .kanban-card { background: color-mix(in srgb, var(--dark-card) 92%, transparent); }
+[data-theme="dark"] .kanban-card:hover { background: color-mix(in srgb, var(--dark-card-hover) 95%, transparent); }
 [data-theme="dark"] .planner-header,
 [data-theme="dark"] .planner-group-header { background: var(--planner-tint-dark); }
-[data-theme="dark"] .planner-row { border-bottom-color: #003841; }
-[data-theme="dark"] .planner-container { background: rgba(0,20,24,0.3); }
+[data-theme="dark"] .planner-row { border-bottom-color: var(--dark-border); }
+[data-theme="dark"] .planner-container { background: color-mix(in srgb, var(--dark-surface-deep) 30%, transparent); }
 [data-theme="dark"] .planner-container::after,
-[data-theme="dark"] .todolist-container::after { background: linear-gradient(to top, rgba(0,20,24,0.4), transparent); }
+[data-theme="dark"] .todolist-container::after { background: linear-gradient(to top, color-mix(in srgb, var(--dark-surface-deep) 40%, transparent), transparent); }
 [data-theme="dark"] .kanban-cards.drag-over { background: rgba(77,163,255,0.08); }
 [data-theme="dark"] .kanban-card-placeholder { border-color: var(--accent); background: rgba(77,163,255,0.08); }
 [data-theme="dark"] .today-marker-header span { background: #3B1A1A; color: #FC8181; border-color: #9B2C2C; }
@@ -1397,12 +1397,12 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   outline-offset: -1px;
 }
 [data-theme="dark"] .modal-field .dep-search-input {
-  background-color: rgba(0,25,30,0.93);
+  background-color: color-mix(in srgb, var(--dark-surface) 93%, transparent);
   border-color: rgba(255,255,255,0.15);
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
 }
 [data-theme="dark"] .modal-field .dep-search-input:hover {
-  background-color: rgba(0,33,40,0.96);
+  background-color: color-mix(in srgb, var(--dark-card) 96%, transparent);
 }
 
 .dep-dropdown {
@@ -1422,7 +1422,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   box-shadow: var(--shadow-glass), var(--shadow-hover);
 }
 [data-theme="dark"] .dep-dropdown {
-  background: rgba(0,25,30,0.85);
+  background: color-mix(in srgb, var(--dark-surface) 85%, transparent);
 }
 
 .dep-option {
@@ -1572,7 +1572,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 }
 
 [data-theme="dark"] .room-inline-input input {
-  background: rgba(0,25,30,0.93);
+  background: color-mix(in srgb, var(--dark-surface) 93%, transparent);
   border-color: rgba(255,255,255,0.15);
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
 }
@@ -1586,7 +1586,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent-primary1);
   cursor: pointer;
   flex-shrink: 0;
   padding: 0;
@@ -1648,7 +1648,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   background: var(--surface-canvas);
 }
 [data-theme="dark"] .todo-month-header {
-  background: linear-gradient(135deg, #001418, #00252c);
+  background: linear-gradient(135deg, var(--dark-surface-deep), var(--dark-surface));
 }
 .todo-month-header:first-child {
   padding-top: 2px;
@@ -1761,8 +1761,8 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   font-weight: 500;
 }
 
-[data-theme="dark"] .todo-item { background: rgba(0,56,65,0.92); }
-[data-theme="dark"] .todo-item:hover { background: rgba(0,66,75,0.95); }
+[data-theme="dark"] .todo-item { background: color-mix(in srgb, var(--dark-card) 92%, transparent); }
+[data-theme="dark"] .todo-item:hover { background: color-mix(in srgb, var(--dark-card-hover) 95%, transparent); }
 
 /* === Date Picker === */
 .date-picker-wrap {
@@ -1798,12 +1798,12 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   cursor: pointer;
 }
 [data-theme="dark"] .date-display {
-  background-color: rgba(0,25,30,0.93);
+  background-color: color-mix(in srgb, var(--dark-surface) 93%, transparent);
   border-color: rgba(255,255,255,0.15);
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
 }
 [data-theme="dark"] .date-display:hover {
-  background-color: rgba(0,33,40,0.96);
+  background-color: color-mix(in srgb, var(--dark-card) 96%, transparent);
 }
 
 /* === Responsive === */
@@ -1840,7 +1840,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
     height: 40px;
     border-radius: 8px;
     background: var(--accent);
-    color: #000;
+    color: var(--on-accent-primary1);
     font-family: var(--font);
     font-size: 1.1rem;
     font-weight: 700;
@@ -1975,7 +1975,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
     visibility: visible;
   }
   [data-theme="dark"] .mobile-menu-overlay {
-    background: rgba(0,14,18,0.5);
+    background: color-mix(in srgb, var(--dark-surface-deepest) 50%, transparent);
   }
   .mobile-menu-nav {
     display: flex;
@@ -2147,7 +2147,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   border: none;
   border-radius: 8px;
   background: var(--accent, #00a8bf);
-  color: #fff;
+  color: var(--on-accent-primary1);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -2167,7 +2167,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
   margin-bottom: 16px;
 }
 [data-theme="dark"] .settings-card {
-  background: rgba(0,33,40,0.6);
+  background: color-mix(in srgb, var(--dark-card) 60%, transparent);
   border-color: rgba(255,255,255,0.1);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 0 rgba(255,255,255,0.06);
 }
@@ -2292,7 +2292,7 @@ main { padding: 20px 24px 12px; flex: 1; min-height: 0; display: flex; flex-dire
 }
 
 [data-theme="dark"] .onboarding-dialog {
-  background: rgba(0,25,30,0.88);
+  background: color-mix(in srgb, var(--dark-surface) 88%, transparent);
   border-color: rgba(255,255,255,0.15);
 }
 

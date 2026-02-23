@@ -8,7 +8,7 @@ import { updateTask } from './sheet-writer.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
 import { loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches } from './storage.js';
-import { initBgEffects, getConfig, setConfig, resetConfig } from './bg-effects.js';
+import { initBgEffects, getConfig, setConfig } from './bg-effects.js';
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -442,53 +442,19 @@ function setupSettingsPanel() {
     selectSwatch(DEFAULT_PRIMARY);
   });
 
-  // --- BG Effects controls ---
-  const $int = $('#bgfx-intensity');
-  const $intVal = $('#bgfx-intensity-val');
-  const $smooth = $('#bgfx-smoothing');
-  const $smoothVal = $('#bgfx-smoothing-val');
-  const $a1 = $('#bgfx-accent1');
-  const $a2 = $('#bgfx-accent2');
+  // --- BG Effects toggle ---
   const $active = $('#bgfx-active');
-
-  function syncBgControls() {
-    const c = getConfig();
-    $int.value = c.intensity;
-    $intVal.textContent = c.intensity;
-    $smooth.value = c.smoothing;
-    $smoothVal.textContent = c.smoothing;
-    $a1.checked = c.accent1;
-    $a2.checked = c.accent2;
-    $active.checked = c.active;
-  }
-
-  $int.addEventListener('input', () => {
-    $intVal.textContent = $int.value;
-    setConfig({ intensity: +$int.value });
-  });
-  $smooth.addEventListener('input', () => {
-    $smoothVal.textContent = $smooth.value;
-    setConfig({ smoothing: +$smooth.value });
-  });
-  $a1.addEventListener('change', () => setConfig({ accent1: $a1.checked }));
-  $a2.addEventListener('change', () => setConfig({ accent2: $a2.checked }));
   $active.addEventListener('change', () => setConfig({ active: $active.checked }));
-
-  $('#bgfx-reset').addEventListener('click', () => {
-    resetConfig();
-    syncBgControls();
-  });
 
   // --- Open / close settings view ---
   function showSettings() {
     previousView = currentView;
-    // Hide toolbar + all content views
     $('.app-header').classList.add('hidden');
     $('#kanban-view').classList.add('hidden');
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
     settingsView.classList.remove('hidden');
-    syncBgControls();
+    $active.checked = getConfig().active;
     window.scrollTo(0, 0);
   }
 

@@ -6,12 +6,19 @@ import { generateRamp, generateNeutralRamp, STEPS, hexToRgb, srgbToLinear } from
 import { loadCustomColors, saveCustomColors, clearCustomColors } from './storage.js';
 
 /**
- * Return black or white hex depending on WCAG AA contrast against the given bg color.
+ * Return black or white hex for text on the given background.
+ * Uses WCAG contrast ratios with a perceptual bias: when ratios are
+ * close (within 1.2x), prefer white on darker colours for readability
+ * on saturated hues like purple where black technically wins but looks poor.
  */
 function contrastTextColor(hex) {
   const [r, g, b] = hexToRgb(hex);
   const L = 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
-  return L > 0.179 ? '#000000' : '#ffffff';
+  const contrastWhite = (1 + 0.05) / (L + 0.05);
+  const contrastBlack = (L + 0.05) / (0 + 0.05);
+  // Prefer white on darker backgrounds for perceptual readability on saturated hues
+  if (L < 0.3 && contrastWhite >= 3.0) return '#ffffff';
+  return contrastBlack > contrastWhite ? '#000000' : '#ffffff';
 }
 
 const STYLE_ID = 'user-theme';
@@ -62,6 +69,13 @@ export function applyCustomColors(colors) {
   if (colors.secondary2) css += `  --on-accent-secondary2: ${contrastTextColor(colors.secondary2)};\n`;
   css += `  --surface-canvas: var(--color-primary1-800);\n`;
   css += `  --surface-header: color-mix(in srgb, var(--color-primary1-1200) 70%, transparent);\n`;
+  // Dark surface tokens — cards, inputs, overlays, body gradient
+  css += `  --dark-card: var(--color-primary1-1000);\n`;
+  css += `  --dark-card-hover: var(--color-primary1-900);\n`;
+  css += `  --dark-surface: var(--color-primary1-1100);\n`;
+  css += `  --dark-surface-deep: var(--color-primary1-1200);\n`;
+  css += `  --dark-surface-deepest: var(--color-primary1-1300);\n`;
+  css += `  --dark-border: var(--color-primary1-1000);\n`;
   css += `}\n`;
 
   style.textContent = css;
