@@ -559,20 +559,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
     localStorage.setItem('qp-theme', isDark ? 'light' : 'dark');
-    updateThemeLabels();
+    syncThemeCheckboxes();
   }
 
-  function updateThemeLabels() {
+  function syncThemeCheckboxes() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const sidebarLabel = document.querySelector('.sidebar-theme-label');
-    const mobileLabel = document.querySelector('.mobile-theme-label');
-    if (sidebarLabel) sidebarLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
-    if (mobileLabel) mobileLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
+    const sidebarCb = document.getElementById('sidebar-theme-checkbox');
+    const mobileCb = document.getElementById('mobile-theme-checkbox');
+    if (sidebarCb) sidebarCb.checked = isDark;
+    if (mobileCb) mobileCb.checked = isDark;
   }
-  updateThemeLabels();
+  syncThemeCheckboxes();
 
   // Sidebar buttons
-  $('#sidebar-theme-toggle').addEventListener('click', toggleTheme);
+  document.getElementById('sidebar-theme-checkbox').addEventListener('change', toggleTheme);
   const sidebarSync = $('#sidebar-sync-btn');
   if (sidebarSync) sidebarSync.addEventListener('click', () => {
     refreshData(false);
@@ -601,7 +601,8 @@ document.addEventListener('DOMContentLoaded', () => {
     closeMenu();
     if (window._showSettings) window._showSettings();
   });
-  if (mobileThemeBtn) mobileThemeBtn.addEventListener('click', () => {
+  const mobileCb = document.getElementById('mobile-theme-checkbox');
+  if (mobileCb) mobileCb.addEventListener('change', () => {
     closeMenu();
     toggleTheme();
   });
