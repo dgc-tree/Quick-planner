@@ -1,3 +1,4 @@
+import { fetchSheetData } from './data.js';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner, setViewSize } from './planner.js';
@@ -28,13 +29,15 @@ let currentProjectId = loadActiveProjectId();
 const $ = (sel) => document.querySelector(sel);
 
 function getProjectType() {
-  if (!currentProjectId || currentProjectId === 'sheet') return 'local';
+  if (currentProjectId === 'sheet') return 'sheet';
+  if (!currentProjectId) return 'local';
   const projects = loadProjects();
   return projects.find(p => p.id === currentProjectId)?.type ?? 'local';
 }
 
 function getProjectName() {
-  if (!currentProjectId || currentProjectId === 'sheet') return '';
+  if (currentProjectId === 'sheet') return 'Renos';
+  if (!currentProjectId) return '';
   const projects = loadProjects();
   return projects.find(p => p.id === currentProjectId)?.name ?? 'Project';
 }
@@ -46,14 +49,17 @@ function persistTaskChange() {
 }
 
 async function loadProjectData() {
-  if (!currentProjectId || currentProjectId === 'sheet') {
+  if (currentProjectId === 'sheet') {
+    allTasks = await fetchSheetData();
+    return;
+  }
+  if (!currentProjectId) {
     allTasks = [];
     return;
   }
   const projects = loadProjects();
   const project = projects.find(p => p.id === currentProjectId);
   if (!project) {
-    // Project deleted externally — clear active project
     currentProjectId = null;
     saveActiveProjectId(null);
     allTasks = [];
@@ -82,6 +88,7 @@ async function switchProject(id) {
   }
   showLoading(false);
   renderSidebarProjects();
+  if (getProjectType() === 'sheet') startAutoSync();
 }
 
 // Position a body-level popover below its trigger, clamped within viewport
@@ -167,11 +174,13 @@ function renderSidebarProjects() {
 
   if (list) {
     list.innerHTML = '';
+    list.appendChild(makeItem('sheet', 'Renos', false));
     projects.forEach(p => list.appendChild(makeItem(p.id, p.name, true)));
   }
 
   if (mobileList) {
     mobileList.innerHTML = '';
+    mobileList.appendChild(makeItem('sheet', 'Renos', false));
     projects.forEach(p => mobileList.appendChild(makeItem(p.id, p.name, true)));
   }
 
@@ -231,9 +240,42 @@ async function init() {
   }
   showLoading(false);
   renderSidebarProjects();
+  if (getProjectType() === 'sheet') startAutoSync();
   bgFxReady.then(() => _bgFx.initBgEffects());
 }
 
+function startAutoSync() {
+  if (syncTimer) clearInterval(syncTimer);
+  syncTimer = setInterval(() => {
+    if (getProjectType() === 'sheet') refreshData(true);
+  }, 5 * 60 * 1000);
+}
+
+async function refreshData(silent = false) {
+  if (getProjectType() !== 'sheet') return;
+  const sidebarSyncBtn = $('#sidebar-sync-btn');
+  if (sidebarSyncBtn) { sidebarSyncBtn.classList.add('refreshing'); sidebarSyncBtn.disabled = true; }
+  $('#error').classList.add('hidden');
+  if (!silent) showLoading(true);
+  try {
+    allTasks = await fetchSheetData();
+    updateSummary();
+    setupFilters();
+    render();
+    updateLastSynced();
+  } catch (err) {
+    if (!silent) showError(err.message);
+  }
+  if (sidebarSyncBtn) { sidebarSyncBtn.classList.remove('refreshing'); sidebarSyncBtn.disabled = false; }
+  if (!silent) showLoading(false);
+}
+
+function updateLastSynced() {
+  const el = $('#sidebar-last-synced');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = `Synced ${now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}`;
+}
 
 function setupFilters() {
   const opts = buildFilterOptions(allTasks);
@@ -1397,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sidebar buttons
   document.getElementById('sidebar-theme-checkbox').addEventListener('change', toggleTheme);
   const sidebarSync = $('#sidebar-sync-btn');
-  if (sidebarSync) sidebarSync.addEventListener('click', () => {});
+  if (sidebarSync) sidebarSync.addEventListener('click', () => { refreshData(false); startAutoSync(); });
 
   // Sidebar expand/collapse toggle (WCAG 1.4.13 keyboard accessible)
   const sidebarRail = document.querySelector('.sidebar-rail');
@@ -1444,7 +1486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideThemeFooter();
     closeMenu();
   });
-  if (mobileSyncBtn) mobileSyncBtn.addEventListener('click', () => { closeMenu(); });
+  if (mobileSyncBtn) mobileSyncBtn.addEventListener('click', () => { closeMenu(); refreshData(false); startAutoSync(); });
 
   // Auto-hide primary nav on scroll (mobile only)
   (function() {
