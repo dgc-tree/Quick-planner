@@ -100,11 +100,15 @@ export function saveProjects(arr) {
 }
 
 export function loadActiveProjectId() {
-  return localStorage.getItem(ACTIVE_PROJECT_KEY) || 'sheet';
+  return localStorage.getItem(ACTIVE_PROJECT_KEY) || null;
 }
 
 export function saveActiveProjectId(id) {
-  localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+  if (id == null) {
+    localStorage.removeItem(ACTIVE_PROJECT_KEY);
+  } else {
+    localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+  }
 }
 
 export function saveProjectTasks(id, tasks) {

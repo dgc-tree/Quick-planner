@@ -255,7 +255,7 @@ body {
   font-family: var(--font);
   font-size: 0.82rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text);
   background: none;
   border: none;
   border-radius: 7px;
@@ -264,7 +264,7 @@ body {
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.sidebar-project-menu-item:hover { background: var(--surface-raised); color: var(--text); }
+.sidebar-project-menu-item:hover { background: var(--surface-raised); }
 .sidebar-project-menu-item--danger { color: #e04040; }
 .sidebar-project-menu-item--danger:hover { background: rgba(224,64,64,0.08); }
 
