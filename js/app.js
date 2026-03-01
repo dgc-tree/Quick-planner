@@ -12,6 +12,7 @@ import {
   loadUserName, saveUserName,
 } from './storage.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
+import { normaliseRows } from './data.js';
 import { openColorPickerModal } from './color-picker.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
@@ -215,9 +216,39 @@ function handleDeleteProject(id, name) {
   });
 }
 
+const RENOS_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/1MCVKPY56Ynqb7O3cMmm3vfSZ7zI9QJhhKnI29H3pk8U/export?format=csv&gid=0';
+
+async function migrateRenosFromSheet() {
+  if (localStorage.getItem('qp-renos-migrated')) return;
+  const projects = loadProjects();
+  if (projects.some(p => p.name === 'Renos')) {
+    localStorage.setItem('qp-renos-migrated', '1');
+    return;
+  }
+  try {
+    const res = await fetch(RENOS_SHEET_CSV);
+    if (!res.ok) throw new Error(res.status);
+    const text = await res.text();
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+    const tasks = normaliseRows(parsed.data);
+    if (!tasks.length) throw new Error('No tasks parsed');
+    const id = 'renos-' + Date.now();
+    const project = { id, name: 'Renos', type: 'local', tasks: JSON.parse(JSON.stringify(tasks, (k, v) => v instanceof Date ? v.toISOString() : v)) };
+    projects.push(project);
+    saveProjects(projects);
+    currentProjectId = id;
+    saveActiveProjectId(id);
+    console.log(`Renos migration: ${tasks.length} tasks imported`);
+  } catch (err) {
+    console.warn('Renos migration failed (use import to retry):', err.message);
+  }
+  localStorage.setItem('qp-renos-migrated', '1');
+}
+
 async function init() {
   showLoading(true);
   try {
+    await migrateRenosFromSheet();
     await loadProjectData();
     updateSummary();
     setupFilters();
