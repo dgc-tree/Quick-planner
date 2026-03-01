@@ -17,10 +17,14 @@ const DEFAULTS = {
 let cfg = { ...DEFAULTS };
 let target = { x: 0, y: 0 };
 let current = { x: 0, y: 0 };
+let driftTarget = { x: 0, y: 0 };
+let driftCurrent = { x: 0, y: 0 };
 let raf = null;
 let running = false;
 let isMobile = false;
-const DRIFT_SMOOTHING = 0.004; // slow interpolation toward waypoint
+const DRIFT_SMOOTHING = 0.004;        // mobile main movement
+const DESKTOP_DRIFT_SMOOTHING = 0.003; // desktop autonomous drift layer
+const DESKTOP_DRIFT_SCALE = 0.45;      // drift amplitude relative to intensity
 
 /* ── Core ─────────────────────────────────────────── */
 
@@ -42,14 +46,28 @@ function updateDrift() {
 }
 
 function tick() {
-  if (isMobile) updateDrift();
+  if (isMobile) {
+    updateDrift();
+  } else {
+    // Desktop autonomous drift layer
+    const ddx = driftTarget.x - driftCurrent.x;
+    const ddy = driftTarget.y - driftCurrent.y;
+    if (ddx * ddx + ddy * ddy < 0.01) {
+      driftTarget.x = (Math.random() - 0.5) * 2;
+      driftTarget.y = (Math.random() - 0.5) * 2;
+    }
+    driftCurrent.x += ddx * DESKTOP_DRIFT_SMOOTHING;
+    driftCurrent.y += ddy * DESKTOP_DRIFT_SMOOTHING;
+  }
 
   const ease = isMobile ? DRIFT_SMOOTHING : cfg.smoothing;
   current.x += (target.x - current.x) * ease;
   current.y += (target.y - current.y) * ease;
 
-  const dx = current.x * cfg.intensity;
-  const dy = current.y * cfg.intensity;
+  const driftX = isMobile ? 0 : driftCurrent.x * cfg.intensity * DESKTOP_DRIFT_SCALE;
+  const driftY = isMobile ? 0 : driftCurrent.y * cfg.intensity * DESKTOP_DRIFT_SCALE;
+  const dx = current.x * cfg.intensity + driftX;
+  const dy = current.y * cfg.intensity + driftY;
 
   const bs = document.body.style;
 
@@ -69,8 +87,13 @@ function tick() {
 function start() {
   if (running) return;
   running = true;
-  if (isMobile) pickWaypoint();
-  else document.addEventListener('mousemove', onMouseMove);
+  if (isMobile) {
+    pickWaypoint();
+  } else {
+    driftTarget.x = (Math.random() - 0.5) * 2;
+    driftTarget.y = (Math.random() - 0.5) * 2;
+    document.addEventListener('mousemove', onMouseMove);
+  }
   raf = requestAnimationFrame(tick);
 }
 

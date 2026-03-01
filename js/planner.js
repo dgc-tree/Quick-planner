@@ -59,7 +59,10 @@ export function renderPlanner(container, tasks, callbacks = {}) {
       </div>
       <div class="planner-right">
         <div class="planner-timeline-header">
-          ${months.map(m => `<div class="month-header" style="left:${m.leftPct}%;width:${m.widthPct}%">${m.label}</div>`).join('')}
+          ${months.map((m, i) => i === months.length - 1
+            ? `<div class="month-header" style="left:${m.leftPct}%;right:0;padding-right:16px">${m.label}</div>`
+            : `<div class="month-header" style="left:${m.leftPct}%;width:${m.widthPct}%">${m.label}</div>`
+          ).join('')}
           ${todayPct !== null ? `<div class="today-marker-header" style="left:${todayPct}%"><span>Today</span></div>` : ''}
         </div>
         <div class="planner-body">

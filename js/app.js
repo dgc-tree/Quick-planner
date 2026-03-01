@@ -9,6 +9,7 @@ import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
 import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
+  loadBin, restoreFromBin,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
   loadUserName, saveUserName,
 } from './storage.js';
@@ -69,6 +70,7 @@ async function loadProjectData() {
 }
 
 async function switchProject(id) {
+  if (window._closeOverlayViews) window._closeOverlayViews();
   currentProjectId = id;
   saveActiveProjectId(id);
   clearInterval(syncTimer);
@@ -89,7 +91,26 @@ async function switchProject(id) {
   if (lastSynced && getProjectType() === 'local') lastSynced.textContent = '';
 }
 
+// Position a body-level popover below its trigger, clamped within viewport
+function positionPopover(menu, trigger) {
+  const rect = trigger.getBoundingClientRect();
+  const menuW = 220; // safe over-estimate; actual content may be narrower
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuW - 8));
+  menu.style.top  = (rect.bottom + 6) + 'px';
+  menu.style.left = left + 'px';
+  menu.style.right = 'auto';
+  document.querySelector('.sidebar-rail')?.classList.add('sidebar-popover-open');
+}
+
+function closeAllPopovers() {
+  document.querySelectorAll('.sidebar-project-menu.open').forEach(m => m.classList.remove('open'));
+  document.querySelector('.sidebar-rail')?.classList.remove('sidebar-popover-open');
+}
+
 function renderSidebarProjects() {
+  // Clean up any body-level dynamic menus from the previous render
+  document.querySelectorAll('.sidebar-project-menu--dynamic').forEach(m => m.remove());
+
   const list = $('#sidebar-projects-list');
   const mobileList = $('#mobile-projects-list');
   const projects = loadProjects();
@@ -111,15 +132,17 @@ function renderSidebarProjects() {
     opts.innerHTML = '<span>•••</span>';
     opts.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Close any other open menus
-      document.querySelectorAll('.sidebar-project-menu.open').forEach(m => {
-        if (m !== menu) m.classList.remove('open');
-      });
-      menu.classList.toggle('open');
+      const wasOpen = menu.classList.contains('open');
+      closeAllPopovers();
+      if (!wasOpen) {
+        if (menu.parentElement !== document.body) document.body.appendChild(menu);
+        menu.classList.add('open');
+        positionPopover(menu, opts);
+      }
     });
 
     const menu = document.createElement('div');
-    menu.className = 'sidebar-project-menu';
+    menu.className = 'sidebar-project-menu sidebar-project-menu--dynamic';
 
     const exportItem = document.createElement('button');
     exportItem.className = 'sidebar-project-menu-item';
@@ -166,15 +189,43 @@ function renderSidebarProjects() {
   if (exportSection) exportSection.classList.toggle('hidden', getProjectType() !== 'local');
 }
 
+function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal-dialog" role="dialog" style="max-width:360px">
+      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
+        <h1 class="modal-delete-title">${title}</h1>
+        <p class="modal-delete-body">${body}</p>
+        <div class="modal-delete-actions">
+          <button class="modal-btn modal-cancel">Cancel</button>
+          <button class="modal-btn modal-delete-confirm-btn">${confirmLabel || 'Confirm'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const remove = () => overlay.remove();
+  overlay.querySelector('.modal-cancel').addEventListener('click', remove);
+  overlay.querySelector('.modal-delete-confirm-btn').addEventListener('click', () => { remove(); onConfirm(); });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+}
+
 function handleDeleteProject(id, name) {
-  if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
-  const projects = loadProjects().filter(p => p.id !== id);
-  saveProjects(projects);
-  if (currentProjectId === id) {
-    switchProject('sheet');
-  } else {
-    renderSidebarProjects();
-  }
+  showConfirmDialog({
+    title: `Delete "${name}"?`,
+    body: 'This project and all its tasks will be permanently removed.',
+    confirmLabel: 'Yes, delete',
+    onConfirm: () => {
+      const projects = loadProjects().filter(p => p.id !== id);
+      saveProjects(projects);
+      if (currentProjectId === id) {
+        switchProject('sheet');
+      } else {
+        renderSidebarProjects();
+      }
+    },
+  });
 }
 
 async function init() {
@@ -693,13 +744,12 @@ function setupImportModal() {
   cancelBtn.addEventListener('click', () => modal.close());
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
 
-  // Wire open triggers
-  const sidebarImportBtn = $('#sidebar-import-btn');
-  if (sidebarImportBtn) sidebarImportBtn.addEventListener('click', openModal);
+  // Expose for sidebar popout
+  window._openImportModal = openModal;
 
+  // Mobile import btn — opens modal directly
   const mobileImportBtn = $('#mobile-import-btn');
   if (mobileImportBtn) mobileImportBtn.addEventListener('click', () => {
-    // close mobile menu first
     const menuBtn = $('#mobile-menu-btn');
     const menuOverlay = $('#mobile-menu-overlay');
     if (menuBtn) menuBtn.classList.remove('open');
@@ -902,6 +952,7 @@ function setupSettingsPanel() {
     $('#kanban-view').classList.add('hidden');
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
+    trashView.classList.add('hidden');
     settingsView.classList.remove('hidden');
     $active.checked = _bgFx.getConfig().active;
     document.querySelector('main').classList.add('settings-open');
@@ -927,6 +978,122 @@ function setupSettingsPanel() {
 
   // Expose for mobile menu
   window._showSettings = showSettings;
+
+  // --- Trash view ---
+  const trashView = $('#trash-view');
+  const trashList = $('#trash-list');
+  const trashSearch = $('#trash-search');
+
+  function hideAllViews() {
+    $('.app-header').classList.add('hidden');
+    $('#kanban-view').classList.add('hidden');
+    $('#planner-view').classList.add('hidden');
+    $('#todolist-view').classList.add('hidden');
+    settingsView.classList.add('hidden');
+    document.querySelector('main').classList.add('settings-open');
+  }
+
+  function renderTrashList(filter = '') {
+    const bin = loadBin();
+    const q = filter.toLowerCase();
+    const items = q ? bin.filter(e => e.task.task?.toLowerCase().includes(q) || e.task.room?.toLowerCase().includes(q)) : bin;
+    if (!items.length) {
+      trashList.innerHTML = `
+        <div class="trash-empty">
+          <img class="trash-empty-animal" src="images/mascot-trash.png" alt="" aria-hidden="true">
+          <p class="trash-empty-title">${q ? 'No results' : 'Nothing to do.'}</p>
+          <p class="trash-empty-body">${q ? 'No deleted tasks match that search.' : 'You can restore tasks before they are automatically deleted after 30 days.'}</p>
+        </div>`;
+      return;
+    }
+    trashList.innerHTML = items.map((entry, i) => {
+      const t = entry.task;
+      const daysAgo = Math.floor((Date.now() - entry.deletedAt) / 86400000);
+      const expires = 30 - daysAgo;
+      return `
+        <div class="trash-item" data-index="${i}">
+          <div class="trash-item-title">${t.task || '(no name)'}</div>
+          <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).join(' · ')}</div>
+          <div class="trash-item-meta">Deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · expires in ${expires}d</div>
+          <div class="trash-item-actions">
+            <button class="modal-btn modal-save trash-restore-btn" data-name="${encodeURIComponent(t.task)}">Restore</button>
+            <button class="modal-btn modal-cancel trash-delete-btn" data-name="${encodeURIComponent(t.task)}">Delete permanently</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    trashList.querySelectorAll('.trash-restore-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = decodeURIComponent(btn.dataset.name);
+        const restored = restoreFromBin(name);
+        if (restored) {
+          // Revive date strings
+          ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
+          allTasks.push(restored);
+          persistTaskChange();
+          showToast('Task restored', 'success');
+          renderTrashList(trashSearch.value);
+        }
+      });
+    });
+
+    trashList.querySelectorAll('.trash-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = decodeURIComponent(btn.dataset.name);
+        showConfirmDialog({
+          title: 'Delete permanently?',
+          body: 'This task cannot be recovered.',
+          confirmLabel: 'Delete',
+          onConfirm: () => {
+            restoreFromBin(name); // removes from bin without returning to tasks
+            renderTrashList(trashSearch.value);
+          },
+        });
+      });
+    });
+  }
+
+  function showTrashView() {
+    hideAllViews();
+    trashView.classList.remove('hidden');
+    trashView.scrollTop = 0;
+    trashSearch.value = '';
+    renderTrashList();
+  }
+
+  function hideTrashView() {
+    trashView.classList.add('hidden');
+    $('.app-header').classList.remove('hidden');
+    document.querySelector('main').classList.remove('settings-open');
+    currentView = previousView;
+    render();
+  }
+
+  trashSearch.addEventListener('input', () => renderTrashList(trashSearch.value));
+  $('#trash-back').addEventListener('click', hideTrashView);
+  $('#sidebar-trash-btn').addEventListener('click', () => { previousView = currentView; showTrashView(); });
+
+  const mobileTrashBtn = $('#mobile-trash-btn');
+  if (mobileTrashBtn) mobileTrashBtn.addEventListener('click', () => {
+    closeMenu();
+    previousView = currentView;
+    showTrashView();
+  });
+
+  window._showTrash = showTrashView;
+
+  // Logo / home tap — return to last main view from any overlay
+  function goHome() {
+    if (trashView && !trashView.classList.contains('hidden')) {
+      hideTrashView();
+    } else if (settingsView && !settingsView.classList.contains('hidden')) {
+      hideSettings();
+    }
+  }
+  $('#sidebar-top').addEventListener('click', goHome);
+  const mobileLogo = $('#mobile-logo-home');
+  if (mobileLogo) mobileLogo.addEventListener('click', goHome);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -946,21 +1113,48 @@ document.addEventListener('DOMContentLoaded', () => {
   // Import modal
   setupImportModal();
 
-  // Close sidebar project menus on outside click
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.sidebar-project-menu.open').forEach(m => m.classList.remove('open'));
-  });
-
-  // FAB — add new task
-  const fabAdd = $('#fab-add');
-  if (fabAdd) {
-    fabAdd.addEventListener('click', () => {
-      const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: '', startDate: null, endDate: null, dependencies: '' };
-      openEditModal(blankTask, getModalOptions(), ({ updatedFields }) => {
-        handleTaskCreate(updatedFields);
-      }, handleRoomChange, {});
+  // Sidebar + project button — popout with two options
+  const sidebarAddBtn = $('#sidebar-import-btn');
+  const sidebarAddMenu = $('#sidebar-add-menu');
+  if (sidebarAddBtn && sidebarAddMenu) {
+    document.body.appendChild(sidebarAddMenu);
+    sidebarAddBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasOpen = sidebarAddMenu.classList.contains('open');
+      closeAllPopovers();
+      if (!wasOpen) {
+        sidebarAddMenu.classList.add('open');
+        positionPopover(sidebarAddMenu, sidebarAddBtn);
+      }
+    });
+    $('#sidebar-add-import-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebarAddMenu.classList.remove('open');
+      if (window._openImportModal) window._openImportModal();
+    });
+    $('#sidebar-add-template-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebarAddMenu.classList.remove('open');
+      showOnboarding();
     });
   }
+
+  // Close popovers: outside click, Escape, scroll
+  document.addEventListener('click', closeAllPopovers);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllPopovers(); });
+  window.addEventListener('scroll', closeAllPopovers, { passive: true });
+
+  // Add task — FAB (mobile) + header button (desktop)
+  function handleAddTask() {
+    const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: '', startDate: null, endDate: null, dependencies: '' };
+    openEditModal(blankTask, getModalOptions(), ({ updatedFields }) => {
+      handleTaskCreate(updatedFields);
+    }, handleRoomChange, {});
+  }
+  const fabAdd = $('#fab-add');
+  if (fabAdd) fabAdd.addEventListener('click', handleAddTask);
+  const headerAddBtn = $('#header-add-btn');
+  if (headerAddBtn) headerAddBtn.addEventListener('click', handleAddTask);
 
   // View toggles
   // Set active tab from saved view
@@ -970,8 +1164,17 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
   $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
 
+  function closeOverlayViews() {
+    $('#settings-view').classList.add('hidden');
+    $('#trash-view').classList.add('hidden');
+    $('.app-header').classList.remove('hidden');
+    document.querySelector('main').classList.remove('settings-open');
+  }
+  window._closeOverlayViews = closeOverlayViews;
+
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      closeOverlayViews();
       document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentView = btn.dataset.view;
@@ -1211,7 +1414,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const label = isOpen ? 'Close menu' : 'Open menu';
     menuBtn.title = label;
     menuBtn.setAttribute('aria-label', label);
-    menuOverlay.classList.toggle('open', isOpen);
+    if (isOpen) {
+      menuOverlay.classList.add('open');
+    } else {
+      closeMenu();
+    }
   });
   menuOverlay.addEventListener('click', (e) => {
     if (e.target === menuOverlay) closeMenu();
