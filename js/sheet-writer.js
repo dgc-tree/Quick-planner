@@ -22,5 +22,11 @@ export async function updateTask(taskName, updates) {
     throw new Error(`Sheet update failed: ${res.status}`);
   }
 
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // GAS redirects can return HTML-wrapped or empty responses even on success
+    return { success: true };
+  }
 }
