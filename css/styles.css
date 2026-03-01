@@ -1407,13 +1407,14 @@ main.settings-open { overflow: hidden; padding: 0; }
 .planner-wrapper[data-view-size="medium"] .planner-right { min-width: 1100px; }
 .planner-wrapper[data-view-size="large"] .planner-right { min-width: 1600px; }
 
-/* Month timeline header — sticky to top */
+/* Month timeline header — outside scroll, full viewport width */
 .planner-timeline-header {
-  position: sticky;
-  top: 0;
-  z-index: 9;
+  display: flex;
+  overflow: hidden;
   height: 38px;
   flex-shrink: 0;
+  z-index: 9;
+  position: relative;
   background: var(--planner-tint);
   backdrop-filter: blur(var(--blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
@@ -1427,6 +1428,29 @@ main.settings-open { overflow: hidden; padding: 0; }
   background: rgba(0,0,0,0.06);
   mix-blend-mode: multiply;
 }
+
+/* Left stub in timeline header — aligns with .planner-left width */
+.planner-timeline-month-col {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 46px;
+  border-right: 1px solid var(--border);
+}
+[data-theme="dark"] .planner-timeline-month-col {
+  border-right-color: rgba(255,255,255,0.08);
+}
+
+/* Scrolling label strip — synced via translateX in JS */
+.planner-timeline-labels {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+.planner-container[data-view-size="medium"] .planner-timeline-labels { min-width: 1100px; }
+.planner-container[data-view-size="large"] .planner-timeline-labels { min-width: 1600px; }
 
 .planner-toolbar-label {
   font-size: 0.75rem;

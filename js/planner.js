@@ -15,8 +15,11 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     return;
   }
 
-  const minDate = new Date(Math.min(...scheduled.map(t => t.startDate.getTime())));
-  const maxDate = new Date(Math.max(...scheduled.map(t => t.endDate.getTime())));
+  // Round to month boundaries so last month always has full calendar width
+  const rawMin = new Date(Math.min(...scheduled.map(t => t.startDate.getTime())));
+  const rawMax = new Date(Math.max(...scheduled.map(t => t.endDate.getTime())));
+  const minDate = new Date(rawMin.getFullYear(), rawMin.getMonth(), 1);
+  const maxDate = new Date(rawMax.getFullYear(), rawMax.getMonth() + 1, 0);
   const totalDays = daysBetween(minDate, maxDate);
 
   const months = getMonthHeaders(minDate, maxDate);
@@ -32,6 +35,8 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     ? (daysBetween(minDate, today) / totalDays) * 100
     : null;
 
+  container.dataset.viewSize = _viewSize;
+
   container.innerHTML = `
     <div class="planner-toolbar">
       <span class="planner-toolbar-label">View size</span>
@@ -46,10 +51,21 @@ export function renderPlanner(container, tasks, callbacks = {}) {
         </button>
       </div>
     </div>
+    <div class="planner-timeline-header">
+      <div class="planner-timeline-month-col">
+        <span class="planner-toolbar-label">Month</span>
+      </div>
+      <div class="planner-timeline-labels">
+        ${months.map((m, i) => i === months.length - 1
+          ? `<div class="month-header" style="left:${m.leftPct}%;right:0;padding-right:16px">${m.label}</div>`
+          : `<div class="month-header" style="left:${m.leftPct}%;width:${m.widthPct}%">${m.label}</div>`
+        ).join('')}
+        ${todayPct !== null ? `<div class="today-marker-header" style="left:${todayPct}%"><span>Today</span></div>` : ''}
+      </div>
+    </div>
     <div class="planner-scroll">
     <div class="planner-wrapper" data-view-size="${_viewSize}">
       <div class="planner-left">
-        <div class="planner-label-col"><span class="planner-toolbar-label">Month</span></div>
         ${[...groups.entries()].map(([room, roomTasks]) => `
           <div class="planner-group-left">
             <div class="planner-group-header">${esc(room)}</div>
@@ -58,13 +74,6 @@ export function renderPlanner(container, tasks, callbacks = {}) {
         `).join('')}
       </div>
       <div class="planner-right">
-        <div class="planner-timeline-header">
-          ${months.map((m, i) => i === months.length - 1
-            ? `<div class="month-header" style="left:${m.leftPct}%;right:0;padding-right:16px">${m.label}</div>`
-            : `<div class="month-header" style="left:${m.leftPct}%;width:${m.widthPct}%">${m.label}</div>`
-          ).join('')}
-          ${todayPct !== null ? `<div class="today-marker-header" style="left:${todayPct}%"><span>Today</span></div>` : ''}
-        </div>
         <div class="planner-body">
           ${todayPct !== null ? `<div class="today-line" style="left:${todayPct}%"></div>` : ''}
           ${[...groups.entries()].map(([room, roomTasks]) => `
@@ -87,14 +96,24 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     ` : ''}
   `;
 
+  // Scroll sync: translate labels to follow horizontal scroll
+  const scroll = container.querySelector('.planner-scroll');
+  const labels = container.querySelector('.planner-timeline-labels');
+  scroll.addEventListener('scroll', () => {
+    labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
+  }, { passive: true });
+
   // View size buttons
   container.querySelectorAll('.view-size-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       _viewSize = btn.dataset.size;
+      container.dataset.viewSize = _viewSize;
       container.querySelector('.planner-wrapper').dataset.viewSize = _viewSize;
       container.querySelectorAll('.view-size-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      // Re-sync after size change (scroll position unchanged)
+      labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
     });
   });
 
