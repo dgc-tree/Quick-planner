@@ -58,9 +58,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
 
   modalEl.className = 'modal-overlay';
   modalEl.innerHTML = `
-    <div class="modal-dialog" role="dialog" aria-label="Edit task">
+    <div class="modal-dialog" role="dialog" aria-label="${task.id !== null ? 'Edit task' : 'New task'}">
       <div class="modal-header">
-        <h2 class="modal-title">Edit Task</h2>
+        <h2 class="modal-title">${task.id !== null ? 'Edit Task' : 'New Task'}</h2>
         ${task.id !== null ? `
         <div class="modal-more-wrap">
           <button type="button" class="modal-more-btn" id="modal-more-btn" title="More options" aria-haspopup="true" aria-expanded="false">
@@ -199,7 +199,22 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
 
   const tryClose = () => {
     if (isDirty()) {
-      if (!confirm('You have unsaved changes. Close without saving?')) return;
+      const dialog = modalEl.querySelector('.modal-dialog');
+      if (dialog.querySelector('.modal-dirty-confirm')) return;
+      const confirmEl = document.createElement('div');
+      confirmEl.className = 'modal-delete-confirm modal-dirty-confirm';
+      confirmEl.innerHTML = `
+        <h1 class="modal-delete-title">Unsaved changes</h1>
+        <p class="modal-delete-body">Close without saving?</p>
+        <div class="modal-delete-actions">
+          <button type="button" class="modal-btn modal-cancel">Keep editing</button>
+          <button type="button" class="modal-btn modal-discard-btn">Discard</button>
+        </div>
+      `;
+      dialog.appendChild(confirmEl);
+      confirmEl.querySelector('.modal-cancel').addEventListener('click', () => confirmEl.remove());
+      confirmEl.querySelector('.modal-discard-btn').addEventListener('click', () => close());
+      return;
     }
     close();
   };
