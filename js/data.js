@@ -9,11 +9,14 @@ export async function fetchSheetData() {
   return normaliseRows(parsed.data);
 }
 
+const ASSIGNED_ALIAS = { 'Dave': 'DG', 'Simone': 'SG', 'Simona': 'SG' };
+
 export function normaliseRows(rows) {
   let currentRoom = '';
   return rows.map((row, i) => {
     const room = (row['Room'] || '').trim();
     if (room) currentRoom = room;
+    const assigned = (row['Assigned'] || '').trim();
 
     return {
       id: i,
@@ -24,7 +27,7 @@ export function normaliseRows(rows) {
       category: (row['Category'] || '').trim(),
       startDate: parseDate(row['Start date']),
       endDate: parseDate(row['End date']),
-      assigned: (row['Assigned'] || '').trim(),
+      assigned: ASSIGNED_ALIAS[assigned] || assigned,
     };
   }).filter(t => t.task);
 }

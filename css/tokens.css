@@ -94,11 +94,11 @@
   --category-in-progress-text: #3730A3;
   --category-we-have-these-bg: #d7d7d7;
   --category-we-have-these-text: #565656;
-  --status-todo-bg: #2B6CB0;
+  --status-todo-bg: #007888;
   --status-todo-text: #FFFFFF;
-  --status-in-progress-bg: rgb(170, 51, 208);
+  --status-in-progress-bg: #007888;
   --status-in-progress-text: #FFFFFF;
-  --status-blocked-bg: #C53030;
+  --status-blocked-bg: #007888;
   --status-blocked-text: #FFFFFF;
   --status-done-bg: #276749;
   --status-done-text: #FFFFFF;
@@ -132,4 +132,25 @@
   --dark-surface-deep: var(--color-primary1-1200, #001418);
   --dark-surface-deepest: var(--color-primary1-1300, #000509);
   --dark-border: var(--color-primary1-1000, #003841);
+  /* Category chip dark overrides */
+  --category-cleaning-bg: rgba(0,216,243,0.15);
+  --category-cleaning-text: #00d8f3;
+  --category-packing-bg: rgba(192,132,252,0.15);
+  --category-packing-text: #c084fc;
+  --category-organising-bg: rgba(74,222,128,0.15);
+  --category-organising-text: #4ade80;
+  --category-painting-bg: rgba(251,146,60,0.15);
+  --category-painting-text: #fb923c;
+  --category-basic-repairs-bg: rgba(251,191,36,0.15);
+  --category-basic-repairs-text: #fbbf24;
+  --category-trade-quote-bg: rgba(248,113,113,0.15);
+  --category-trade-quote-text: #f87171;
+  --category-buy-new-bg: rgba(110,231,183,0.15);
+  --category-buy-new-text: #6ee7b7;
+  --category-selling-bg: rgba(232,121,249,0.15);
+  --category-selling-text: #e879f9;
+  --category-in-progress-bg: rgba(165,180,252,0.15);
+  --category-in-progress-text: #a5b4fc;
+  --category-we-have-these-bg: rgba(192,192,192,0.12);
+  --category-we-have-these-text: #c0c0c0;
 }

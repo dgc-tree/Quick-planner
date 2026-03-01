@@ -126,3 +126,16 @@ export function loadUserName() {
 export function saveUserName(name) {
   localStorage.setItem('qp-user-name', name);
 }
+
+const COLUMN_COLORS_KEY = 'qp-column-colors';
+
+export function loadColumnColors() {
+  try {
+    const raw = localStorage.getItem(COLUMN_COLORS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function saveColumnColors(colors) {
+  localStorage.setItem(COLUMN_COLORS_KEY, JSON.stringify(colors));
+}

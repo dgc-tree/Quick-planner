@@ -1,5 +1,7 @@
 import { STATUS_COLORS } from './theme.js';
 import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
+import { createColorPicker } from './color-picker.js';
+import { loadColumnColors, saveColumnColors } from './storage.js';
 
 const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done'];
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
@@ -50,12 +52,25 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
     const statusColor = groupBy === 'status' ? STATUS_COLORS[groupName] : null;
     if (statusColor) {
       header.classList.add('status-colored');
-      header.style.background = statusColor.bg;
-      header.style.color = statusColor.text;
+      const storedColor = loadColumnColors()[groupName];
+      const bg = storedColor || statusColor.bg;
+      const text = storedColor ? contrastText(storedColor) : statusColor.text;
+      header.style.background = bg;
+      header.style.color = text;
     }
-    header.innerHTML = `
-      <span class="column-title">${esc(groupName)}</span>
-    `;
+    header.innerHTML = `<span class="column-title">${esc(groupName)}</span>`;
+
+    if (statusColor && groupName !== 'Done') {
+      const colorBtn = document.createElement('button');
+      colorBtn.className = 'column-color-btn';
+      colorBtn.title = 'Change column colour';
+      colorBtn.innerHTML = '···';
+      colorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openColumnColorPicker(colorBtn, groupName, header);
+      });
+      header.appendChild(colorBtn);
+    }
 
     const cardList = document.createElement('div');
     cardList.className = 'kanban-cards';
@@ -77,6 +92,56 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
     col.appendChild(cardList);
     container.appendChild(col);
   }
+}
+
+function contrastText(hex) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.55 ? '#101010' : '#FFFFFF';
+}
+
+function openColumnColorPicker(trigger, columnName, header) {
+  document.querySelector('.column-color-popover')?.remove();
+
+  const popover = document.createElement('div');
+  popover.className = 'column-color-popover';
+
+  const current = loadColumnColors()[columnName] || null;
+  const picker = createColorPicker({
+    label: `${columnName} colour`,
+    value: current,
+    onChange: (hex) => {
+      const colors = loadColumnColors();
+      const def = STATUS_COLORS[columnName];
+      if (hex) {
+        colors[columnName] = hex;
+        header.style.background = hex;
+        header.style.color = contrastText(hex);
+      } else {
+        delete colors[columnName];
+        header.style.background = def ? def.bg : '';
+        header.style.color = def ? def.text : '';
+      }
+      saveColumnColors(colors);
+    },
+  });
+
+  popover.appendChild(picker);
+  document.body.appendChild(popover);
+
+  const rect = trigger.getBoundingClientRect();
+  popover.style.top = (rect.bottom + 6) + 'px';
+  const left = Math.min(rect.left, window.innerWidth - 220);
+  popover.style.left = Math.max(8, left) + 'px';
+
+  const close = (e) => {
+    if (!popover.contains(e.target) && e.target !== trigger) {
+      popover.remove();
+      document.removeEventListener('click', close, true);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close, true), 0);
 }
 
 function createCard(task) {
