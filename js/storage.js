@@ -100,7 +100,7 @@ export function saveProjects(arr) {
 }
 
 export function loadActiveProjectId() {
-  return localStorage.getItem(ACTIVE_PROJECT_KEY) || null;
+  return localStorage.getItem(ACTIVE_PROJECT_KEY) || 'sheet';
 }
 
 export function saveActiveProjectId(id) {

@@ -1,6 +1,6 @@
 import { STATUS_COLORS } from './theme.js';
 import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
-import { createColorPicker } from './color-picker.js';
+import { openColorPickerModal } from './color-picker.js';
 import { loadColumnColors, saveColumnColors } from './storage.js';
 
 const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done'];
@@ -60,14 +60,14 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
     }
     header.innerHTML = `<span class="column-title">${esc(groupName)}</span>`;
 
-    if (statusColor && groupName !== 'Done') {
+    if (statusColor) {
       const colorBtn = document.createElement('button');
       colorBtn.className = 'column-color-btn';
       colorBtn.title = 'Change column colour';
       colorBtn.innerHTML = '···';
       colorBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        openColumnColorPicker(colorBtn, groupName, header);
+        openColumnColorPicker(groupName, header);
       });
       header.appendChild(colorBtn);
     }
@@ -101,47 +101,21 @@ function contrastText(hex) {
   return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.55 ? '#101010' : '#FFFFFF';
 }
 
-function openColumnColorPicker(trigger, columnName, header) {
-  document.querySelector('.column-color-popover')?.remove();
-
-  const popover = document.createElement('div');
-  popover.className = 'column-color-popover';
-
-  const current = loadColumnColors()[columnName] || null;
-  const picker = createColorPicker({
-    label: `${columnName} colour`,
-    value: current,
-    onChange: (hex) => {
+function openColumnColorPicker(columnName, header) {
+  const stored = loadColumnColors()[columnName];
+  const def = STATUS_COLORS[columnName];
+  const initial = stored || (def ? def.bg.startsWith('#') ? def.bg : '#007888' : '#007888');
+  openColorPickerModal({
+    title: `${columnName} colour`,
+    initialHex: initial,
+    onSave: (hex) => {
       const colors = loadColumnColors();
-      const def = STATUS_COLORS[columnName];
-      if (hex) {
-        colors[columnName] = hex;
-        header.style.background = hex;
-        header.style.color = contrastText(hex);
-      } else {
-        delete colors[columnName];
-        header.style.background = def ? def.bg : '';
-        header.style.color = def ? def.text : '';
-      }
+      colors[columnName] = hex;
+      header.style.background = hex;
+      header.style.color = contrastText(hex);
       saveColumnColors(colors);
     },
   });
-
-  popover.appendChild(picker);
-  document.body.appendChild(popover);
-
-  const rect = trigger.getBoundingClientRect();
-  popover.style.top = (rect.bottom + 6) + 'px';
-  const left = Math.min(rect.left, window.innerWidth - 220);
-  popover.style.left = Math.max(8, left) + 'px';
-
-  const close = (e) => {
-    if (!popover.contains(e.target) && e.target !== trigger) {
-      popover.remove();
-      document.removeEventListener('click', close, true);
-    }
-  };
-  setTimeout(() => document.addEventListener('click', close, true), 0);
 }
 
 function createCard(task) {

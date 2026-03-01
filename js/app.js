@@ -14,6 +14,7 @@ import {
   loadUserName, saveUserName,
 } from './storage.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
+import { openColorPickerModal } from './color-picker.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -774,8 +775,6 @@ function setupSettingsPanel() {
   const swatchContainer = $('#settings-swatches');
   const userSwatchesWrap = $('#settings-user-swatches-wrap');
   const userSwatchesContainer = $('#settings-user-swatches');
-  const customRow = $('#settings-custom-row');
-  const colorInput = $('#settings-color-input');
   const saved = loadCustomColors() || { primary1: DEFAULT_PRIMARY, secondary1: null, secondary2: null };
   const colors = { ...saved };
   let selected = colors.primary1 || DEFAULT_PRIMARY;
@@ -806,10 +805,7 @@ function setupSettingsPanel() {
     swatch.style.background = p.hex;
     swatch.title = p.label;
     swatch.setAttribute('aria-label', p.label);
-    swatch.addEventListener('click', () => {
-      customRow.style.display = 'none';
-      selectSwatch(p.hex);
-    });
+    swatch.addEventListener('click', () => selectSwatch(p.hex));
     swatchContainer.appendChild(swatch);
   });
 
@@ -819,10 +815,23 @@ function setupSettingsPanel() {
   plus.setAttribute('aria-label', 'Custom colour');
   plus.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
   plus.addEventListener('click', () => {
-    colorInput.value = selected;
-    customRow.style.display = 'flex';
     clearAllActive();
     plus.classList.add('active');
+    openColorPickerModal({
+      title: 'Custom colour',
+      initialHex: selected,
+      onSave: (hex) => {
+        plus.classList.remove('active');
+        const allKnown = [...PRESETS.map(p => p.hex), ...loadUserSwatches()];
+        if (!allKnown.includes(hex)) {
+          const swatches = loadUserSwatches();
+          swatches.push(hex);
+          saveUserSwatches(swatches);
+          renderUserSwatches();
+        }
+        selectSwatch(hex);
+      },
+    });
   });
   swatchContainer.appendChild(plus);
 
@@ -884,7 +893,6 @@ function setupSettingsPanel() {
       swatch.addEventListener('click', (e) => {
         if (didLongPress) { e.preventDefault(); return; }
         dismissConfirm();
-        customRow.style.display = 'none';
         selectSwatch(hex);
       });
 
@@ -895,29 +903,6 @@ function setupSettingsPanel() {
   renderUserSwatches();
 
   settingsView.addEventListener('click', dismissConfirm);
-
-  // --- Custom colour picker actions ---
-  $('#settings-custom-cancel').addEventListener('click', () => {
-    customRow.style.display = 'none';
-    selectSwatch(selected);
-  });
-  $('#settings-custom-save').addEventListener('click', () => {
-    const hex = colorInput.value;
-    customRow.style.display = 'none';
-    const allKnown = [...PRESETS.map(p => p.hex), ...loadUserSwatches()];
-    if (!allKnown.includes(hex)) {
-      const swatches = loadUserSwatches();
-      swatches.push(hex);
-      saveUserSwatches(swatches);
-      renderUserSwatches();
-    }
-    selectSwatch(hex);
-  });
-
-  colorInput.addEventListener('input', () => {
-    colors.primary1 = colorInput.value;
-    applyCustomColors(colors);
-  });
 
   // Reset brand palette to default cyan
   $('#settings-reset').addEventListener('click', () => {
@@ -970,7 +955,6 @@ function setupSettingsPanel() {
 
   $('#sidebar-settings-btn').addEventListener('click', showSettings);
   $('#settings-back').addEventListener('click', hideSettings);
-  $('#settings-done').addEventListener('click', hideSettings);
 
   // Expose for mobile menu
   window._showSettings = showSettings;
