@@ -67,6 +67,7 @@
   --content-tertiary: #7f7f7f;
   --content-inverse: #eeeeee;
   --accent-primary1: #00E3FF;
+  --accent-primary1-text: #00737F;
   --accent-secondary1: #7f7f7f;
   --accent-secondary2: #7f7f7f;
   --outline-default: rgba(238,238,238,0.5);
@@ -119,6 +120,7 @@
   --content-tertiary: #6a6a6a;
   --content-inverse: #101010;
   --accent-primary1: #00E3FF;
+  --accent-primary1-text: #00E3FF;
   --accent-secondary1: #949494;
   --accent-secondary2: #949494;
   --outline-default: rgba(238,238,238,0.1);

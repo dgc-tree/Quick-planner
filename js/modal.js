@@ -24,7 +24,7 @@ let modalEl = null;
  * @param {function} onSave   — called with { originalTask, updatedFields }
  * @param {function} onRoomChange — called with { action, oldRoom, newRoom, affectedTasks }
  */
-export function openEditModal(task, options, onSave, onRoomChange) {
+export function openEditModal(task, options, onSave, onRoomChange, actions = {}) {
   if (!modalEl) {
     modalEl = document.createElement('div');
     modalEl.id = 'edit-modal';
@@ -61,6 +61,27 @@ export function openEditModal(task, options, onSave, onRoomChange) {
     <div class="modal-dialog" role="dialog" aria-label="Edit task">
       <div class="modal-header">
         <h2 class="modal-title">Edit Task</h2>
+        ${task.id !== null ? `
+        <div class="modal-more-wrap">
+          <button type="button" class="modal-more-btn" id="modal-more-btn" title="More options" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+          </button>
+          <div class="modal-more-menu hidden" id="modal-more-menu" role="menu">
+            <button type="button" class="modal-more-item" id="menu-rename-btn" role="menuitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z"/></svg>
+              Rename room
+            </button>
+            <button type="button" class="modal-more-item" id="menu-duplicate-btn" role="menuitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Duplicate
+            </button>
+            <button type="button" class="modal-more-item danger" id="menu-delete-btn" role="menuitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              Delete
+            </button>
+          </div>
+        </div>
+        ` : ''}
       </div>
       <form class="modal-form" autocomplete="off">
         <div class="modal-field">
@@ -72,9 +93,6 @@ export function openEditModal(task, options, onSave, onRoomChange) {
               ).join('')}
               <option value="__new__">+ New Room</option>
             </select>
-            <button type="button" class="room-action-btn" id="room-edit-btn" title="Rename room">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
-            </button>
           </div>
         </div>
         <div class="modal-row">
@@ -143,8 +161,10 @@ export function openEditModal(task, options, onSave, onRoomChange) {
           </div>
         </div>
         <div class="modal-actions">
-          <button type="button" class="modal-btn modal-cancel">Cancel</button>
-          <button type="submit" class="modal-btn modal-save">Save</button>
+          <div class="modal-actions-right">
+            <button type="button" class="modal-btn modal-cancel">Cancel</button>
+            <button type="submit" class="modal-btn modal-save">Save</button>
+          </div>
         </div>
       </form>
     </div>
@@ -187,7 +207,6 @@ export function openEditModal(task, options, onSave, onRoomChange) {
   // --- Room management ---
   const roomWrap = modalEl.querySelector('#room-field-wrap');
   const roomSelect = roomWrap.querySelector('select[name="room"]');
-  const roomEditBtn = modalEl.querySelector('#room-edit-btn');
 
   roomSelect.addEventListener('change', () => {
     if (roomSelect.value === '__new__') {
@@ -205,7 +224,7 @@ export function openEditModal(task, options, onSave, onRoomChange) {
     }
   });
 
-  roomEditBtn.addEventListener('click', () => {
+  function triggerRenameRoom() {
     const currentRoom = roomSelect.value;
     if (!currentRoom || currentRoom === '__new__') return;
     showRoomInlineInput(currentRoom, (newName) => {
@@ -221,14 +240,13 @@ export function openEditModal(task, options, onSave, onRoomChange) {
       }
       roomSelect.value = newName;
     });
-  });
+  }
 
   function showRoomInlineInput(prefill, onDone) {
     const existing = roomWrap.querySelector('.room-inline-input');
     if (existing) existing.remove();
 
     roomSelect.style.display = 'none';
-    roomEditBtn.style.display = 'none';
 
     const wrap = document.createElement('div');
     wrap.className = 'room-inline-input';
@@ -250,7 +268,6 @@ export function openEditModal(task, options, onSave, onRoomChange) {
     const finish = (val) => {
       wrap.remove();
       roomSelect.style.display = '';
-      roomEditBtn.style.display = '';
       onDone(val ? val.trim() : '');
     };
 
@@ -355,6 +372,65 @@ export function openEditModal(task, options, onSave, onRoomChange) {
       }
     });
   });
+
+  // --- Three-dot menu ---
+  const moreBtn = modalEl.querySelector('#modal-more-btn');
+  const moreMenu = modalEl.querySelector('#modal-more-menu');
+
+  if (moreBtn && moreMenu) {
+    const closeMenu = () => {
+      moreMenu.classList.add('hidden');
+      moreBtn.setAttribute('aria-expanded', 'false');
+    };
+
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !moreMenu.classList.contains('hidden');
+      isOpen ? closeMenu() : (moreMenu.classList.remove('hidden'), moreBtn.setAttribute('aria-expanded', 'true'));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.modal-more-wrap')) closeMenu();
+    });
+
+    modalEl.querySelector('#menu-rename-btn').addEventListener('click', () => {
+      closeMenu();
+      triggerRenameRoom();
+    });
+
+    const menuDupBtn = modalEl.querySelector('#menu-duplicate-btn');
+    if (actions.onDuplicate) {
+      menuDupBtn.addEventListener('click', () => {
+        closeMenu();
+        close();
+        actions.onDuplicate(task);
+      });
+    }
+
+    const menuDelBtn = modalEl.querySelector('#menu-delete-btn');
+    if (actions.onDelete) {
+      menuDelBtn.addEventListener('click', () => {
+        closeMenu();
+        const dialog = modalEl.querySelector('.modal-dialog');
+        const confirmEl = document.createElement('div');
+        confirmEl.className = 'modal-delete-confirm';
+        confirmEl.innerHTML = `
+          <h1 class="modal-delete-title">Are you sure?</h1>
+          <p class="modal-delete-body">Deleting the task will place it into the trash, but you can restore it up to 30 days before it is deleted permanently.</p>
+          <div class="modal-delete-actions">
+            <button type="button" class="modal-btn modal-cancel modal-delete-cancel">Cancel</button>
+            <button type="button" class="modal-btn modal-delete-confirm-btn">Yes, delete</button>
+          </div>
+        `;
+        dialog.appendChild(confirmEl);
+        confirmEl.querySelector('.modal-delete-cancel').addEventListener('click', () => confirmEl.remove());
+        confirmEl.querySelector('.modal-delete-confirm-btn').addEventListener('click', () => {
+          close();
+          actions.onDelete(task);
+        });
+      });
+    }
+  }
 
   // Cancel
   modalEl.querySelector('.modal-cancel').addEventListener('click', tryClose);

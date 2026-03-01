@@ -9,7 +9,7 @@ export async function fetchSheetData() {
   return normaliseRows(parsed.data);
 }
 
-function normaliseRows(rows) {
+export function normaliseRows(rows) {
   let currentRoom = '';
   return rows.map((row, i) => {
     const room = (row['Room'] || '').trim();

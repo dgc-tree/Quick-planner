@@ -7,7 +7,12 @@ import { openEditModal } from './modal.js';
 import { updateTask } from './sheet-writer.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
-import { loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches } from './storage.js';
+import {
+  loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
+  loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
+  loadUserName, saveUserName,
+} from './storage.js';
+import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -18,15 +23,58 @@ const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
-let filters = { room: '', category: '', assigned: '' };
+let filters = { room: '', category: '', assigned: '', search: '' };
 let syncTimer = null;
+let currentProjectId = loadActiveProjectId();
 
 const $ = (sel) => document.querySelector(sel);
 
-async function init() {
+function getProjectType() {
+  if (currentProjectId === 'sheet') return 'sheet';
+  const projects = loadProjects();
+  return projects.find(p => p.id === currentProjectId)?.type ?? 'sheet';
+}
+
+function getProjectName() {
+  if (currentProjectId === 'sheet') return 'Renos';
+  const projects = loadProjects();
+  return projects.find(p => p.id === currentProjectId)?.name ?? 'Project';
+}
+
+function persistTaskChange() {
+  if (getProjectType() === 'local') {
+    saveProjectTasks(currentProjectId, allTasks);
+  }
+}
+
+async function loadProjectData() {
+  if (getProjectType() === 'sheet') {
+    allTasks = await fetchSheetData();
+  } else {
+    const projects = loadProjects();
+    const project = projects.find(p => p.id === currentProjectId);
+    if (!project) {
+      // Project deleted externally — fall back to sheet
+      currentProjectId = 'sheet';
+      saveActiveProjectId('sheet');
+      allTasks = await fetchSheetData();
+    } else {
+      allTasks = project.tasks.map(t => ({
+        ...t,
+        startDate: t.startDate ? new Date(t.startDate) : null,
+        endDate: t.endDate ? new Date(t.endDate) : null,
+      }));
+    }
+  }
+}
+
+async function switchProject(id) {
+  currentProjectId = id;
+  saveActiveProjectId(id);
+  clearInterval(syncTimer);
   showLoading(true);
   try {
-    allTasks = await fetchSheetData();
+    await loadProjectData();
     updateSummary();
     setupFilters();
     render();
@@ -34,19 +82,128 @@ async function init() {
     showError(err.message);
   }
   showLoading(false);
-  startAutoSync();
+  renderSidebarProjects();
+  if (getProjectType() === 'sheet') startAutoSync();
+  // Update last-synced text for non-sheet projects
+  const lastSynced = $('#sidebar-last-synced');
+  if (lastSynced && getProjectType() === 'local') lastSynced.textContent = '';
+}
+
+function renderSidebarProjects() {
+  const list = $('#sidebar-projects-list');
+  const mobileList = $('#mobile-projects-list');
+  const projects = loadProjects();
+
+  function makeItem(id, name, isLocal) {
+    const li = document.createElement('li');
+    li.className = 'sidebar-project-item' + (id === currentProjectId ? ' active' : '');
+    li.setAttribute('title', `Switch to ${name}`);
+    const label = document.createElement('span');
+    label.className = 'sidebar-project-label';
+    label.textContent = name;
+    li.appendChild(label);
+    li.addEventListener('click', () => switchProject(id));
+
+    // Options button (•••) for all projects
+    const opts = document.createElement('button');
+    opts.className = 'sidebar-project-opts';
+    opts.setAttribute('aria-label', `Options for ${name}`);
+    opts.innerHTML = '<span>•••</span>';
+    opts.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close any other open menus
+      document.querySelectorAll('.sidebar-project-menu.open').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+      });
+      menu.classList.toggle('open');
+    });
+
+    const menu = document.createElement('div');
+    menu.className = 'sidebar-project-menu';
+
+    const exportItem = document.createElement('button');
+    exportItem.className = 'sidebar-project-menu-item';
+    exportItem.textContent = 'Export CSV';
+    exportItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.remove('open');
+      const tasks = id === currentProjectId ? allTasks : (loadProjects().find(p => p.id === id)?.tasks || []);
+      exportToCSV(tasks, name);
+    });
+    menu.appendChild(exportItem);
+
+    if (isLocal) {
+      const delItem = document.createElement('button');
+      delItem.className = 'sidebar-project-menu-item sidebar-project-menu-item--danger';
+      delItem.textContent = 'Delete project';
+      delItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.remove('open');
+        handleDeleteProject(id, name);
+      });
+      menu.appendChild(delItem);
+    }
+
+    li.appendChild(opts);
+    li.appendChild(menu);
+    return li;
+  }
+
+  if (list) {
+    list.innerHTML = '';
+    list.appendChild(makeItem('sheet', 'Renos', false));
+    projects.forEach(p => list.appendChild(makeItem(p.id, p.name, true)));
+  }
+
+  if (mobileList) {
+    mobileList.innerHTML = '';
+    mobileList.appendChild(makeItem('sheet', 'Renos', false));
+    projects.forEach(p => mobileList.appendChild(makeItem(p.id, p.name, true)));
+  }
+
+  // Export button in settings
+  const exportSection = $('#settings-export-section');
+  if (exportSection) exportSection.classList.toggle('hidden', getProjectType() !== 'local');
+}
+
+function handleDeleteProject(id, name) {
+  if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const projects = loadProjects().filter(p => p.id !== id);
+  saveProjects(projects);
+  if (currentProjectId === id) {
+    switchProject('sheet');
+  } else {
+    renderSidebarProjects();
+  }
+}
+
+async function init() {
+  showLoading(true);
+  try {
+    await loadProjectData();
+    updateSummary();
+    setupFilters();
+    render();
+  } catch (err) {
+    showError(err.message);
+  }
+  showLoading(false);
+  renderSidebarProjects();
+  if (getProjectType() === 'sheet') startAutoSync();
   bgFxReady.then(() => _bgFx.initBgEffects());
 }
 
 function startAutoSync() {
   if (syncTimer) clearInterval(syncTimer);
-  syncTimer = setInterval(() => refreshData(true), AUTO_SYNC_INTERVAL);
+  syncTimer = setInterval(() => {
+    if (getProjectType() === 'sheet') refreshData(true);
+  }, AUTO_SYNC_INTERVAL);
 }
 
 async function refreshData(silent = false) {
+  if (getProjectType() !== 'sheet') return;
   const sidebarSyncBtn = $('#sidebar-sync-btn');
-  sidebarSyncBtn.classList.add('refreshing');
-  sidebarSyncBtn.disabled = true;
+  if (sidebarSyncBtn) { sidebarSyncBtn.classList.add('refreshing'); sidebarSyncBtn.disabled = true; }
   $('#error').classList.add('hidden');
 
   if (!silent) showLoading(true);
@@ -61,8 +218,7 @@ async function refreshData(silent = false) {
     if (!silent) showError(err.message);
   }
 
-  sidebarSyncBtn.classList.remove('refreshing');
-  sidebarSyncBtn.disabled = false;
+  if (sidebarSyncBtn) { sidebarSyncBtn.classList.remove('refreshing'); sidebarSyncBtn.disabled = false; }
   if (!silent) showLoading(false);
 }
 
@@ -88,6 +244,16 @@ function getModalOptions() {
 
 function handleTaskEdit(task) {
   openEditModal(task, getModalOptions(), ({ originalTask, updatedFields }) => {
+    // Optimistic local update
+    applyLocalUpdate(task, updatedFields);
+    render();
+    persistTaskChange();
+
+    if (getProjectType() === 'local') {
+      showToast('Saved', 'success');
+      return;
+    }
+
     // Format dates for sheet (dd/mm)
     const sheetUpdates = { ...updatedFields };
     if (sheetUpdates.startDate) {
@@ -99,11 +265,6 @@ function handleTaskEdit(task) {
       sheetUpdates.endDate = `${d.getDate()}/${d.getMonth() + 1}`;
     }
 
-    // Optimistic local update
-    applyLocalUpdate(task, updatedFields);
-    render();
-
-    // Async write to sheet
     updateTask(originalTask, sheetUpdates)
       .then(res => {
         if (res && res.success) {
@@ -113,16 +274,24 @@ function handleTaskEdit(task) {
         }
       })
       .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
-  }, handleRoomChange);
+  }, handleRoomChange, {
+    onDelete: (t) => handleTaskDelete(t),
+    onDuplicate: (t) => handleTaskDuplicate(t),
+  });
 }
 
 async function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
   if (action === 'rename') {
-    // Optimistic local rename
     affectedTasks.forEach(t => { t.room = newRoom; });
     setupFilters();
     render();
-    // Batch write to sheet
+    persistTaskChange();
+
+    if (getProjectType() === 'local') {
+      showToast(`Room renamed`, 'success');
+      return;
+    }
+
     let ok = 0, fail = 0;
     for (const t of affectedTasks) {
       try {
@@ -132,10 +301,16 @@ async function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
     }
     showToast(`Room renamed: ${ok} updated${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
   } else if (action === 'delete') {
-    // Clear room on affected tasks
     affectedTasks.forEach(t => { t.room = ''; });
     setupFilters();
     render();
+    persistTaskChange();
+
+    if (getProjectType() === 'local') {
+      showToast(`Room deleted`, 'success');
+      return;
+    }
+
     let ok = 0, fail = 0;
     for (const t of affectedTasks) {
       try {
@@ -148,19 +323,99 @@ async function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
 }
 
 function handleStatusChange(task, newStatus) {
-  const sheetUpdates = { status: newStatus };
-
-  // Optimistic local update
   task.status = newStatus;
+  persistTaskChange();
 
-  // Async write to sheet
-  updateTask(task.task, sheetUpdates)
+  if (getProjectType() === 'local') return;
+
+  updateTask(task.task, { status: newStatus })
     .then(res => {
       if (res && res.success) {
         showToast('Status updated', 'success');
       } else {
         showToast(res?.error || 'Save may have failed', 'error');
       }
+    })
+    .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+}
+
+function handleTaskDelete(task) {
+  addToBin(task);
+  const idx = allTasks.findIndex(t => t === task);
+  if (idx !== -1) allTasks.splice(idx, 1);
+  setupFilters();
+  render();
+  persistTaskChange();
+  showToast('Task moved to bin (30 days to restore)', 'success');
+}
+
+function handleTaskDuplicate(task) {
+  const copy = {
+    ...task,
+    id: Date.now(),
+    task: task.task + ' (copy)',
+    startDate: task.startDate ? new Date(task.startDate) : null,
+    endDate: task.endDate ? new Date(task.endDate) : null,
+    status: 'To Do',
+  };
+  allTasks.push(copy);
+  setupFilters();
+  render();
+  persistTaskChange();
+
+  if (getProjectType() === 'local') {
+    showToast('Task duplicated', 'success');
+    return;
+  }
+
+  const sheetUpdates = {
+    task: copy.task, room: copy.room, category: copy.category,
+    status: copy.status, assigned: copy.assigned,
+    startDate: copy.startDate ? `${copy.startDate.getDate()}/${copy.startDate.getMonth() + 1}` : '',
+    endDate: copy.endDate ? `${copy.endDate.getDate()}/${copy.endDate.getMonth() + 1}` : '',
+    dependencies: copy.dependencies || '',
+  };
+  updateTask('__new__', sheetUpdates)
+    .then(res => {
+      if (res && res.success) showToast('Task duplicated', 'success');
+      else showToast(res?.error || 'Duplicate may not have saved to sheet', 'error');
+    })
+    .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+}
+
+function handleTaskCreate(fields) {
+  const newTask = {
+    id: Date.now(),
+    task: fields.task || 'New Task',
+    room: fields.room || '',
+    category: fields.category || '',
+    status: fields.status || 'To Do',
+    assigned: fields.assigned || '',
+    startDate: fields.startDate ? new Date(fields.startDate) : null,
+    endDate: fields.endDate ? new Date(fields.endDate) : null,
+    dependencies: fields.dependencies || '',
+  };
+  allTasks.push(newTask);
+  setupFilters();
+  render();
+  persistTaskChange();
+
+  if (getProjectType() === 'local') {
+    showToast('Task created', 'success');
+    return;
+  }
+
+  const sheetUpdates = {
+    task: newTask.task, room: newTask.room, category: newTask.category,
+    status: newTask.status, assigned: newTask.assigned,
+    startDate: newTask.startDate ? `${newTask.startDate.getDate()}/${newTask.startDate.getMonth() + 1}` : '',
+    endDate: newTask.endDate ? `${newTask.endDate.getDate()}/${newTask.endDate.getMonth() + 1}` : '',
+    dependencies: newTask.dependencies,
+  };
+  updateTask('__new__', sheetUpdates)
+    .then(res => {
+      if (res && res.success) showToast('Task created', 'success');
+      else showToast(res?.error || 'Create may not have saved to sheet', 'error');
     })
     .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
 }
@@ -204,6 +459,12 @@ function render() {
       onStatusChange: handleStatusChange,
       onTaskClick: handleTaskEdit,
       onAssignChange: (task, newAssigned) => {
+        task.assigned = newAssigned;
+        persistTaskChange();
+        if (getProjectType() === 'local') {
+          showToast(`Assigned to ${newAssigned}`, 'success');
+          return;
+        }
         updateTask(task.task, { assigned: newAssigned })
           .then(res => {
             if (res && res.success) showToast(`Assigned to ${newAssigned}`, 'success');
@@ -272,6 +533,182 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+// ─── Import modal ─────────────────────────────────────────────────────────────
+
+function setupImportModal() {
+  const modal = $('#import-modal');
+  const dropzone = $('#import-dropzone');
+  const fileInput = $('#import-file-input');
+  const urlInput = $('#import-url-input');
+  const fieldsEl = $('#import-fields');
+  const projectNameEl = $('#import-project-name');
+  const userNameEl = $('#import-user-name');
+  const errorEl = $('#import-error');
+  const progressEl = $('#import-progress');
+  const progressMsg = $('#import-progress-msg');
+  const confirmBtn = $('#import-confirm');
+  const cancelBtn = $('#import-cancel');
+
+  let pendingCsvText = null;
+
+  function openModal() {
+    pendingCsvText = null;
+    urlInput.value = '';
+    projectNameEl.value = '';
+    userNameEl.value = loadUserName();
+    fieldsEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+    progressEl.classList.add('hidden');
+    confirmBtn.disabled = true;
+    modal.showModal();
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+    fieldsEl.classList.add('hidden');
+    confirmBtn.disabled = true;
+    pendingCsvText = null;
+  }
+
+  function onValidCSV(text, suggestedName) {
+    pendingCsvText = text;
+    errorEl.classList.add('hidden');
+    projectNameEl.value = suggestedName;
+    fieldsEl.classList.remove('hidden');
+    confirmBtn.disabled = false;
+  }
+
+  // Drop zone — click to browse
+  dropzone.addEventListener('click', () => fileInput.click());
+  const browseLink = dropzone.querySelector('.import-browse-link');
+  if (browseLink) browseLink.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+
+  // Drag and drop
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  });
+
+  // File input
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) processFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  function processFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        importCSV(e.target.result); // validates — throws if bad
+        const name = file.name.replace(/\.csv$/i, '').replace(/_/g, ' ');
+        onValidCSV(e.target.result, name);
+      } catch (err) {
+        showError(err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // URL paste — validate on blur or enter
+  async function processUrl() {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    confirmBtn.disabled = true;
+    errorEl.classList.add('hidden');
+    try {
+      const csvUrl = sheetsUrlToCsvUrl(url);
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error(res.status === 403
+        ? "Can't access the sheet — make sure it's set to 'Anyone with the link can view'"
+        : `Fetch failed (${res.status})`);
+      const text = await res.text();
+      importCSV(text); // validate
+      // Try to get a name from URL path
+      const nameMatch = url.match(/\/spreadsheets\/d\/[^/]+\/[^/]*\/([^/?#]+)/);
+      const name = nameMatch ? decodeURIComponent(nameMatch[1]).replace(/_/g, ' ') : 'Imported project';
+      onValidCSV(text, name);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  urlInput.addEventListener('blur', processUrl);
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); processUrl(); } });
+
+  // Confirm
+  confirmBtn.addEventListener('click', async () => {
+    if (!pendingCsvText) return;
+
+    const name = projectNameEl.value.trim() || 'Imported project';
+    const userName = userNameEl.value.trim();
+    if (userName) saveUserName(userName);
+
+    // Show progress
+    fieldsEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    confirmBtn.disabled = true;
+    cancelBtn.disabled = true;
+    progressMsg.textContent = userName
+      ? `Thanks ${userName}, converting your tasks — this is going to be epic…`
+      : 'Converting your tasks — this is going to be epic…';
+    progressEl.classList.remove('hidden');
+
+    // Small artificial delay for delight
+    await new Promise(r => setTimeout(r, 900));
+
+    try {
+      const tasks = importCSV(pendingCsvText);
+      const project = {
+        id: String(Date.now()),
+        name,
+        type: 'local',
+        tasks: [],
+        createdAt: Date.now(),
+      };
+      const projects = loadProjects();
+      projects.push(project);
+      saveProjects(projects);
+      saveProjectTasks(project.id, tasks);
+
+      modal.close();
+      cancelBtn.disabled = false;
+      await switchProject(project.id);
+      showToast('Project ready!', 'success');
+    } catch (err) {
+      progressEl.classList.add('hidden');
+      cancelBtn.disabled = false;
+      confirmBtn.disabled = false;
+      showError(err.message);
+    }
+  });
+
+  // Cancel / backdrop close
+  cancelBtn.addEventListener('click', () => modal.close());
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+
+  // Wire open triggers
+  const sidebarImportBtn = $('#sidebar-import-btn');
+  if (sidebarImportBtn) sidebarImportBtn.addEventListener('click', openModal);
+
+  const mobileImportBtn = $('#mobile-import-btn');
+  if (mobileImportBtn) mobileImportBtn.addEventListener('click', () => {
+    // close mobile menu first
+    const menuBtn = $('#mobile-menu-btn');
+    const menuOverlay = $('#mobile-menu-overlay');
+    if (menuBtn) menuBtn.classList.remove('open');
+    if (menuOverlay) menuOverlay.classList.remove('open');
+    openModal();
+  });
+}
+
+// ─── Settings panel ───────────────────────────────────────────────────────────
 
 function setupSettingsPanel() {
   const PRESETS = [
@@ -450,6 +887,14 @@ function setupSettingsPanel() {
   const $active = $('#bgfx-active');
   $active.addEventListener('change', () => _bgFx.setConfig({ active: $active.checked }));
 
+  // --- Export CSV ---
+  const exportBtn = $('#settings-export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      exportToCSV(allTasks, getProjectName());
+    });
+  }
+
   // --- Open / close settings view ---
   function showSettings() {
     previousView = currentView;
@@ -459,12 +904,17 @@ function setupSettingsPanel() {
     $('#todolist-view').classList.add('hidden');
     settingsView.classList.remove('hidden');
     $active.checked = _bgFx.getConfig().active;
-    window.scrollTo(0, 0);
+    document.querySelector('main').classList.add('settings-open');
+    settingsView.scrollTop = 0;
+    // Refresh export section visibility
+    const exportSection = $('#settings-export-section');
+    if (exportSection) exportSection.classList.toggle('hidden', getProjectType() !== 'local');
   }
 
   function hideSettings() {
     settingsView.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
+    document.querySelector('main').classList.remove('settings-open');
     saveCustomColors(colors);
     // Restore previous view
     currentView = previousView;
@@ -493,6 +943,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Settings panel
   setupSettingsPanel();
 
+  // Import modal
+  setupImportModal();
+
+  // Close sidebar project menus on outside click
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-project-menu.open').forEach(m => m.classList.remove('open'));
+  });
+
+  // FAB — add new task
+  const fabAdd = $('#fab-add');
+  if (fabAdd) {
+    fabAdd.addEventListener('click', () => {
+      const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: '', startDate: null, endDate: null, dependencies: '' };
+      openEditModal(blankTask, getModalOptions(), ({ updatedFields }) => {
+        handleTaskCreate(updatedFields);
+      }, handleRoomChange, {});
+    });
+  }
+
   // View toggles
   // Set active tab from saved view
   document.querySelectorAll('.view-btn').forEach(b => {
@@ -519,8 +988,191 @@ document.addEventListener('DOMContentLoaded', () => {
   ['filter-room', 'filter-category', 'filter-assigned'].forEach(id => {
     $(`#${id}`).addEventListener('change', (e) => {
       filters[id.replace('filter-', '')] = e.target.value;
+      updateFilterBadge();
       render();
     });
+  });
+
+  // Search (desktop)
+  $('#search-tasks').addEventListener('input', (e) => {
+    filters.search = e.target.value.trim();
+    render();
+  });
+
+  // Mobile search overlay
+  const mobileSearchOverlay = $('#mobile-search-overlay');
+  const mobileSearchInput = $('#mobile-search-input');
+  const mobileSearchBtn = $('#mobile-search-btn');
+  const mobileSearchClose = $('#mobile-search-close');
+  const mobileSearchResults = $('#mobile-search-results');
+
+  function renderMobileSearchResults(q) {
+    if (!mobileSearchResults) return;
+    if (!q) { mobileSearchResults.innerHTML = ''; return; }
+    const lower = q.toLowerCase();
+    const matches = allTasks.filter(t =>
+      t.task.toLowerCase().includes(lower) ||
+      (t.room && t.room.toLowerCase().includes(lower)) ||
+      (t.category && t.category.toLowerCase().includes(lower))
+    ).slice(0, 25);
+
+    if (matches.length === 0) {
+      mobileSearchResults.innerHTML = `<div class="mobile-search-empty">No tasks match "<strong>${q}</strong>"</div>`;
+      return;
+    }
+    mobileSearchResults.innerHTML = '';
+    matches.forEach(task => {
+      const row = document.createElement('button');
+      row.className = 'mobile-search-result-row';
+      row.innerHTML = `<span class="msr-title">${task.task}</span><span class="msr-meta">${task.room}${task.status ? ' · ' + task.status : ''}</span>`;
+      row.addEventListener('click', () => {
+        closeMobileSearch();
+        handleTaskEdit(task);
+      });
+      mobileSearchResults.appendChild(row);
+    });
+  }
+
+  function openMobileSearch() {
+    mobileSearchInput.value = filters.search;
+    renderMobileSearchResults(filters.search);
+    mobileSearchOverlay.classList.add('open');
+    requestAnimationFrame(() => mobileSearchInput.focus());
+  }
+  function closeMobileSearch() {
+    mobileSearchOverlay.classList.remove('open');
+    mobileSearchInput.blur();
+  }
+
+  if (mobileSearchBtn) mobileSearchBtn.addEventListener('click', openMobileSearch);
+  if (mobileSearchClose) mobileSearchClose.addEventListener('click', closeMobileSearch);
+  if (mobileSearchInput) {
+    mobileSearchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      filters.search = q;
+      renderMobileSearchResults(q);
+      // Mirror to desktop input for consistency
+      const desktopInput = $('#search-tasks');
+      if (desktopInput) desktopInput.value = q;
+      render();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileSearchOverlay && mobileSearchOverlay.classList.contains('open')) {
+      closeMobileSearch();
+    }
+  });
+
+  // Mobile filter overlay
+  const mobileFilterOverlay = $('#mobile-filter-overlay');
+  const mobileFilterBtn = $('#mobile-filter-btn');
+  const mobileFilterBadge = $('#mobile-filter-badge');
+  const mobileFilterDone = $('#mobile-filter-done');
+  const mobileFilterClear = $('#mobile-filter-clear');
+  const desktopFilterBtn = $('#desktop-filter-btn');
+  const desktopFilterBadge = $('#desktop-filter-badge');
+  const desktopFilterPopover = $('#desktop-filter-popover');
+
+  // Desktop filter popover toggle
+  if (desktopFilterBtn && desktopFilterPopover) {
+    desktopFilterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = desktopFilterPopover.classList.toggle('hidden') === false;
+      desktopFilterBtn.classList.toggle('active', isOpen);
+      if (isOpen) {
+        const rect = desktopFilterBtn.getBoundingClientRect();
+        desktopFilterPopover.style.top = (rect.bottom + 10) + 'px';
+        desktopFilterPopover.style.right = (window.innerWidth - rect.right) + 'px';
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!desktopFilterPopover.classList.contains('hidden') &&
+          !desktopFilterBtn.contains(e.target) &&
+          !desktopFilterPopover.contains(e.target)) {
+        desktopFilterPopover.classList.add('hidden');
+        desktopFilterBtn.classList.remove('active');
+      }
+    });
+  }
+
+  function updateFilterBadge() {
+    const count = [filters.room, filters.category, filters.assigned].filter(Boolean).length;
+    if (mobileFilterBadge) {
+      mobileFilterBadge.textContent = count;
+      mobileFilterBadge.classList.toggle('hidden', count === 0);
+    }
+    if (desktopFilterBadge) {
+      desktopFilterBadge.textContent = count;
+      desktopFilterBadge.classList.toggle('hidden', count === 0);
+    }
+  }
+
+  function syncMobileFilterSelects() {
+    // Copy options from desktop selects (populated by buildFilterOptions)
+    ['room', 'category', 'assigned'].forEach(key => {
+      const desktop = $(`#filter-${key}`);
+      const mobile = $(`#m-filter-${key}`);
+      if (desktop && mobile) {
+        mobile.innerHTML = desktop.innerHTML;
+        mobile.value = filters[key];
+      }
+    });
+    const mGroupBy = $('#m-group-by');
+    const dGroupBy = $('#group-by');
+    if (mGroupBy && dGroupBy) mGroupBy.value = dGroupBy.value;
+    // Show/hide group-by row based on current view
+    const mGroupByWrap = $('#m-group-by-wrap');
+    if (mGroupByWrap) mGroupByWrap.style.display = currentView === 'kanban' ? '' : 'none';
+  }
+
+  function openMobileFilter() {
+    syncMobileFilterSelects();
+    mobileFilterOverlay.classList.add('open');
+  }
+  function closeMobileFilter() {
+    mobileFilterOverlay.classList.remove('open');
+  }
+
+  if (mobileFilterBtn) mobileFilterBtn.addEventListener('click', openMobileFilter);
+  if (mobileFilterDone) mobileFilterDone.addEventListener('click', closeMobileFilter);
+  if (mobileFilterClear) {
+    mobileFilterClear.addEventListener('click', () => {
+      filters.room = ''; filters.category = ''; filters.assigned = '';
+      ['room', 'category', 'assigned'].forEach(key => {
+        const d = $(`#filter-${key}`); if (d) d.value = '';
+        const m = $(`#m-filter-${key}`); if (m) m.value = '';
+      });
+      updateFilterBadge();
+      render();
+    });
+  }
+
+  ['room', 'category', 'assigned'].forEach(key => {
+    const mSel = $(`#m-filter-${key}`);
+    if (mSel) {
+      mSel.addEventListener('change', (e) => {
+        filters[key] = e.target.value;
+        const dSel = $(`#filter-${key}`);
+        if (dSel) dSel.value = e.target.value;
+        updateFilterBadge();
+        render();
+      });
+    }
+  });
+
+  const mGroupBy = $('#m-group-by');
+  if (mGroupBy) {
+    mGroupBy.addEventListener('change', (e) => {
+      const dGroupBy = $('#group-by');
+      if (dGroupBy) dGroupBy.value = e.target.value;
+      render();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileFilterOverlay && mobileFilterOverlay.classList.contains('open')) {
+      closeMobileFilter();
+    }
   });
 
   // Group by
@@ -539,12 +1191,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mobile hamburger menu
   const menuBtn = $('#mobile-menu-btn');
   const menuOverlay = $('#mobile-menu-overlay');
+  const themeFooter = document.getElementById('mobile-menu-theme-footer');
+  let _savedTheme = null;
+  const hideThemeFooter = () => { if (themeFooter) themeFooter.classList.remove('visible'); };
   const closeMenu = () => {
     menuBtn.classList.remove('open');
     menuBtn.setAttribute('aria-expanded', 'false');
     menuBtn.title = 'Open menu';
     menuBtn.setAttribute('aria-label', 'Open menu');
     menuOverlay.classList.remove('open');
+    // Auto-save theme on dismiss (keep whatever is currently set)
+    _savedTheme = null;
+    hideThemeFooter();
   };
   menuBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -599,7 +1257,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Wire mobile menu items
   const mobileSettingsBtn = $('#mobile-settings-btn');
-  const mobileThemeBtn = $('#mobile-theme-btn');
   const mobileSyncBtn = $('#mobile-sync-btn');
   if (mobileSettingsBtn) mobileSettingsBtn.addEventListener('click', () => {
     closeMenu();
@@ -607,8 +1264,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const mobileCb = document.getElementById('mobile-theme-checkbox');
   if (mobileCb) mobileCb.addEventListener('change', () => {
-    closeMenu();
+    // Capture theme before toggling so Cancel can revert
+    _savedTheme = document.documentElement.getAttribute('data-theme') || 'light';
     toggleTheme();
+    if (themeFooter) themeFooter.classList.add('visible');
+  });
+  const mobileThemeCancel = document.getElementById('mobile-theme-cancel');
+  const mobileThemeSave = document.getElementById('mobile-theme-save');
+  if (mobileThemeCancel) mobileThemeCancel.addEventListener('click', () => {
+    if (_savedTheme) {
+      document.documentElement.setAttribute('data-theme', _savedTheme);
+      localStorage.setItem('qp-theme', _savedTheme);
+      syncThemeCheckboxes();
+    }
+    _savedTheme = null;
+    hideThemeFooter();
+    closeMenu();
+  });
+  if (mobileThemeSave) mobileThemeSave.addEventListener('click', () => {
+    _savedTheme = null;
+    hideThemeFooter();
+    closeMenu();
   });
   if (mobileSyncBtn) mobileSyncBtn.addEventListener('click', () => {
     closeMenu();

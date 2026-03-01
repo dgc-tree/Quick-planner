@@ -61,6 +61,27 @@ function processUpdate(body) {
     return respond({ success: false, error: 'Task column not found in headers: ' + headers.join(', ') });
   }
 
+  // New row insert — sentinel '__new__' means append rather than update
+  if (taskName === '__new__') {
+    var newFieldMap = {
+      'task': 'Task', 'room': 'Room', 'category': 'Category',
+      'assigned': 'Assigned', 'status': 'Status',
+      'startDate': 'Start date', 'endDate': 'End date',
+      'dependencies': 'Dependencies'
+    };
+    var newRow = new Array(headers.length).fill('');
+    var newUpdates = body.updates || {};
+    for (var f in newUpdates) {
+      if (!newUpdates.hasOwnProperty(f)) continue;
+      var hdr = newFieldMap[f];
+      if (!hdr) continue;
+      var ci = headers.indexOf(hdr);
+      if (ci !== -1) newRow[ci] = newUpdates[f];
+    }
+    sheet.appendRow(newRow);
+    return respond({ success: true, row: sheet.getLastRow(), updated: Object.keys(newUpdates) });
+  }
+
   // Find the row matching the task name
   var rowIndex = -1;
   for (var i = 1; i < data.length; i++) {

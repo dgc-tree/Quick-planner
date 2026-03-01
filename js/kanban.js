@@ -2,7 +2,7 @@ import { STATUS_COLORS } from './theme.js';
 import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
 
 const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done'];
-const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
 let draggedCard = null;
 let draggedTaskId = null;
