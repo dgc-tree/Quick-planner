@@ -43,4 +43,9 @@ When user says "commit and push":
 - Verify the change achieves the goal before moving on
 - If blocked, ask rather than guess
 
+## 5. Bug Triage — Ask Before Assuming
+- When a bug involves an external integration (API, sheet sync, third-party service), **ask the user whether that integration is still in use** before debugging it
+- Don't patch plumbing the user has already abandoned — remove dead code instead
+- Prefer deletion over repair when the feature is no longer needed
+
 # ── END: Claude Guidelines ──
