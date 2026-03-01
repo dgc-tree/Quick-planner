@@ -4,7 +4,6 @@ import { renderKanban } from './kanban.js';
 import { renderPlanner, setViewSize } from './planner.js';
 import { renderTodoList } from './todolist.js';
 import { openEditModal } from './modal.js';
-import { updateTask } from './sheet-writer.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
 import {
@@ -292,99 +291,35 @@ function getModalOptions() {
 
 function handleTaskEdit(task) {
   openEditModal(task, getModalOptions(), ({ originalTask, updatedFields }) => {
-    // Optimistic local update
     applyLocalUpdate(task, updatedFields);
     render();
     persistTaskChange();
-
-    if (getProjectType() === 'local') {
-      showToast('Saved', 'success');
-      return;
-    }
-
-    // Format dates for sheet (dd/mm)
-    const sheetUpdates = { ...updatedFields };
-    if (sheetUpdates.startDate) {
-      const d = new Date(sheetUpdates.startDate);
-      sheetUpdates.startDate = `${d.getDate()}/${d.getMonth() + 1}`;
-    }
-    if (sheetUpdates.endDate) {
-      const d = new Date(sheetUpdates.endDate);
-      sheetUpdates.endDate = `${d.getDate()}/${d.getMonth() + 1}`;
-    }
-
-    updateTask(originalTask, sheetUpdates)
-      .then(res => {
-        if (res && res.success) {
-          showToast('Saved to sheet', 'success');
-        } else {
-          showToast(res?.error || 'Save may have failed', 'error');
-        }
-      })
-      .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+    showToast('Saved', 'success');
   }, handleRoomChange, {
     onDelete: (t) => handleTaskDelete(t),
     onDuplicate: (t) => handleTaskDuplicate(t),
   });
 }
 
-async function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
+function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
   if (action === 'rename') {
     affectedTasks.forEach(t => { t.room = newRoom; });
     setupFilters();
     render();
     persistTaskChange();
-
-    if (getProjectType() === 'local') {
-      showToast(`Room renamed`, 'success');
-      return;
-    }
-
-    let ok = 0, fail = 0;
-    for (const t of affectedTasks) {
-      try {
-        const res = await updateTask(t.task, { room: newRoom });
-        if (res && res.success) ok++; else fail++;
-      } catch { fail++; }
-    }
-    showToast(`Room renamed: ${ok} updated${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+    showToast(`Room renamed`, 'success');
   } else if (action === 'delete') {
     affectedTasks.forEach(t => { t.room = ''; });
     setupFilters();
     render();
     persistTaskChange();
-
-    if (getProjectType() === 'local') {
-      showToast(`Room deleted`, 'success');
-      return;
-    }
-
-    let ok = 0, fail = 0;
-    for (const t of affectedTasks) {
-      try {
-        const res = await updateTask(t.task, { room: '' });
-        if (res && res.success) ok++; else fail++;
-      } catch { fail++; }
-    }
-    showToast(`Room deleted: ${ok} cleared${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+    showToast(`Room deleted`, 'success');
   }
 }
 
 function handleStatusChange(task, newStatus) {
   task.status = newStatus;
   persistTaskChange();
-
-  if (getProjectType() === 'local') return;
-
-  updateTask(task.task, { status: newStatus })
-    .then(res => {
-      if (res && res.success) {
-        showToast('Status updated', 'success');
-      } else {
-        showToast(res?.error || 'Save may have failed', 'error');
-      }
-    })
-    .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
 }
 
 function handleTaskDelete(task) {
@@ -410,25 +345,7 @@ function handleTaskDuplicate(task) {
   setupFilters();
   render();
   persistTaskChange();
-
-  if (getProjectType() === 'local') {
-    showToast('Task duplicated', 'success');
-    return;
-  }
-
-  const sheetUpdates = {
-    task: copy.task, room: copy.room, category: copy.category,
-    status: copy.status, assigned: copy.assigned,
-    startDate: copy.startDate ? `${copy.startDate.getDate()}/${copy.startDate.getMonth() + 1}` : '',
-    endDate: copy.endDate ? `${copy.endDate.getDate()}/${copy.endDate.getMonth() + 1}` : '',
-    dependencies: copy.dependencies || '',
-  };
-  updateTask('__new__', sheetUpdates)
-    .then(res => {
-      if (res && res.success) showToast('Task duplicated', 'success');
-      else showToast(res?.error || 'Duplicate may not have saved to sheet', 'error');
-    })
-    .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+  showToast('Task duplicated', 'success');
 }
 
 function handleTaskCreate(fields) {
@@ -447,25 +364,7 @@ function handleTaskCreate(fields) {
   setupFilters();
   render();
   persistTaskChange();
-
-  if (getProjectType() === 'local') {
-    showToast('Task created', 'success');
-    return;
-  }
-
-  const sheetUpdates = {
-    task: newTask.task, room: newTask.room, category: newTask.category,
-    status: newTask.status, assigned: newTask.assigned,
-    startDate: newTask.startDate ? `${newTask.startDate.getDate()}/${newTask.startDate.getMonth() + 1}` : '',
-    endDate: newTask.endDate ? `${newTask.endDate.getDate()}/${newTask.endDate.getMonth() + 1}` : '',
-    dependencies: newTask.dependencies,
-  };
-  updateTask('__new__', sheetUpdates)
-    .then(res => {
-      if (res && res.success) showToast('Task created', 'success');
-      else showToast(res?.error || 'Create may not have saved to sheet', 'error');
-    })
-    .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+  showToast('Task created', 'success');
 }
 
 function applyLocalUpdate(task, fields) {
@@ -509,16 +408,7 @@ function render() {
       onAssignChange: (task, newAssigned) => {
         task.assigned = newAssigned;
         persistTaskChange();
-        if (getProjectType() === 'local') {
-          showToast(`Assigned to ${newAssigned}`, 'success');
-          return;
-        }
-        updateTask(task.task, { assigned: newAssigned })
-          .then(res => {
-            if (res && res.success) showToast(`Assigned to ${newAssigned}`, 'success');
-            else showToast(res?.error || 'Save may have failed', 'error');
-          })
-          .catch(err => showToast('Sheet write failed: ' + err.message, 'error'));
+        showToast(`Assigned to ${newAssigned}`, 'success');
       },
     });
   }

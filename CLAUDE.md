@@ -43,4 +43,14 @@ When user says "commit and push":
 - Verify the change achieves the goal before moving on
 - If blocked, ask rather than guess
 
+## 5. Migration Discipline
+- When replacing a system (e.g. swapping a data source, removing an integration), **tear down the old system in the same step** — delete dead code, remove imports, clean up call sites
+- Never leave orphaned integration code wired into live error paths; it will break
+- Treat migration as: build the new thing → verify it works → rip out the old thing. All three steps, same session
+
+## 6. Bug Triage — Ask Before Assuming
+- When a bug involves an external integration (API, sheet sync, third-party service), **ask the user whether that integration is still in use** before debugging it
+- Don't patch plumbing the user has already abandoned — remove dead code instead
+- Prefer deletion over repair when the feature is no longer needed
+
 # ── END: Claude Guidelines ──
