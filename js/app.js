@@ -43,17 +43,18 @@ function persistTaskChange() {
 }
 
 async function loadProjectData() {
-  if (!currentProjectId) {
-    allTasks = [];
-    return;
-  }
   const projects = loadProjects();
+
+  // If no active project (or stale ID), fall back to first available
+  if (!currentProjectId || !projects.find(p => p.id === currentProjectId)) {
+    const fallback = projects.length ? projects[0] : null;
+    currentProjectId = fallback?.id || null;
+    saveActiveProjectId(currentProjectId);
+    if (!fallback) { allTasks = []; return; }
+  }
+
   const project = projects.find(p => p.id === currentProjectId);
-  if (!project) {
-    currentProjectId = null;
-    saveActiveProjectId(null);
-    allTasks = [];
-  } else {
+  if (project) {
     allTasks = project.tasks.map(t => ({
       ...t,
       startDate: t.startDate ? new Date(t.startDate) : null,
