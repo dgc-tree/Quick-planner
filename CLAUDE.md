@@ -47,6 +47,8 @@ When user says "commit and push":
 - When replacing a system (e.g. swapping a data source, removing an integration), **tear down the old system in the same step** — delete dead code, remove imports, clean up call sites
 - Never leave orphaned integration code wired into live error paths; it will break
 - Treat migration as: build the new thing → verify it works → rip out the old thing. All three steps, same session
+- **Red-team every migration**: after removing code, grep for all references to the old system across JS, HTML, and CSS. Check both read and write paths. A half-removed integration is worse than one left fully in place
+- **Incident (March 2025)**: When the project moved off Google Sheets to localStorage, only the write side (`sheet-writer.js`) was removed. The read side (`fetchSheetData`), the `'sheet'` project type, auto-sync polling, the hardcoded 'Renos' sidebar entry, and the `persistTaskChange` guard that skipped saves for sheet projects all survived. Result: (1) false error toast on every create/edit, (2) new tasks silently lost on page refresh because `persistTaskChange()` was a no-op for the still-active `'sheet'` project type. Both bugs were caused by incomplete teardown.
 
 ## 6. Bug Triage — Ask Before Assuming
 - When a bug involves an external integration (API, sheet sync, third-party service), **ask the user whether that integration is still in use** before debugging it

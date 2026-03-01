@@ -1,14 +1,3 @@
-const SHEET_CSV_URL =
-  'https://docs.google.com/spreadsheets/d/1MCVKPY56Ynqb7O3cMmm3vfSZ7zI9QJhhKnI29H3pk8U/export?format=csv&gid=0';
-
-export async function fetchSheetData() {
-  const res = await fetch(SHEET_CSV_URL);
-  if (!res.ok) throw new Error(`Failed to fetch sheet: ${res.status}`);
-  const text = await res.text();
-  const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-  return normaliseRows(parsed.data);
-}
-
 const ASSIGNED_ALIAS = { 'Dave': 'DG', 'Simone': 'SG', 'Simona': 'SG' };
 
 export function normaliseRows(rows) {

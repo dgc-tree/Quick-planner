@@ -1,4 +1,3 @@
-import { fetchSheetData } from './data.js';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner, setViewSize } from './planner.js';
@@ -23,36 +22,27 @@ const bgFxReady = import('./bg-effects.js')
 let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
 let filters = { room: '', category: '', assigned: '', search: '' };
-let syncTimer = null;
 let currentProjectId = loadActiveProjectId();
 
 const $ = (sel) => document.querySelector(sel);
 
 function getProjectType() {
-  if (currentProjectId === 'sheet') return 'sheet';
   if (!currentProjectId) return 'local';
   const projects = loadProjects();
   return projects.find(p => p.id === currentProjectId)?.type ?? 'local';
 }
 
 function getProjectName() {
-  if (currentProjectId === 'sheet') return 'Renos';
   if (!currentProjectId) return '';
   const projects = loadProjects();
   return projects.find(p => p.id === currentProjectId)?.name ?? 'Project';
 }
 
 function persistTaskChange() {
-  if (getProjectType() === 'local') {
-    saveProjectTasks(currentProjectId, allTasks);
-  }
+  saveProjectTasks(currentProjectId, allTasks);
 }
 
 async function loadProjectData() {
-  if (currentProjectId === 'sheet') {
-    allTasks = await fetchSheetData();
-    return;
-  }
   if (!currentProjectId) {
     allTasks = [];
     return;
@@ -76,7 +66,6 @@ async function switchProject(id) {
   if (window._closeOverlayViews) window._closeOverlayViews();
   currentProjectId = id;
   saveActiveProjectId(id);
-  clearInterval(syncTimer);
   showLoading(true);
   try {
     await loadProjectData();
@@ -88,7 +77,6 @@ async function switchProject(id) {
   }
   showLoading(false);
   renderSidebarProjects();
-  if (getProjectType() === 'sheet') startAutoSync();
 }
 
 // Position a body-level popover below its trigger, clamped within viewport
@@ -174,19 +162,17 @@ function renderSidebarProjects() {
 
   if (list) {
     list.innerHTML = '';
-    list.appendChild(makeItem('sheet', 'Renos', false));
     projects.forEach(p => list.appendChild(makeItem(p.id, p.name, true)));
   }
 
   if (mobileList) {
     mobileList.innerHTML = '';
-    mobileList.appendChild(makeItem('sheet', 'Renos', false));
     projects.forEach(p => mobileList.appendChild(makeItem(p.id, p.name, true)));
   }
 
   // Export button in settings
   const exportSection = $('#settings-export-section');
-  if (exportSection) exportSection.classList.toggle('hidden', getProjectType() !== 'local');
+  if (exportSection) exportSection.classList.remove('hidden');
 }
 
 function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
@@ -220,7 +206,7 @@ function handleDeleteProject(id, name) {
       const projects = loadProjects().filter(p => p.id !== id);
       saveProjects(projects);
       if (currentProjectId === id) {
-        switchProject('sheet');
+        switchProject(projects.length ? projects[0].id : null);
       } else {
         renderSidebarProjects();
       }
@@ -240,41 +226,7 @@ async function init() {
   }
   showLoading(false);
   renderSidebarProjects();
-  if (getProjectType() === 'sheet') startAutoSync();
   bgFxReady.then(() => _bgFx.initBgEffects());
-}
-
-function startAutoSync() {
-  if (syncTimer) clearInterval(syncTimer);
-  syncTimer = setInterval(() => {
-    if (getProjectType() === 'sheet') refreshData(true);
-  }, 5 * 60 * 1000);
-}
-
-async function refreshData(silent = false) {
-  if (getProjectType() !== 'sheet') return;
-  const sidebarSyncBtn = $('#sidebar-sync-btn');
-  if (sidebarSyncBtn) { sidebarSyncBtn.classList.add('refreshing'); sidebarSyncBtn.disabled = true; }
-  $('#error').classList.add('hidden');
-  if (!silent) showLoading(true);
-  try {
-    allTasks = await fetchSheetData();
-    updateSummary();
-    setupFilters();
-    render();
-    updateLastSynced();
-  } catch (err) {
-    if (!silent) showError(err.message);
-  }
-  if (sidebarSyncBtn) { sidebarSyncBtn.classList.remove('refreshing'); sidebarSyncBtn.disabled = false; }
-  if (!silent) showLoading(false);
-}
-
-function updateLastSynced() {
-  const el = $('#sidebar-last-synced');
-  if (!el) return;
-  const now = new Date();
-  el.textContent = `Synced ${now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function setupFilters() {
@@ -455,7 +407,7 @@ function buildSkeleton(view) {
 
 function showError(msg) {
   const el = $('#error');
-  el.innerHTML = `<div class="notification-inner"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><div class="notification-text"><strong>Connection error</strong><span>${msg}. Check the sheet is publicly shared.</span></div></div>`;
+  el.innerHTML = `<div class="notification-inner"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><div class="notification-text"><strong>Error</strong><span>${msg}</span></div></div>`;
   el.classList.remove('hidden');
 }
 
@@ -830,7 +782,7 @@ function setupSettingsPanel() {
     settingsView.scrollTop = 0;
     // Refresh export section visibility
     const exportSection = $('#settings-export-section');
-    if (exportSection) exportSection.classList.toggle('hidden', getProjectType() !== 'local');
+    if (exportSection) exportSection.classList.remove('hidden');
   }
 
   function hideSettings() {
@@ -1312,8 +1264,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sidebar buttons
   document.getElementById('sidebar-theme-checkbox').addEventListener('change', toggleTheme);
-  const sidebarSync = $('#sidebar-sync-btn');
-  if (sidebarSync) sidebarSync.addEventListener('click', () => { refreshData(false); startAutoSync(); });
 
   // Sidebar expand/collapse toggle (WCAG 1.4.13 keyboard accessible)
   const sidebarRail = document.querySelector('.sidebar-rail');
@@ -1331,7 +1281,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Wire mobile menu items
   const mobileSettingsBtn = $('#mobile-settings-btn');
-  const mobileSyncBtn = $('#mobile-sync-btn');
   if (mobileSettingsBtn) mobileSettingsBtn.addEventListener('click', () => {
     closeMenu();
     if (window._showSettings) window._showSettings();
@@ -1360,7 +1309,6 @@ document.addEventListener('DOMContentLoaded', () => {
     hideThemeFooter();
     closeMenu();
   });
-  if (mobileSyncBtn) mobileSyncBtn.addEventListener('click', () => { closeMenu(); refreshData(false); startAutoSync(); });
 
   // Auto-hide primary nav on scroll (mobile only)
   (function() {
