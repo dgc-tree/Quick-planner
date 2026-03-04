@@ -1,8 +1,10 @@
 /**
- * First-visit onboarding — single-step color picker with preset swatches.
+ * 3-step onboarding: colour picker → template → import.
  */
-import { hasVisited, markVisited, saveCustomColors } from './storage.js';
+import { hasVisited, markVisited, saveCustomColors, loadProjects, saveProjects, saveActiveProjectId } from './storage.js';
 import { applyCustomColors } from './theme-customizer.js';
+import { openColorPickerModal } from './color-picker.js';
+import { importCSV } from './projects.js';
 
 const PRESETS = [
   { hex: '#00E3FF', label: 'Cyan' },
@@ -16,119 +18,299 @@ const PRESETS = [
   { hex: '#A8998A', label: 'Warm Grey' },
 ];
 
+function today(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+const TEMPLATES = [
+  {
+    id: 'renovation',
+    label: 'Renovation',
+    icon: '🏠',
+    tasks: [
+      { task: 'Measure and quote kitchen', room: 'Kitchen', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(7), dependencies: '' },
+      { task: 'Install kitchen cabinetry', room: 'Kitchen', category: 'Trade', status: 'To Do', assigned: '', startDate: today(14), endDate: today(21), dependencies: '' },
+      { task: 'Tile bathroom floor', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(14), dependencies: '' },
+      { task: 'Paint bathroom walls', room: 'Bathroom', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(21), endDate: today(28), dependencies: '' },
+      { task: 'Fit skirting boards', room: 'Living', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(28), endDate: today(35), dependencies: '' },
+      { task: 'Final inspection', room: 'Living', category: 'Planning', status: 'To Do', assigned: '', startDate: today(42), endDate: today(42), dependencies: '' },
+    ],
+  },
+  {
+    id: 'budget',
+    label: 'Budget',
+    icon: '💰',
+    tasks: [
+      { task: 'Flooring materials', room: 'Materials', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(7), dependencies: '' },
+      { task: 'Plumbing fixtures', room: 'Materials', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(7), dependencies: '' },
+      { task: 'Electrician', room: 'Labour', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(14), dependencies: '' },
+      { task: 'Plumber', room: 'Labour', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(14), dependencies: '' },
+      { task: 'Unexpected repairs', room: 'Contingency', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(60), dependencies: '' },
+      { task: 'Council permits', room: 'Contingency', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(30), dependencies: '' },
+    ],
+  },
+  {
+    id: 'todo',
+    label: 'To Do list',
+    icon: '✅',
+    tasks: [
+      { task: 'Fix leaking tap', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: '', startDate: today(0), endDate: today(3), dependencies: '' },
+      { task: 'Repaint front door', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(3), endDate: today(5), dependencies: '' },
+      { task: 'Service air conditioner', room: 'Living', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(7), dependencies: '' },
+      { task: 'Clean gutters', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(14), endDate: today(14), dependencies: '' },
+      { task: 'Replace smoke alarms', room: 'Living', category: 'Planning', status: 'To Do', assigned: '', startDate: today(5), endDate: today(5), dependencies: '' },
+      { task: 'Garden tidy', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(21), endDate: today(28), dependencies: '' },
+    ],
+  },
+];
+
 export function shouldShowOnboarding() {
   return !hasVisited();
 }
 
-export function showOnboarding() {
+export function showOnboarding(onFinish) {
   const colors = { primary1: '#00E3FF', secondary1: null, secondary2: null };
-  let selected = '#00E3FF';
+  let selectedColor = '#00E3FF';
+  let selectedTemplateId = null;
+  let droppedFile = null;
+  let step = 1;
 
   const overlay = document.createElement('div');
   overlay.className = 'onboarding-overlay';
 
   const dialog = document.createElement('div');
   dialog.className = 'onboarding-dialog';
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
 
-  dialog.innerHTML = `
-    <h2 class="onboarding-title">Welcome to Quick Planner</h2>
-    <p class="onboarding-body">Pick a theme color to get started.</p>
-    <div class="onboarding-swatches"></div>
-    <div class="onboarding-custom-row" style="display:none;">
-      <input type="color" class="onboarding-color-input">
-      <div class="onboarding-custom-actions">
-        <button class="modal-btn modal-cancel onboarding-custom-cancel">Cancel</button>
-        <button class="modal-btn modal-save onboarding-custom-save">Save</button>
-      </div>
-    </div>
-    <div class="onboarding-actions">
-      <button class="modal-btn modal-cancel onboarding-skip">Skip</button>
-      <button class="modal-btn modal-save onboarding-done">Done</button>
-    </div>
-  `;
+  function dots(active) {
+    return `<div class="ob-dots">
+      <span class="ob-dot${active === 1 ? ' active' : ''}"></span>
+      <span class="ob-dot${active === 2 ? ' active' : ''}"></span>
+      <span class="ob-dot${active === 3 ? ' active' : ''}"></span>
+    </div>`;
+  }
 
-  const swatchContainer = dialog.querySelector('.onboarding-swatches');
-  const customRow = dialog.querySelector('.onboarding-custom-row');
-  const colorInput = dialog.querySelector('.onboarding-color-input');
+  function buildSwatches(container) {
+    PRESETS.forEach(p => {
+      const swatch = document.createElement('button');
+      swatch.className = 'onboarding-swatch' + (p.hex === selectedColor ? ' active' : '');
+      swatch.dataset.hex = p.hex;
+      swatch.style.background = p.hex;
+      swatch.title = p.label;
+      swatch.setAttribute('aria-label', p.label);
+      swatch.addEventListener('click', () => selectSwatch(p.hex, container));
+      container.appendChild(swatch);
+    });
 
-  function selectSwatch(hex) {
-    selected = hex;
+    const plus = document.createElement('button');
+    plus.className = 'onboarding-swatch onboarding-swatch-plus';
+    plus.title = 'Custom colour';
+    plus.setAttribute('aria-label', 'Custom colour');
+    plus.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    plus.addEventListener('click', () => {
+      container.querySelectorAll('.onboarding-swatch').forEach(s => s.classList.remove('active'));
+      plus.classList.add('active');
+      openColorPickerModal({
+        title: 'Custom colour',
+        initialHex: selectedColor,
+        onSave: (hex) => {
+          plus.style.background = hex;
+          plus.innerHTML = '';
+          selectSwatch(hex, container);
+          plus.classList.add('active');
+          container.querySelectorAll('.onboarding-swatch:not(.onboarding-swatch-plus)').forEach(s => s.classList.remove('active'));
+        },
+      });
+    });
+    container.appendChild(plus);
+  }
+
+  function selectSwatch(hex, container) {
+    selectedColor = hex;
     colors.primary1 = hex;
     applyCustomColors(colors);
-    swatchContainer.querySelectorAll('.onboarding-swatch').forEach(s => {
+    container.querySelectorAll('.onboarding-swatch').forEach(s => {
       s.classList.toggle('active', s.dataset.hex === hex);
     });
-    // deselect custom plus if a preset is chosen
-    const plus = swatchContainer.querySelector('.onboarding-swatch-plus');
+    const plus = container.querySelector('.onboarding-swatch-plus');
     if (plus) plus.classList.remove('active');
   }
 
-  // Render preset swatches
-  PRESETS.forEach(p => {
-    const swatch = document.createElement('button');
-    swatch.className = 'onboarding-swatch' + (p.hex === selected ? ' active' : '');
-    swatch.dataset.hex = p.hex;
-    swatch.style.background = p.hex;
-    swatch.title = p.label;
-    swatch.setAttribute('aria-label', p.label);
-    swatch.addEventListener('click', () => {
-      customRow.style.display = 'none';
-      selectSwatch(p.hex);
+  function buildDropZone(parent) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.style.display = 'none';
+    parent.appendChild(fileInput);
+
+    const dropZone = document.createElement('div');
+    dropZone.className = 'ob-drop-zone';
+    dropZone.innerHTML = `
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Drop CSV here or click to browse</span>
+      <div class="ob-file-name" style="display:none;"></div>
+    `;
+
+    const errorEl = document.createElement('div');
+    errorEl.className = 'ob-error';
+    errorEl.style.display = 'none';
+
+    const actions = document.createElement('div');
+    actions.className = 'ob-import-actions';
+
+    const uploadBtn = document.createElement('button');
+    uploadBtn.className = 'modal-btn modal-save';
+    uploadBtn.textContent = 'Upload';
+    uploadBtn.style.display = 'none';
+    actions.appendChild(uploadBtn);
+
+    function onFileChosen(file) {
+      if (!file) return;
+      droppedFile = file;
+      dropZone.querySelector('.ob-file-name').textContent = file.name;
+      dropZone.querySelector('.ob-file-name').style.display = '';
+      uploadBtn.style.display = '';
+      errorEl.style.display = 'none';
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => onFileChosen(fileInput.files[0]));
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
     });
-    swatchContainer.appendChild(swatch);
-  });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      onFileChosen(e.dataTransfer.files[0]);
+    });
 
-  // Custom "+" swatch
-  const plus = document.createElement('button');
-  plus.className = 'onboarding-swatch onboarding-swatch-plus';
-  plus.title = 'Custom color';
-  plus.setAttribute('aria-label', 'Custom color');
-  plus.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-  plus.addEventListener('click', () => {
-    colorInput.value = selected;
-    customRow.style.display = 'flex';
-    // Deselect presets
-    swatchContainer.querySelectorAll('.onboarding-swatch').forEach(s => s.classList.remove('active'));
-    plus.classList.add('active');
-  });
-  swatchContainer.appendChild(plus);
+    uploadBtn.addEventListener('click', async () => {
+      if (!droppedFile) return;
+      try {
+        const text = await droppedFile.text();
+        importCSV(text); // validate — throws on bad CSV
+        errorEl.style.display = 'none';
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = '';
+        droppedFile = null;
+        return;
+      }
+    });
 
-  // Custom color actions
-  dialog.querySelector('.onboarding-custom-cancel').addEventListener('click', () => {
-    customRow.style.display = 'none';
-    selectSwatch(selected); // revert visual selection
-  });
-  dialog.querySelector('.onboarding-custom-save').addEventListener('click', () => {
-    const hex = colorInput.value;
-    customRow.style.display = 'none';
-    plus.style.background = hex;
-    plus.innerHTML = '';
-    plus.dataset.hex = hex;
-    selectSwatch(hex);
-    plus.classList.add('active');
-    // deselect presets
-    swatchContainer.querySelectorAll('.onboarding-swatch:not(.onboarding-swatch-plus)').forEach(s => s.classList.remove('active'));
-  });
+    parent.appendChild(dropZone);
+    parent.appendChild(errorEl);
+    parent.appendChild(actions);
+  }
 
-  // Live preview while picking custom color
-  colorInput.addEventListener('input', () => {
-    colors.primary1 = colorInput.value;
-    applyCustomColors(colors);
-  });
+  function buildTemplateList(container) {
+    TEMPLATES.forEach(tpl => {
+      const item = document.createElement('button');
+      item.className = 'ob-template-item' + (selectedTemplateId === tpl.id ? ' selected' : '');
+      item.innerHTML = `<span class="ob-template-icon">${tpl.icon}</span><span class="ob-template-label">${tpl.label}</span>`;
+      item.addEventListener('click', () => {
+        selectedTemplateId = selectedTemplateId === tpl.id ? null : tpl.id;
+        container.querySelectorAll('.ob-template-item').forEach(el => el.classList.remove('selected'));
+        if (selectedTemplateId) item.classList.add('selected');
+      });
+      container.appendChild(item);
+    });
+  }
 
-  // Done / Skip
-  function finish() {
+  async function finish() {
     saveCustomColors(colors);
     applyCustomColors(colors);
     markVisited();
-    overlay.remove();
-  }
-  dialog.querySelector('.onboarding-skip').addEventListener('click', () => {
-    colors.primary1 = '#00E3FF';
-    finish();
-  });
-  dialog.querySelector('.onboarding-done').addEventListener('click', finish);
 
-  overlay.appendChild(dialog);
-  document.body.appendChild(overlay);
+    let projectId = null;
+
+    if (droppedFile) {
+      try {
+        const text = await droppedFile.text();
+        const tasks = importCSV(text);
+        projectId = 'import-' + Date.now();
+        const projects = loadProjects();
+        projects.push({ id: projectId, name: droppedFile.name.replace(/\.csv$/i, ''), tasks });
+        saveProjects(projects);
+        saveActiveProjectId(projectId);
+      } catch (err) {
+        // Fall through to template or sheet
+      }
+    }
+
+    if (!projectId && selectedTemplateId) {
+      const tpl = TEMPLATES.find(t => t.id === selectedTemplateId);
+      projectId = 'tpl-' + selectedTemplateId + '-' + Date.now();
+      const tasks = tpl.tasks.map((t, i) => ({ ...t, id: projectId + '-' + i }));
+      const projects = loadProjects();
+      projects.push({ id: projectId, name: tpl.label, tasks });
+      saveProjects(projects);
+      saveActiveProjectId(projectId);
+    }
+
+    overlay.remove();
+    if (onFinish) onFinish(projectId || 'sheet');
+  }
+
+  function renderStep(n) {
+    step = n;
+    dialog.innerHTML = '';
+
+    if (n === 1) {
+      dialog.innerHTML = `
+        ${dots(1)}
+        <div class="ob-mascot-wrap">
+          <img src="images/mascot-trash.png" class="ob-mascot" alt="">
+        </div>
+        <h2 class="ob-title">Welcome to Qp!</h2>
+        <p class="ob-intro">Let's get your planner set up in 3 quick steps.</p>
+        <div class="onboarding-swatches ob-swatches"></div>
+        <div class="ob-footer">
+          <button class="modal-btn modal-save ob-next">Next →</button>
+        </div>
+      `;
+      buildSwatches(dialog.querySelector('.ob-swatches'));
+      dialog.querySelector('.ob-next').addEventListener('click', () => renderStep(2));
+
+    } else if (n === 2) {
+      dialog.innerHTML = `
+        ${dots(2)}
+        <h2 class="ob-title">Choose a template</h2>
+        <div class="ob-template-list"></div>
+        <div class="ob-footer">
+          <button class="modal-btn modal-cancel ob-back">← Back</button>
+          <button class="modal-btn modal-cancel ob-skip">Skip</button>
+          <button class="modal-btn modal-save ob-next">Next →</button>
+        </div>
+      `;
+      buildTemplateList(dialog.querySelector('.ob-template-list'));
+      dialog.querySelector('.ob-back').addEventListener('click', () => renderStep(1));
+      dialog.querySelector('.ob-skip').addEventListener('click', () => { selectedTemplateId = null; renderStep(3); });
+      dialog.querySelector('.ob-next').addEventListener('click', () => renderStep(3));
+
+    } else if (n === 3) {
+      dialog.innerHTML = `
+        ${dots(3)}
+        <h2 class="ob-title">Import data</h2>
+        <p class="ob-intro">Optionally import a CSV file to load your own data.</p>
+        <div class="ob-drop-wrap"></div>
+        <div class="ob-footer">
+          <button class="modal-btn modal-cancel ob-back">← Back</button>
+          <button class="modal-btn modal-save ob-finish">Finish</button>
+        </div>
+      `;
+      buildDropZone(dialog.querySelector('.ob-drop-wrap'));
+      dialog.querySelector('.ob-back').addEventListener('click', () => renderStep(2));
+      dialog.querySelector('.ob-finish').addEventListener('click', finish);
+    }
+  }
+
+  renderStep(1);
 }

@@ -61,15 +61,41 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
     header.innerHTML = `<span class="column-title">${esc(groupName)}</span>`;
 
     if (statusColor) {
+      const menuWrap = document.createElement('div');
+      menuWrap.className = 'kanban-col-menu-wrap';
+
       const colorBtn = document.createElement('button');
       colorBtn.className = 'column-color-btn';
-      colorBtn.title = 'Change column colour';
+      colorBtn.title = 'Column options';
       colorBtn.innerHTML = '···';
+
+      const menu = document.createElement('div');
+      menu.className = 'kanban-col-menu';
+
+      const customiseItem = document.createElement('button');
+      customiseItem.className = 'kanban-col-menu-item';
+      customiseItem.textContent = 'Customise Colour';
+
+      menu.appendChild(customiseItem);
+      menuWrap.appendChild(colorBtn);
+      menuWrap.appendChild(menu);
+
       colorBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        const isOpen = menu.classList.contains('open');
+        document.querySelectorAll('.kanban-col-menu.open').forEach(m => m.classList.remove('open'));
+        if (!isOpen) menu.classList.add('open');
+      });
+
+      customiseItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.remove('open');
         openColumnColorPicker(groupName, header);
       });
-      header.appendChild(colorBtn);
+
+      document.addEventListener('click', () => menu.classList.remove('open'), { capture: false });
+
+      header.appendChild(menuWrap);
     }
 
     const cardList = document.createElement('div');
@@ -111,9 +137,12 @@ function openColumnColorPicker(columnName, header) {
     onSave: (hex) => {
       const colors = loadColumnColors();
       colors[columnName] = hex;
+      const textColor = contrastText(hex);
       header.style.background = hex;
-      header.style.color = contrastText(hex);
+      header.style.color = textColor;
       saveColumnColors(colors);
+      const slug = columnName.toLowerCase().replace(/\s+/g, '-');
+      document.documentElement.style.setProperty(`--status-${slug}-text`, textColor);
     },
   });
 }

@@ -852,6 +852,13 @@ function setupSettingsPanel() {
   $('#sidebar-settings-btn').addEventListener('click', showSettings);
   $('#settings-back').addEventListener('click', hideSettings);
 
+  $('#settings-master-setup')?.addEventListener('click', () => {
+    hideSettings();
+    showOnboarding((projectId) => {
+      if (projectId && projectId !== 'sheet') switchProject(projectId);
+    });
+  });
+
   // Expose for mobile menu
   window._showSettings = showSettings;
 
@@ -980,7 +987,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Onboarding for first-time visitors
   if (shouldShowOnboarding()) {
-    showOnboarding();
+    showOnboarding((projectId) => {
+      if (projectId && projectId !== 'sheet') switchProject(projectId);
+    });
   }
 
   // Settings panel
@@ -1011,7 +1020,9 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#sidebar-add-template-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       sidebarAddMenu.classList.remove('open');
-      showOnboarding();
+      showOnboarding((projectId) => {
+        if (projectId && projectId !== 'sheet') switchProject(projectId);
+      });
     });
   }
 
