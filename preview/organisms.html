@@ -3,103 +3,387 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Organisms — Design Preview</title>
+  <title>Organisms — Quick Planner Design System</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="ds.css">
   <style>
-    body { overflow: auto; padding: 40px; display: block; }
-    .section { max-width: 900px; margin: 0 auto 40px; }
-    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
-    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
-    .kanban-preview { display: flex; gap: 16px; }
-    .kanban-column { flex: 1; max-width: 280px; }
+    body { height: auto; overflow: auto; display: flex; background: var(--ds-bg); }
+    .sidebar-rail, .app-header, .primary-nav { display: none !important; }
   </style>
+  <script src="ds-nav.js"></script>
 </head>
 <body>
-  <div class="section">
-    <a href="index.html" class="back-link">Back to overview</a>
 
-    <h2>Kanban Columns (Status Grouped)</h2>
-    <div class="kanban-preview">
-      <div class="kanban-column">
-        <div class="kanban-column-header status-colored" style="background:var(--status-todo-bg);color:var(--status-todo-text)">
-          <span class="column-title">To Do</span>
+  <div class="ds-main">
+    <header class="ds-header">
+      <button class="ds-hamburger" id="ds-hamburger" aria-label="Toggle navigation">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="ds-breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="ds-breadcrumb-sep">/</span>
+        <span class="ds-breadcrumb-current">Organisms</span>
+      </div>
+    </header>
+
+    <div class="ds-content">
+      <div class="ds-hero">
+        <h1>Organisms</h1>
+        <p>Complex UI sections composed of molecules and atoms. Kanban columns, modals, sidebar, and the application header.</p>
+      </div>
+
+      <!-- ── Kanban Board ── -->
+      <div class="ds-section" id="kanban-board">
+        <div class="ds-section-header">
+          <h2>Kanban Board</h2>
+          <span class="ds-section-badge">Primary view</span>
         </div>
-        <div class="kanban-cards">
-          <div class="kanban-card">
-            <div class="card-room">Kitchen</div>
-            <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
-            <div class="card-title">Clean behind fridge</div>
-            <div class="card-footer">
-              <span class="card-dates">TBD</span>
-              <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+        <p class="ds-description">The board groups cards into status columns. Each column has a colored header and scrollable card area.</p>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview" style="align-items: stretch; gap: 16px; overflow-x: auto; padding: 24px;">
+            <div class="kanban-column" style="flex:1;min-width:220px;max-width:280px;background:color-mix(in srgb, var(--surface-base) 60%, transparent);border-radius:var(--radius);position:relative;">
+              <div class="kanban-column-header status-colored" style="background:var(--status-todo-bg);color:var(--status-todo-text)">
+                <span class="column-title">To Do</span>
+              </div>
+              <div class="kanban-cards" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+                <div class="kanban-card">
+                  <div class="card-room">Kitchen</div>
+                  <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
+                  <div class="card-title">Clean behind fridge</div>
+                  <div class="card-footer">
+                    <span class="card-dates">TBD</span>
+                    <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div class="card-room">Bedroom</div>
+                  <span class="category-badge" style="background:var(--category-organising-bg);color:var(--category-organising-text)">Organising</span>
+                  <div class="card-title">Sort wardrobe</div>
+                  <div class="card-footer">
+                    <span class="card-dates">10 Mar</span>
+                    <span class="card-avatar" style="background:#E2E8F0;color:#1A1A1A">SI</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <div class="kanban-column" style="flex:1;min-width:220px;max-width:280px;background:color-mix(in srgb, var(--surface-base) 60%, transparent);border-radius:var(--radius);">
+              <div class="kanban-column-header status-colored" style="background:var(--status-in-progress-bg);color:var(--status-in-progress-text)">
+                <span class="column-title">In Progress</span>
+              </div>
+              <div class="kanban-cards" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+                <div class="kanban-card">
+                  <div class="card-room">Bathroom</div>
+                  <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
+                  <div class="card-title">Paint walls</div>
+                  <div class="card-footer">
+                    <span class="card-dates">10 Mar - 14 Mar</span>
+                    <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="kanban-column" style="flex:1;min-width:220px;max-width:280px;background:color-mix(in srgb, var(--surface-base) 60%, transparent);border-radius:var(--radius);">
+              <div class="kanban-column-header status-colored" style="background:var(--status-done-bg);color:var(--status-done-text)">
+                <span class="column-title">Done</span>
+              </div>
+              <div class="kanban-cards" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+                <div class="kanban-card" style="opacity: 0.7;">
+                  <div class="card-room">Garage</div>
+                  <span class="category-badge" style="background:var(--category-organising-bg);color:var(--category-organising-text)">Organising</span>
+                  <div class="card-title">Sort tool shelf</div>
+                  <div class="card-footer">
+                    <span class="card-dates">1 Mar - 3 Mar</span>
+                    <span class="card-avatar" style="background:#1A1A1A;color:#fff">DG</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button data-tab="css">CSS</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;div class="kanban-column"&gt;
+  &lt;div class="kanban-column-header status-colored"
+    style="background: var(--status-todo-bg);
+           color: var(--status-todo-text)"&gt;
+    &lt;span class="column-title"&gt;To Do&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="kanban-cards"&gt;
+    &lt;div class="kanban-card"&gt;...&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+          </div>
+          <div class="ds-code-panel" data-panel="css">
+            <pre>.kanban-column {
+  flex: 1;
+  min-width: 220px;
+  max-width: 280px;
+  background: color-mix(in srgb, var(--surface-base) 60%, transparent);
+  border-radius: var(--radius);
+}
+
+.kanban-column-header {
+  padding: 10px 14px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kanban-cards {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}</pre>
           </div>
         </div>
       </div>
 
-      <div class="kanban-column">
-        <div class="kanban-column-header status-colored" style="background:var(--status-in-progress-bg);color:var(--status-in-progress-text)">
-          <span class="column-title">In Progress</span>
+      <!-- ── Modal ── -->
+      <div class="ds-section" id="modal">
+        <div class="ds-section-header">
+          <h2>Task Modal</h2>
+          <span class="ds-section-badge">Edit / Create</span>
         </div>
-        <div class="kanban-cards">
-          <div class="kanban-card">
-            <div class="card-room">Bathroom</div>
-            <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
-            <div class="card-title">Paint walls</div>
-            <div class="card-footer">
-              <span class="card-dates">10 Feb - 14 Feb</span>
-              <span class="card-avatar" style="background:#1A1A1A;color:#fff">SI</span>
+        <p class="ds-description">The modal dialog is used for creating and editing tasks. It uses glassmorphism and houses a form with the task fields.</p>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview ds-preview-center" style="padding: 40px; background: color-mix(in srgb, var(--ds-text) 5%, var(--ds-bg));">
+            <div class="modal-dialog" style="position:static;margin:0 auto;max-width:480px;width:100%;">
+              <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
+                <span class="modal-title">Edit Task</span>
+                <div class="modal-avatar-wrap">
+                  <div class="modal-avatar" style="background:#1A1A1A;width:32px;height:32px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700">DA</div>
+                </div>
+              </div>
+              <div class="modal-form">
+                <div class="modal-field"><span>Task</span><input type="text" value="Deep clean the oven"></div>
+                <div class="modal-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="modal-field"><span>Start</span><input type="date" value="2026-03-15"></div>
+                  <div class="modal-field"><span>End</span><input type="date" value="2026-03-20"></div>
+                </div>
+                <div class="modal-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="modal-field"><span>Category</span>
+                    <select><option>Cleaning</option><option>Painting</option></select>
+                  </div>
+                  <div class="modal-field"><span>Room</span>
+                    <select><option>Kitchen</option><option>Bathroom</option></select>
+                  </div>
+                </div>
+                <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+                  <button class="modal-btn modal-cancel">Cancel</button>
+                  <button class="modal-btn modal-save">Save</button>
+                </div>
+              </div>
             </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button data-tab="css">CSS</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;div class="modal-overlay"&gt;
+  &lt;div class="modal-dialog"&gt;
+    &lt;div class="modal-header"&gt;
+      &lt;span class="modal-title"&gt;Edit Task&lt;/span&gt;
+      &lt;div class="modal-avatar-wrap"&gt;
+        &lt;div class="modal-avatar"&gt;DA&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="modal-form"&gt;
+      &lt;div class="modal-field"&gt;
+        &lt;span&gt;Task&lt;/span&gt;
+        &lt;input type="text" value="..."&gt;
+      &lt;/div&gt;
+      &lt;div class="modal-row"&gt;
+        &lt;div class="modal-field"&gt;...&lt;/div&gt;
+        &lt;div class="modal-field"&gt;...&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class="modal-actions"&gt;
+        &lt;button class="modal-btn modal-cancel"&gt;Cancel&lt;/button&gt;
+        &lt;button class="modal-btn modal-save"&gt;Save&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+          </div>
+          <div class="ds-code-panel" data-panel="css">
+            <pre>.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.modal-dialog {
+  background: var(--surface-raised);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: var(--shadow-hover);
+}
+
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}</pre>
           </div>
         </div>
       </div>
 
-      <div class="kanban-column">
-        <div class="kanban-column-header status-colored" style="background:var(--status-done-bg);color:var(--status-done-text)">
-          <span class="column-title">Done</span>
+      <!-- ── Sidebar ── -->
+      <div class="ds-section" id="sidebar">
+        <div class="ds-section-header">
+          <h2>Sidebar Rail</h2>
         </div>
-        <div class="kanban-cards">
-          <div class="kanban-card">
-            <div class="card-room">Garage</div>
-            <span class="category-badge" style="background:var(--category-organising-bg);color:var(--category-organising-text)">Organising</span>
-            <div class="card-title">Sort tool shelf</div>
-            <div class="card-footer">
-              <span class="card-dates">1 Jan - 3 Jan</span>
-              <span class="card-avatar" style="background:#1A1A1A;color:#fff">DG</span>
+        <p class="ds-description">The sidebar is a 56px collapsed rail that expands to 200px on hover. It contains the logo, project list, navigation items, and theme toggle.</p>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview" style="padding: 0; min-height: 400px; position: relative; overflow: hidden;">
+            <div style="width:200px;height:100%;background:var(--surface-header);backdrop-filter:blur(20px);border-right:1px solid var(--outline-default);display:flex;flex-direction:column;padding:0;">
+              <div style="display:flex;align-items:center;gap:10px;padding:16px 14px;height:64px;">
+                <span style="width:28px;height:28px;border-radius:6px;background:var(--accent);color:var(--on-accent-primary1);font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center;">Qp</span>
+                <span style="font-weight:700;color:var(--content-primary);">Quick Planner</span>
+              </div>
+              <div style="padding:8px 10px;">
+                <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--content-secondary);flex-shrink:0"><path d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
+                  <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--content-secondary)">Projects</span>
+                </div>
+                <div style="border-top:1px solid var(--outline-muted);padding-top:6px;margin-top:4px;">
+                  <div style="padding:6px 8px;font-size:0.85rem;font-weight:600;color:var(--content-primary);background:color-mix(in srgb, var(--accent) 12%, transparent);border-radius:6px;">Home Reno</div>
+                  <div style="padding:6px 8px;font-size:0.85rem;font-weight:500;color:var(--content-primary);">Garden</div>
+                  <div style="padding:6px 8px;font-size:0.85rem;font-weight:500;color:var(--content-primary);">Holiday Prep</div>
+                </div>
+              </div>
+              <div style="flex:1"></div>
+              <div style="padding:8px 0;">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px 10px 19px;color:var(--content-secondary);font-size:0.9rem;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                  Trash
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px 10px 19px;color:var(--content-secondary);font-size:0.9rem;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                  Settings
+                </div>
+              </div>
             </div>
           </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;aside class="sidebar-rail"&gt;
+  &lt;button class="sidebar-top"&gt;
+    &lt;span class="sidebar-logo-icon"&gt;Qp&lt;/span&gt;
+    &lt;span class="sidebar-logo-text"&gt;Quick Planner&lt;/span&gt;
+  &lt;/button&gt;
+  &lt;div class="sidebar-projects"&gt;
+    &lt;!-- Project list --&gt;
+  &lt;/div&gt;
+  &lt;nav class="sidebar-nav"&gt;
+    &lt;button class="sidebar-item"&gt;Trash&lt;/button&gt;
+    &lt;button class="sidebar-item"&gt;Settings&lt;/button&gt;
+    &lt;label class="sidebar-theme-item"&gt;...&lt;/label&gt;
+  &lt;/nav&gt;
+&lt;/aside&gt;</pre>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <h2 style="margin-top:40px">Modal</h2>
-    <div class="modal-dialog" style="position:static;margin:0 auto">
-      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center">
-        <span class="modal-title">Edit Task</span>
-        <div class="modal-avatar-wrap">
-          <div class="modal-avatar" style="background:#1A1A1A">DA</div>
+        <div class="ds-subsection">
+          <h3>Behavior</h3>
+          <table class="ds-table">
+            <thead>
+              <tr><th>State</th><th>Width</th><th>Trigger</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Collapsed</td><td>56px</td><td>Default state</td></tr>
+              <tr><td>Expanded</td><td>200px</td><td>Hover (desktop) or toggle (mobile)</td></tr>
+              <tr><td>Pinned closed</td><td>56px</td><td>User toggle — locks closed even on hover</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
-      <div class="modal-form">
-        <div class="modal-field"><span>Task</span><input type="text" value="Clean behind fridge"></div>
-        <div class="modal-row">
-          <div class="modal-field"><span>Start</span><input type="date" value="2026-02-15"></div>
-          <div class="modal-field"><span>End</span><input type="date" value="2026-02-20"></div>
+
+      <!-- ── Header ── -->
+      <div class="ds-section" id="header">
+        <div class="ds-section-header">
+          <h2>Application Header</h2>
         </div>
-        <div class="modal-actions">
-          <button class="modal-btn modal-cancel">Cancel</button>
-          <button class="modal-btn modal-save">Save</button>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview" style="padding: 0;">
+            <div style="width:100%;background:var(--surface-header);backdrop-filter:blur(20px) saturate(1.4);border-bottom:1px solid var(--outline-default);box-shadow:inset 0 -1px 0 0 var(--outline-default);padding:0 24px;min-height:64px;display:flex;align-items:center;gap:16px;">
+              <div style="flex:1;">
+                <div style="font-size:1.1rem;font-weight:700;color:var(--content-primary);">Home Renovation</div>
+                <div style="font-size:0.78rem;color:var(--content-secondary);">12 tasks &middot; 3 in progress</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <div style="padding:6px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;background:color-mix(in srgb, var(--accent) 12%, transparent);color:var(--accent-primary1-text)">Kanban</div>
+                <div style="padding:6px 14px;border-radius:8px;font-size:0.8rem;font-weight:500;color:var(--content-secondary)">Timeline</div>
+                <div style="padding:6px 14px;border-radius:8px;font-size:0.8rem;font-weight:500;color:var(--content-secondary)">List</div>
+              </div>
+            </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;header class="app-header"&gt;
+  &lt;div class="header-title-group"&gt;
+    &lt;h1 class="header-project-name"&gt;Home Renovation&lt;/h1&gt;
+    &lt;span class="header-meta"&gt;12 tasks &middot; 3 in progress&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="header-view-tabs"&gt;
+    &lt;button class="view-tab active"&gt;Kanban&lt;/button&gt;
+    &lt;button class="view-tab"&gt;Timeline&lt;/button&gt;
+    &lt;button class="view-tab"&gt;List&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/header&gt;</pre>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    (function() {
-      const saved = localStorage.getItem('qp-theme');
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    })();
-  </script>
+  <script src="ds.js"></script>
 </body>
 </html>

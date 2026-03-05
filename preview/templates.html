@@ -3,58 +3,188 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Templates — Design Preview</title>
+  <title>Templates — Quick Planner Design System</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="stylesheet" href="../css/tokens.css">
-  <link rel="stylesheet" href="../css/styles.css">
-  <style>
-    body { overflow: auto; padding: 40px; display: block; }
-    .section { max-width: 1000px; margin: 0 auto 40px; }
-    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
-    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
-    .template-frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 32px; }
-    .template-frame iframe { width: 100%; height: 600px; border: none; }
-    .note { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px; }
-  </style>
+  <link rel="stylesheet" href="ds.css">
+  <script src="ds-nav.js"></script>
 </head>
 <body>
-  <div class="section">
-    <a href="index.html" class="back-link">Back to overview</a>
 
-    <h2>Full App Layout</h2>
-    <p class="note">Live embed of the main application.</p>
-    <div class="template-frame">
-      <iframe src="../index.html"></iframe>
+  <div class="ds-main">
+    <header class="ds-header">
+      <button class="ds-hamburger" id="ds-hamburger" aria-label="Toggle navigation">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="ds-breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="ds-breadcrumb-sep">/</span>
+        <span class="ds-breadcrumb-current">Templates</span>
+      </div>
+    </header>
+
+    <div class="ds-content">
+      <div class="ds-hero">
+        <h1>Templates</h1>
+        <p>Full-page layouts showing how organisms compose into complete views. Live embeds let you interact with the real application in context.</p>
+      </div>
+
+      <!-- ── Full App ── -->
+      <div class="ds-section" id="full-app">
+        <div class="ds-section-header">
+          <h2>Full Application</h2>
+          <span class="ds-section-badge">Live Embed</span>
+        </div>
+        <p class="ds-description">The complete Quick Planner application running in an iframe. Interact with it to see all components in their natural context.</p>
+
+        <div class="ds-specimen">
+          <div style="position: relative; width: 100%; padding-top: 62.5%; overflow: hidden; border-radius: var(--ds-radius) var(--ds-radius) 0 0;">
+            <iframe src="../index.html" style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Layout Anatomy ── -->
+      <div class="ds-section" id="layout">
+        <div class="ds-section-header">
+          <h2>Layout Anatomy</h2>
+        </div>
+        <p class="ds-description">The application uses a sidebar-rail + main content pattern. The sidebar is fixed, the header is sticky, and the kanban board scrolls horizontally.</p>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview" style="padding: 0; min-height: 320px; position: relative; overflow: hidden;">
+            <!-- Mini layout diagram -->
+            <div style="display:flex;width:100%;height:320px;">
+              <!-- Sidebar -->
+              <div style="width:56px;background:color-mix(in srgb, var(--ds-accent) 8%, var(--ds-surface));border-right:1px solid var(--ds-border);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:16px;flex-shrink:0;">
+                <div style="width:28px;height:28px;border-radius:6px;background:var(--ds-accent);display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#000">Qp</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:flex-end;">
+                  <div style="width:18px;height:18px;border-radius:4px;background:var(--ds-border)"></div>
+                  <div style="width:18px;height:18px;border-radius:4px;background:var(--ds-border)"></div>
+                  <div style="width:18px;height:18px;border-radius:50%;background:var(--ds-border)"></div>
+                </div>
+              </div>
+              <!-- Main -->
+              <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+                <!-- Header -->
+                <div style="height:48px;border-bottom:1px solid var(--ds-border);background:color-mix(in srgb, var(--ds-accent) 4%, var(--ds-surface));display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;">
+                  <div style="width:100px;height:12px;border-radius:4px;background:var(--ds-border)"></div>
+                  <div style="flex:1"></div>
+                  <div style="display:flex;gap:4px;">
+                    <div style="width:50px;height:20px;border-radius:4px;background:color-mix(in srgb, var(--ds-accent) 12%, transparent)"></div>
+                    <div style="width:50px;height:20px;border-radius:4px;background:var(--ds-border-subtle)"></div>
+                    <div style="width:50px;height:20px;border-radius:4px;background:var(--ds-border-subtle)"></div>
+                  </div>
+                </div>
+                <!-- Board -->
+                <div style="flex:1;display:flex;gap:12px;padding:16px;overflow:hidden;">
+                  <div style="flex:1;border-radius:8px;background:color-mix(in srgb, var(--ds-border) 30%, transparent);display:flex;flex-direction:column;">
+                    <div style="height:28px;border-radius:8px 8px 0 0;background:var(--status-todo-bg,#007888);"></div>
+                    <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;">
+                      <div style="height:48px;border-radius:6px;background:var(--ds-surface);border:1px solid var(--ds-border);"></div>
+                      <div style="height:48px;border-radius:6px;background:var(--ds-surface);border:1px solid var(--ds-border);"></div>
+                    </div>
+                  </div>
+                  <div style="flex:1;border-radius:8px;background:color-mix(in srgb, var(--ds-border) 30%, transparent);display:flex;flex-direction:column;">
+                    <div style="height:28px;border-radius:8px 8px 0 0;background:var(--status-in-progress-bg,#007888);"></div>
+                    <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;">
+                      <div style="height:48px;border-radius:6px;background:var(--ds-surface);border:1px solid var(--ds-border);"></div>
+                    </div>
+                  </div>
+                  <div style="flex:1;border-radius:8px;background:color-mix(in srgb, var(--ds-border) 30%, transparent);display:flex;flex-direction:column;">
+                    <div style="height:28px;border-radius:8px 8px 0 0;background:var(--status-done-bg,#276749);"></div>
+                    <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;">
+                      <div style="height:48px;border-radius:6px;background:var(--ds-surface);border:1px solid var(--ds-border);"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="anatomy" class="active">Anatomy</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="anatomy">
+            <pre>┌──────────────────────────────────────────┐
+│ Sidebar │  Header (sticky)               │
+│  (56px) │─────────────────────────────────│
+│         │                                 │
+│  Logo   │  ┌─────┐ ┌─────┐ ┌─────┐      │
+│         │  │To Do│ │In   │ │Done │      │
+│  Nav    │  │     │ │Prog │ │     │      │
+│  items  │  │Card │ │     │ │Card │      │
+│         │  │Card │ │Card │ │     │      │
+│  Theme  │  │     │ │     │ │     │      │
+│  toggle │  └─────┘ └─────┘ └─────┘      │
+└──────────────────────────────────────────┘
+
+Layout: fixed sidebar + flex column (sticky header + scrollable board)
+Board: horizontal flex, each column scrolls vertically</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Token Ramp Overview ── -->
+      <div class="ds-section" id="all-ramps">
+        <div class="ds-section-header">
+          <h2>Token Ramp Overview</h2>
+        </div>
+        <p class="ds-description">All generated color ramps at a glance, showing the full 13-step spectrum for each ramp.</p>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview ds-preview-col" id="ramp-overview" style="gap: 20px;"></div>
+        </div>
+      </div>
+
+      <!-- ── Responsive Breakpoints ── -->
+      <div class="ds-section" id="breakpoints">
+        <div class="ds-section-header">
+          <h2>Responsive Breakpoints</h2>
+        </div>
+
+        <table class="ds-table">
+          <thead>
+            <tr><th>Name</th><th>Breakpoint</th><th>Behavior</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Mobile</td><td><code>max-width: 600px</code></td><td>Single column, bottom nav, fullscreen modal</td></tr>
+            <tr><td>Tablet</td><td><code>max-width: 1024px</code></td><td>Sidebar collapses, 2-column board</td></tr>
+            <tr><td>Desktop</td><td><code>min-width: 1025px</code></td><td>Full sidebar hover, 3+ column board</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-
-    <h2>Token Ramp Overview</h2>
-    <p class="note">All generated color ramps at a glance.</p>
-    <div id="all-ramps"></div>
   </div>
 
+  <script src="ds.js"></script>
   <script>
-    (function() {
-      const saved = localStorage.getItem('qp-theme');
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-
+    (function () {
       const ramps = ['neutral', 'primary1', 'secondary1', 'secondary2'];
       const steps = [100,200,300,400,500,600,700,800,900,1000,1100,1200,1300];
-      const container = document.getElementById('all-ramps');
+      const container = document.getElementById('ramp-overview');
 
       for (const ramp of ramps) {
-        const label = document.createElement('div');
-        label.style.cssText = 'font-weight:600;font-size:0.85rem;color:var(--text-secondary);margin:12px 0 6px';
-        label.textContent = ramp;
-        container.appendChild(label);
-
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `<div style="font-weight:600;font-size:0.82rem;color:var(--ds-text-secondary);margin-bottom:6px">${ramp}</div>`;
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px';
+        row.className = 'ds-swatch-row';
         for (const step of steps) {
+          const token = `--color-${ramp}-${step}`;
+          const val = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
           const swatch = document.createElement('div');
-          swatch.style.cssText = `width:50px;height:40px;border-radius:6px;background:var(--color-${ramp}-${step});border:1px solid var(--border);display:flex;align-items:flex-end;justify-content:center;font-size:0.55rem;color:var(--text-secondary);padding:2px`;
-          swatch.textContent = step;
+          swatch.className = 'ds-swatch';
+          swatch.dataset.token = token;
+          swatch.style.background = `var(${token})`;
+          swatch.style.color = step <= 600 ? '#333' : '#eee';
+          swatch.innerHTML = `<span class="ds-swatch-label">${step}</span>`;
           row.appendChild(swatch);
         }
-        container.appendChild(row);
+        wrapper.appendChild(row);
+        container.appendChild(wrapper);
       }
     })();
   </script>
