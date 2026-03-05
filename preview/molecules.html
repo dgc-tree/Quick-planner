@@ -3,80 +3,317 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Molecules — Design Preview</title>
+  <title>Molecules — Quick Planner Design System</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="ds.css">
   <style>
-    body { overflow: auto; padding: 40px; display: block; }
-    .section { max-width: 700px; margin: 0 auto 40px; }
-    .section h2 { font-size: 1.3rem; color: var(--text); margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
-    .back-link { display: inline-block; margin-bottom: 24px; color: var(--accent); text-decoration: none; font-weight: 600; }
+    body { height: auto !important; overflow: auto !important; }
+    .sidebar-rail, .app-header, .primary-nav { display: none !important; }
   </style>
+  <script src="ds-nav.js"></script>
 </head>
 <body>
-  <div class="section">
-    <a href="index.html" class="back-link">Back to overview</a>
 
-    <h2>Kanban Cards</h2>
-    <div class="card-grid">
-      <div class="kanban-card">
-        <div class="card-room">Kitchen</div>
-        <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
-        <div class="card-title">Deep clean the oven and rangehood</div>
-        <div class="card-footer">
-          <span class="card-dates">15 Jan - 20 Jan</span>
-          <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+  <div class="ds-main">
+    <header class="ds-header">
+      <button class="ds-hamburger" id="ds-hamburger" aria-label="Toggle navigation">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="ds-breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="ds-breadcrumb-sep">/</span>
+        <span class="ds-breadcrumb-current">Molecules</span>
+      </div>
+    </header>
+
+    <div class="ds-content">
+      <div class="ds-hero">
+        <h1>Molecules</h1>
+        <p>Simple groups of atoms functioning as a unit. Kanban cards, toast notifications, dependency chips, and task pills.</p>
+      </div>
+
+      <!-- ── Kanban Card ── -->
+      <div class="ds-section" id="kanban-card">
+        <div class="ds-section-header">
+          <h2>Kanban Card</h2>
+          <span class="ds-section-badge">Core component</span>
+        </div>
+        <p class="ds-description">The primary unit of work. Displays task name, room, category, date range, assignee, and optional dependencies.</p>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview ds-preview-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+            <div class="kanban-card">
+              <div class="card-room">Kitchen</div>
+              <span class="category-badge" style="background:var(--category-cleaning-bg);color:var(--category-cleaning-text)">Cleaning</span>
+              <div class="card-title">Deep clean the oven and rangehood</div>
+              <div class="card-footer">
+                <span class="card-dates">15 Mar - 20 Mar</span>
+                <span class="card-avatar" style="background:#1A1A1A;color:#fff">DA</span>
+              </div>
+            </div>
+
+            <div class="kanban-card">
+              <div class="card-room">Bathroom</div>
+              <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
+              <div class="card-title">Paint bathroom ceiling and trim</div>
+              <div class="card-footer">
+                <span class="card-dates">22 Mar - 25 Mar</span>
+                <span class="card-avatar" style="background:#E2E8F0;color:#1A1A1A">SI</span>
+              </div>
+              <div class="card-deps">Depends on: Repair ceiling crack</div>
+            </div>
+
+            <div class="kanban-card">
+              <div class="card-room">Living Room</div>
+              <span class="category-badge" style="background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text)">Trade Quote</span>
+              <div class="card-title">Get quote for new flooring</div>
+              <div class="card-footer">
+                <span class="card-dates">TBD</span>
+                <span class="card-avatar" style="background:var(--accent);color:var(--on-accent-primary1)">SG</span>
+              </div>
+            </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button data-tab="css">CSS</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;div class="kanban-card" draggable="true"&gt;
+  &lt;div class="card-room"&gt;Kitchen&lt;/div&gt;
+  &lt;span class="category-badge"
+    style="background: var(--category-cleaning-bg);
+           color: var(--category-cleaning-text)"&gt;
+    Cleaning
+  &lt;/span&gt;
+  &lt;div class="card-title"&gt;Deep clean the oven&lt;/div&gt;
+  &lt;div class="card-footer"&gt;
+    &lt;span class="card-dates"&gt;15 Mar - 20 Mar&lt;/span&gt;
+    &lt;span class="card-avatar"
+      style="background: #1A1A1A; color: #fff"&gt;DA&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;!-- Optional --&gt;
+  &lt;div class="card-deps"&gt;
+    Depends on: Repair ceiling crack
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+          </div>
+          <div class="ds-code-panel" data-panel="css">
+            <pre>.kanban-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: grab;
+  box-shadow: var(--shadow-glass);
+  transition: all 0.2s ease;
+}
+
+.kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.card-room {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  margin: 8px 0;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.card-dates {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.card-deps {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  font-style: italic;
+}</pre>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3>Anatomy</h3>
+          <table class="ds-table">
+            <thead>
+              <tr><th>Element</th><th>Class</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Container</td><td><code>.kanban-card</code></td><td>Glass surface with drag support</td></tr>
+              <tr><td>Room label</td><td><code>.card-room</code></td><td>Overline text showing room/area</td></tr>
+              <tr><td>Category</td><td><code>.category-badge</code></td><td>Colored pill from category tokens</td></tr>
+              <tr><td>Title</td><td><code>.card-title</code></td><td>Task name, semibold</td></tr>
+              <tr><td>Footer</td><td><code>.card-footer</code></td><td>Date range + avatar</td></tr>
+              <tr><td>Dependencies</td><td><code>.card-deps</code></td><td>Optional italic dependency note</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div class="kanban-card">
-        <div class="card-room">Bathroom</div>
-        <span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span>
-        <div class="card-title">Paint bathroom ceiling and trim</div>
-        <div class="card-footer">
-          <span class="card-dates">22 Jan - 25 Jan</span>
-          <span class="card-avatar" style="background:#1A1A1A;color:#fff">SI</span>
+      <!-- ── Toast ── -->
+      <div class="ds-section" id="toast">
+        <div class="ds-section-header">
+          <h2>Toast Notifications</h2>
         </div>
-        <div class="card-deps">Depends on: Repair ceiling crack</div>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview ds-preview-col" style="max-width: 320px;">
+            <div class="toast success" style="animation:none;position:static">Task saved successfully</div>
+            <div class="toast error" style="animation:none;position:static">Could not save task</div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button data-tab="css">CSS</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;div class="toast success"&gt;Task saved successfully&lt;/div&gt;
+&lt;div class="toast error"&gt;Could not save task&lt;/div&gt;</pre>
+          </div>
+          <div class="ds-code-panel" data-panel="css">
+            <pre>.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 1000;
+  animation: toast-in 0.3s ease, toast-out 0.3s ease 2.7s;
+}
+
+.toast.success {
+  background: #065f46;
+  color: #d1fae5;
+}
+
+.toast.error {
+  background: #991b1b;
+  color: #fee2e2;
+}</pre>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3>Live Demo</h3>
+          <div style="display:flex;gap:12px;">
+            <button class="modal-btn modal-save" onclick="triggerDemoToast('success')">Trigger Success</button>
+            <button class="modal-btn modal-cancel" onclick="triggerDemoToast('error')">Trigger Error</button>
+          </div>
+        </div>
       </div>
 
-      <div class="kanban-card">
-        <div class="card-room">Living Room</div>
-        <span class="category-badge" style="background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text)">Trade Quote</span>
-        <div class="card-title">Get quote for new flooring installation</div>
-        <div class="card-footer">
-          <span class="card-dates">TBD</span>
-          <span class="card-avatar" style="background:#E2E8F0;color:#1A1A1A">SG</span>
+      <!-- ── Dependency Chips ── -->
+      <div class="ds-section" id="dep-chips">
+        <div class="ds-section-header">
+          <h2>Dependency Chips</h2>
+        </div>
+
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview">
+            <div class="dep-selected" style="margin-top:0">
+              <span class="dep-chip">Clean gutters <button class="dep-chip-remove">&times;</button></span>
+              <span class="dep-chip">Fix downpipe <button class="dep-chip-remove">&times;</button></span>
+              <span class="dep-chip">Replace tap washers <button class="dep-chip-remove">&times;</button></span>
+            </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;div class="dep-selected"&gt;
+  &lt;span class="dep-chip"&gt;
+    Clean gutters
+    &lt;button class="dep-chip-remove"&gt;&amp;times;&lt;/button&gt;
+  &lt;/span&gt;
+&lt;/div&gt;</pre>
+          </div>
         </div>
       </div>
-    </div>
 
-    <h2>Dependency Chips</h2>
-    <div class="dep-selected" style="margin-top:0">
-      <span class="dep-chip">Clean gutters <button class="dep-chip-remove">&times;</button></span>
-      <span class="dep-chip">Fix downpipe <button class="dep-chip-remove">&times;</button></span>
-    </div>
+      <!-- ── Unscheduled Chips ── -->
+      <div class="ds-section" id="unscheduled">
+        <div class="ds-section-header">
+          <h2>Unscheduled Task Chips</h2>
+        </div>
 
-    <h2 style="margin-top:32px">Toast Notifications</h2>
-    <div style="position:relative;display:flex;flex-direction:column;gap:8px;max-width:320px">
-      <div class="toast success" style="animation:none;position:static">Saved to sheet</div>
-      <div class="toast error" style="animation:none;position:static">Sheet write failed</div>
-    </div>
-
-    <h2 style="margin-top:32px">Unscheduled Chips</h2>
-    <div class="unscheduled-list">
-      <span class="unscheduled-chip">Fix letterbox <small>(Front yard)</small></span>
-      <span class="unscheduled-chip">Buy curtain rods <small>(Bedroom)</small></span>
-      <span class="unscheduled-chip">Patch drywall <small>(Hallway)</small></span>
+        <div class="ds-specimen">
+          <div class="ds-specimen-preview">
+            <div class="unscheduled-list" style="padding:0;border:none;max-height:none;">
+              <span class="unscheduled-chip">Fix letterbox <small>(Front yard)</small></span>
+              <span class="unscheduled-chip">Buy curtain rods <small>(Bedroom)</small></span>
+              <span class="unscheduled-chip">Patch drywall <small>(Hallway)</small></span>
+            </div>
+          </div>
+          <div class="ds-specimen-toolbar">
+            <button data-tab="html" class="active">HTML</button>
+            <button class="ds-copy-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="ds-code-panel active" data-panel="html">
+            <pre>&lt;div class="unscheduled-list"&gt;
+  &lt;span class="unscheduled-chip"&gt;
+    Fix letterbox &lt;small&gt;(Front yard)&lt;/small&gt;
+  &lt;/span&gt;
+&lt;/div&gt;</pre>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
+  <script src="ds.js"></script>
   <script>
-    (function() {
-      const saved = localStorage.getItem('qp-theme');
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    })();
+    function triggerDemoToast(type) {
+      const msgs = {
+        success: 'Task saved successfully',
+        error: 'Could not save task'
+      };
+      const toast = document.createElement('div');
+      toast.className = 'toast ' + type;
+      toast.textContent = msgs[type];
+      toast.style.animation = 'none';
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.style.animation = '';
+      });
+      setTimeout(() => toast.remove(), 3200);
+    }
   </script>
 </body>
 </html>
