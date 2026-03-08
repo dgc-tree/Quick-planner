@@ -22,7 +22,7 @@ const bgFxReady = import('./bg-effects.js')
   .catch(err => console.warn('bg-effects unavailable:', err));
 
 let APP_VERSION = 'dev';
-try { const v = await import('./version.js'); APP_VERSION = v.APP_VERSION; } catch {}
+import('./version.js').then(v => { APP_VERSION = v.APP_VERSION; }).catch(() => {});
 
 let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
