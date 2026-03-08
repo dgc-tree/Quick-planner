@@ -125,8 +125,8 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     const chip = e.target.closest('.unscheduled-chip');
     const el = bar || chip;
     if (!el || !_plannerCallbacks.onBarClick) return;
-    const taskId = parseInt(el.dataset.taskId, 10);
-    const task = allTasks.find(t => t.id === taskId);
+    const taskId = el.dataset.taskId;
+    const task = allTasks.find(t => String(t.id) === taskId);
     if (task) _plannerCallbacks.onBarClick(task);
   });
 
@@ -136,15 +136,15 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     const bar = e.target.closest('.planner-bar');
     if (!bar || !_plannerCallbacks.onContextMenu) return;
     e.preventDefault();
-    const taskId = parseInt(bar.dataset.taskId, 10);
-    const task = allTasks.find(t => t.id === taskId);
+    const taskId = bar.dataset.taskId;
+    const task = allTasks.find(t => String(t.id) === taskId);
     if (task) _plannerCallbacks.onContextMenu(e, task);
   });
 
   // Long-press for mobile
   attachLongPress(container, '.planner-bar', (el) => {
-    const taskId = parseInt(el.dataset.taskId, 10);
-    return allTasks.find(t => t.id === taskId);
+    const taskId = el.dataset.taskId;
+    return allTasks.find(t => String(t.id) === taskId);
   }, (syntheticEvent, task) => {
     if (_plannerCallbacks.onContextMenu) _plannerCallbacks.onContextMenu(syntheticEvent, task);
   });
@@ -234,8 +234,8 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     const handle = e.target.closest('.planner-bar-handle');
     const mode = handle ? handle.dataset.handle : 'move';  // 'left', 'right', or 'move'
 
-    const taskId = parseInt(bar.dataset.taskId, 10);
-    const task = allTasks.find(t => t.id === taskId);
+    const taskId = bar.dataset.taskId;
+    const task = allTasks.find(t => String(t.id) === taskId);
     if (!task || !task.startDate || !task.endDate) return;
 
     const barContainer = bar.closest('.planner-bar-container');
