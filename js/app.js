@@ -12,7 +12,6 @@ import {
   loadUserName, saveUserName, exportBackup, importBackup, runMigrations,
 } from './storage.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
-import { normaliseRows } from './data.js';
 import { openColorPickerModal } from './color-picker.js';
 import { showContextMenu } from './context-menu.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
@@ -229,54 +228,10 @@ function handleDeleteProject(id, name) {
   });
 }
 
-const RENOS_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/1MCVKPY56Ynqb7O3cMmm3vfSZ7zI9QJhhKnI29H3pk8U/export?format=csv&gid=0';
-
-async function migrateRenosFromSheet() {
-  // v2 fix: first deploy set flag on failure — clear it so migration retries
-  if (localStorage.getItem('qp-renos-migrated') && !localStorage.getItem('qp-renos-migrate-v2')) {
-    const projects = loadProjects();
-    if (!projects.some(p => p.name === 'Renos' && p.tasks.length > 0)) {
-      localStorage.removeItem('qp-renos-migrated');
-    }
-    localStorage.setItem('qp-renos-migrate-v2', '1');
-  }
-  if (localStorage.getItem('qp-renos-migrated')) return;
-  const projects = loadProjects();
-  if (projects.some(p => p.name === 'Renos' && p.tasks.length > 0)) {
-    localStorage.setItem('qp-renos-migrated', '1');
-    return;
-  }
-  try {
-    const res = await fetch(RENOS_SHEET_CSV);
-    if (!res.ok) throw new Error(res.status);
-    const text = await res.text();
-    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-    const tasks = normaliseRows(parsed.data);
-    if (!tasks.length) throw new Error('No tasks parsed');
-    const serialised = JSON.parse(JSON.stringify(tasks, (k, v) => v instanceof Date ? v.toISOString() : v));
-    const existing = projects.find(p => p.name === 'Renos');
-    if (existing) {
-      existing.tasks = serialised;
-      currentProjectId = existing.id;
-    } else {
-      const id = crypto.randomUUID();
-      projects.push({ id, name: 'Renos', type: 'local', tasks: serialised });
-      currentProjectId = id;
-    }
-    saveProjects(projects);
-    saveActiveProjectId(currentProjectId);
-    localStorage.setItem('qp-renos-migrated', '1');
-    console.log(`Renos migration: ${tasks.length} tasks imported`);
-  } catch (err) {
-    console.warn('Renos migration failed (will retry next load):', err.message);
-  }
-}
-
 async function init() {
   showLoading(true);
   try {
     runMigrations();
-    await migrateRenosFromSheet();
     await loadProjectData();
     updateSummary();
     setupFilters();
