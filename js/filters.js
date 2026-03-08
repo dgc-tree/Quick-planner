@@ -3,7 +3,7 @@ export function buildFilterOptions(tasks) {
   return {
     rooms: unique('room'),
     categories: unique('category'),
-    assigned: unique('assigned'),
+    assigned: [...new Set(tasks.flatMap(t => Array.isArray(t.assigned) ? t.assigned : [t.assigned]).filter(Boolean))].sort(),
   };
 }
 
@@ -17,8 +17,30 @@ export function applyFilters(tasks, filters) {
   return tasks.filter(t => {
     if (filters.room && t.room !== filters.room) return false;
     if (filters.category && t.category !== filters.category) return false;
-    if (filters.assigned && t.assigned !== filters.assigned) return false;
-    if (q && !t.task.toLowerCase().includes(q)) return false;
+    if (filters.assigned) {
+      const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+      if (!arr.includes(filters.assigned)) return false;
+    }
+    if (q) {
+      const assignedStr = (Array.isArray(t.assigned) ? t.assigned : [t.assigned]).filter(Boolean).join(' ').toLowerCase();
+      if (!t.task.toLowerCase().includes(q) && !t.category.toLowerCase().includes(q) && !t.room.toLowerCase().includes(q) && !assignedStr.includes(q)) return false;
+    }
+    // Date overlap filter — unscheduled tasks always pass
+    if (filters.dateFrom || filters.dateTo) {
+      const dateFrom = filters.dateFrom ? new Date(filters.dateFrom + 'T00:00:00') : null;
+      const dateTo = filters.dateTo ? new Date(filters.dateTo + 'T00:00:00') : null;
+      const tStart = t.startDate || null;
+      const tEnd = t.endDate || null;
+      if (tStart || tEnd) {
+        if (dateFrom && dateTo) {
+          if ((tEnd || tStart) < dateFrom || (tStart || tEnd) > dateTo) return false;
+        } else if (dateFrom) {
+          if ((tEnd || tStart) < dateFrom) return false;
+        } else if (dateTo) {
+          if ((tStart || tEnd) > dateTo) return false;
+        }
+      }
+    }
     return true;
   });
 }

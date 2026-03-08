@@ -88,6 +88,102 @@ const PROJECTS_KEY = 'qp-projects';
 const ACTIVE_PROJECT_KEY = 'qp-active-project';
 const DATE_REPLACER = (k, v) => v instanceof Date ? v.toISOString() : v;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function migrateToUUIDs() {
+  if (localStorage.getItem('qp-uuid-migrated')) return;
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if (!raw) { localStorage.setItem('qp-uuid-migrated', '1'); return; }
+    const projects = JSON.parse(raw);
+    let changed = false;
+    for (const project of projects) {
+      if (!UUID_RE.test(project.id)) {
+        const oldId = project.id;
+        project.id = crypto.randomUUID();
+        changed = true;
+        // Update active project reference
+        if (localStorage.getItem(ACTIVE_PROJECT_KEY) === String(oldId)) {
+          localStorage.setItem(ACTIVE_PROJECT_KEY, project.id);
+        }
+      }
+      if (Array.isArray(project.tasks)) {
+        for (const task of project.tasks) {
+          if (!UUID_RE.test(String(task.id))) {
+            task.id = crypto.randomUUID();
+            changed = true;
+          }
+          if (!task.updatedAt) {
+            task.updatedAt = Date.now();
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects, DATE_REPLACER));
+    }
+    localStorage.setItem('qp-uuid-migrated', '1');
+  } catch (err) {
+    console.warn('UUID migration failed:', err.message);
+  }
+}
+
+function migrateCategoryRenames() {
+  if (localStorage.getItem('qp-category-v1')) return;
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if (!raw) { localStorage.setItem('qp-category-v1', '1'); return; }
+    const projects = JSON.parse(raw);
+    let changed = false;
+    for (const project of projects) {
+      if (!Array.isArray(project.tasks)) continue;
+      for (const task of project.tasks) {
+        if (task.category === 'Buy new') {
+          task.category = 'Major Projects';
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects, DATE_REPLACER));
+    }
+    localStorage.setItem('qp-category-v1', '1');
+  } catch (err) {
+    console.warn('Category migration failed:', err.message);
+  }
+}
+
+function migrateAssignedToArray() {
+  if (localStorage.getItem('qp-assigned-array-v1')) return;
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if (!raw) { localStorage.setItem('qp-assigned-array-v1', '1'); return; }
+    const projects = JSON.parse(raw);
+    let changed = false;
+    for (const project of projects) {
+      if (!Array.isArray(project.tasks)) continue;
+      for (const task of project.tasks) {
+        if (!Array.isArray(task.assigned)) {
+          task.assigned = task.assigned ? [task.assigned] : [];
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects, DATE_REPLACER));
+    }
+    localStorage.setItem('qp-assigned-array-v1', '1');
+  } catch (err) {
+    console.warn('Assigned array migration failed:', err.message);
+  }
+}
+
+// Run migrations on module load
+migrateToUUIDs();
+migrateCategoryRenames();
+migrateAssignedToArray();
+
 export function loadProjects() {
   try {
     const raw = localStorage.getItem(PROJECTS_KEY);
@@ -139,4 +235,31 @@ export function loadColumnColors() {
 
 export function saveColumnColors(colors) {
   localStorage.setItem(COLUMN_COLORS_KEY, JSON.stringify(colors));
+}
+
+export function exportBackup() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('qp-')) {
+      data[key] = localStorage.getItem(key);
+    }
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `qp-backup-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function importBackup(json) {
+  const data = JSON.parse(json);
+  const keys = Object.keys(data).filter(k => k.startsWith('qp-'));
+  if (keys.length === 0) throw new Error('No qp-* keys found in backup file');
+  keys.forEach(k => localStorage.setItem(k, data[k]));
+  return keys.length;
 }

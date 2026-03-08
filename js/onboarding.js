@@ -31,12 +31,12 @@ const TEMPLATES = [
     label: 'Renovation',
     icon: '🏠',
     tasks: [
-      { task: 'Measure and quote kitchen', room: 'Kitchen', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(7), dependencies: '' },
-      { task: 'Install kitchen cabinetry', room: 'Kitchen', category: 'Trade', status: 'To Do', assigned: '', startDate: today(14), endDate: today(21), dependencies: '' },
-      { task: 'Tile bathroom floor', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(14), dependencies: '' },
-      { task: 'Paint bathroom walls', room: 'Bathroom', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(21), endDate: today(28), dependencies: '' },
-      { task: 'Fit skirting boards', room: 'Living', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(28), endDate: today(35), dependencies: '' },
-      { task: 'Final inspection', room: 'Living', category: 'Planning', status: 'To Do', assigned: '', startDate: today(42), endDate: today(42), dependencies: '' },
+      { task: 'Measure and quote kitchen', room: 'Kitchen', category: 'Planning', status: 'To Do', assigned: [], startDate: today(0), endDate: today(7), dependencies: '' },
+      { task: 'Install kitchen cabinetry', room: 'Kitchen', category: 'Trade', status: 'To Do', assigned: [], startDate: today(14), endDate: today(21), dependencies: '' },
+      { task: 'Tile bathroom floor', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: [], startDate: today(7), endDate: today(14), dependencies: '' },
+      { task: 'Paint bathroom walls', room: 'Bathroom', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(21), endDate: today(28), dependencies: '' },
+      { task: 'Fit skirting boards', room: 'Living', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(28), endDate: today(35), dependencies: '' },
+      { task: 'Final inspection', room: 'Living', category: 'Planning', status: 'To Do', assigned: [], startDate: today(42), endDate: today(42), dependencies: '' },
     ],
   },
   {
@@ -44,12 +44,12 @@ const TEMPLATES = [
     label: 'Budget',
     icon: '💰',
     tasks: [
-      { task: 'Flooring materials', room: 'Materials', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(7), dependencies: '' },
-      { task: 'Plumbing fixtures', room: 'Materials', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(7), dependencies: '' },
-      { task: 'Electrician', room: 'Labour', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(14), dependencies: '' },
-      { task: 'Plumber', room: 'Labour', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(14), dependencies: '' },
-      { task: 'Unexpected repairs', room: 'Contingency', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(60), dependencies: '' },
-      { task: 'Council permits', room: 'Contingency', category: 'Planning', status: 'To Do', assigned: '', startDate: today(0), endDate: today(30), dependencies: '' },
+      { task: 'Flooring materials', room: 'Materials', category: 'Planning', status: 'To Do', assigned: [], startDate: today(0), endDate: today(7), dependencies: '' },
+      { task: 'Plumbing fixtures', room: 'Materials', category: 'Planning', status: 'To Do', assigned: [], startDate: today(0), endDate: today(7), dependencies: '' },
+      { task: 'Electrician', room: 'Labour', category: 'Trade', status: 'To Do', assigned: [], startDate: today(7), endDate: today(14), dependencies: '' },
+      { task: 'Plumber', room: 'Labour', category: 'Trade', status: 'To Do', assigned: [], startDate: today(7), endDate: today(14), dependencies: '' },
+      { task: 'Unexpected repairs', room: 'Contingency', category: 'Planning', status: 'To Do', assigned: [], startDate: today(0), endDate: today(60), dependencies: '' },
+      { task: 'Council permits', room: 'Contingency', category: 'Planning', status: 'To Do', assigned: [], startDate: today(0), endDate: today(30), dependencies: '' },
     ],
   },
   {
@@ -57,12 +57,12 @@ const TEMPLATES = [
     label: 'To Do list',
     icon: '✅',
     tasks: [
-      { task: 'Fix leaking tap', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: '', startDate: today(0), endDate: today(3), dependencies: '' },
-      { task: 'Repaint front door', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(3), endDate: today(5), dependencies: '' },
-      { task: 'Service air conditioner', room: 'Living', category: 'Trade', status: 'To Do', assigned: '', startDate: today(7), endDate: today(7), dependencies: '' },
-      { task: 'Clean gutters', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(14), endDate: today(14), dependencies: '' },
-      { task: 'Replace smoke alarms', room: 'Living', category: 'Planning', status: 'To Do', assigned: '', startDate: today(5), endDate: today(5), dependencies: '' },
-      { task: 'Garden tidy', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: '', startDate: today(21), endDate: today(28), dependencies: '' },
+      { task: 'Fix leaking tap', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: [], startDate: today(0), endDate: today(3), dependencies: '' },
+      { task: 'Repaint front door', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(3), endDate: today(5), dependencies: '' },
+      { task: 'Service air conditioner', room: 'Living', category: 'Trade', status: 'To Do', assigned: [], startDate: today(7), endDate: today(7), dependencies: '' },
+      { task: 'Clean gutters', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(14), endDate: today(14), dependencies: '' },
+      { task: 'Replace smoke alarms', room: 'Living', category: 'Planning', status: 'To Do', assigned: [], startDate: today(5), endDate: today(5), dependencies: '' },
+      { task: 'Garden tidy', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(21), endDate: today(28), dependencies: '' },
     ],
   },
 ];
@@ -235,7 +235,7 @@ export function showOnboarding(onFinish) {
       try {
         const text = await droppedFile.text();
         const tasks = importCSV(text);
-        projectId = 'import-' + Date.now();
+        projectId = crypto.randomUUID();
         const projects = loadProjects();
         projects.push({ id: projectId, name: droppedFile.name.replace(/\.csv$/i, ''), tasks });
         saveProjects(projects);
@@ -247,8 +247,8 @@ export function showOnboarding(onFinish) {
 
     if (!projectId && selectedTemplateId) {
       const tpl = TEMPLATES.find(t => t.id === selectedTemplateId);
-      projectId = 'tpl-' + selectedTemplateId + '-' + Date.now();
-      const tasks = tpl.tasks.map((t, i) => ({ ...t, id: projectId + '-' + i }));
+      projectId = crypto.randomUUID();
+      const tasks = tpl.tasks.map(t => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() }));
       const projects = loadProjects();
       projects.push({ id: projectId, name: tpl.label, tasks });
       saveProjects(projects);

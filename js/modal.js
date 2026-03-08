@@ -1,4 +1,5 @@
 import { esc, getInitials, getAssignedColor } from './utils.js';
+import { openDateRangePicker, closeDateRangePicker } from './date-range-picker.js';
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Blocked', 'Done'];
 
@@ -39,8 +40,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     return `${y}-${m}-${day}`;
   };
 
-  const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
-  const initials = getInitials(task.assigned);
+  // Coerce assigned to array for backward compat
+  const taskAssigned = Array.isArray(task.assigned) ? task.assigned : (task.assigned ? [task.assigned] : []);
 
   const rooms = options.rooms || [];
 
@@ -53,7 +54,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     startDate: fmtDate(task.startDate),
     endDate: fmtDate(task.endDate),
     dependencies: task.dependencies || '',
-    assigned: task.assigned || '',
+    assigned: [...taskAssigned].sort().join(','),
+    tradeQuote: !!task.tradeQuote,
   };
 
   modalEl.className = 'modal-overlay';
@@ -102,28 +104,28 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
           </label>
           <div class="modal-field" style="flex:0 0 auto">
             <span>Assigned</span>
-            <div class="modal-avatar-wrap">
-              <button type="button" class="modal-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned || 'Unassigned')}">
-                ${initials}
+            <div class="modal-members-wrap">
+              <div class="modal-members-list"></div>
+              <button type="button" class="modal-member-add" title="Add member">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </button>
-              <select class="modal-avatar-select" name="assigned">
-                <option value="">Unassigned</option>
-                ${options.assignees.map(a =>
-                  `<option value="${esc(a)}"${a === task.assigned ? ' selected' : ''}>${esc(a)}</option>`
-                ).join('')}
-              </select>
+              <div class="modal-member-dropdown hidden"></div>
+              <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
             </div>
           </div>
         </div>
         <div class="modal-row">
-          <label class="modal-field">
+          <div class="modal-field">
             <span>Category</span>
-            <select name="category">
-              ${options.categories.map(c =>
-                `<option value="${esc(c)}"${c === task.category ? ' selected' : ''}>${esc(c)}</option>`
-              ).join('')}
-            </select>
-          </label>
+            <div class="category-field-wrap" id="category-field-wrap">
+              <select name="category">
+                ${options.categories.map(c =>
+                  `<option value="${esc(c)}"${c === task.category ? ' selected' : ''}>${esc(c)}</option>`
+                ).join('')}
+                <option value="__new__">+ New Category</option>
+              </select>
+            </div>
+          </div>
           <label class="modal-field">
             <span>Status</span>
             <select name="status">
@@ -160,6 +162,11 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
             <div class="dep-selected"></div>
           </div>
         </div>
+        <label class="modal-toggle-row">
+          <span>Trade quote required</span>
+          <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
         <div class="modal-actions">
           <div class="modal-actions-right">
             <button type="button" class="modal-btn modal-cancel">Cancel</button>
@@ -175,8 +182,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   if (menuBtn) menuBtn.style.display = 'none';
 
   // --- Dirty checking ---
-  const avatarSelect = modalEl.querySelector('.modal-avatar-select');
   const form = modalEl.querySelector('form');
+  const assignedHidden = modalEl.querySelector('input[name="assigned"]');
 
   function isDirty() {
     const fd = new FormData(form);
@@ -187,11 +194,14 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     if ((fd.get('startDate') || '') !== initial.startDate) return true;
     if ((fd.get('endDate') || '') !== initial.endDate) return true;
     if ((fd.get('dependencies') || '') !== initial.dependencies) return true;
-    if ((avatarSelect.value || '') !== initial.assigned) return true;
+    const currentAssigned = (assignedHidden.value || '').split(',').filter(Boolean).sort().join(',');
+    if (currentAssigned !== initial.assigned) return true;
+    if (form.querySelector('[name="tradeQuote"]').checked !== initial.tradeQuote) return true;
     return false;
   }
 
   const close = () => {
+    closeDateRangePicker();
     modalEl.classList.remove('open');
     if (menuBtn) menuBtn.style.display = '';
     document.removeEventListener('keydown', onKey);
@@ -294,6 +304,63 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     });
   }
 
+  // --- Inline category input (mirrors room pattern) ---
+  const categoryWrap = modalEl.querySelector('#category-field-wrap');
+  const categorySelect = categoryWrap.querySelector('select[name="category"]');
+
+  categorySelect.addEventListener('change', () => {
+    if (categorySelect.value === '__new__') {
+      showCategoryInlineInput('', (newName) => {
+        if (!newName) {
+          categorySelect.value = task.category || options.categories[0] || '';
+          return;
+        }
+        const opt = document.createElement('option');
+        opt.value = newName;
+        opt.textContent = newName;
+        categorySelect.insertBefore(opt, categorySelect.querySelector('option[value="__new__"]'));
+        categorySelect.value = newName;
+      });
+    }
+  });
+
+  function showCategoryInlineInput(prefill, onDone) {
+    const existing = categoryWrap.querySelector('.category-inline-input');
+    if (existing) existing.remove();
+
+    categorySelect.style.display = 'none';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'room-inline-input category-inline-input';
+    wrap.innerHTML = `
+      <input type="text" value="${esc(prefill)}" placeholder="Category name...">
+      <button type="button" class="room-confirm-btn" title="Confirm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.75 6 6 9-13.5"/></svg>
+      </button>
+      <button type="button" class="room-cancel-btn" title="Cancel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    `;
+    categoryWrap.appendChild(wrap);
+
+    const inp = wrap.querySelector('input');
+    inp.focus();
+    inp.select();
+
+    const finish = (val) => {
+      wrap.remove();
+      categorySelect.style.display = '';
+      onDone(val ? val.trim() : '');
+    };
+
+    wrap.querySelector('.room-confirm-btn').addEventListener('click', () => finish(inp.value));
+    wrap.querySelector('.room-cancel-btn').addEventListener('click', () => finish(''));
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); finish(inp.value); }
+      if (e.key === 'Escape') finish('');
+    });
+  }
+
   // --- Searchable dependency picker ---
   const depHidden = modalEl.querySelector('input[name="dependencies"]');
   const depSearchInput = modalEl.querySelector('.dep-search-input');
@@ -352,41 +419,125 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   renderDepChips();
   syncDepHidden();
 
-  // Avatar-based assignee picker
-  const avatarBtn = modalEl.querySelector('.modal-avatar');
-  avatarBtn.addEventListener('click', () => avatarSelect.click());
-  avatarSelect.addEventListener('change', () => {
-    const name = avatarSelect.value;
-    const { bg, text } = getAssignedColor(name);
-    avatarBtn.style.background = bg;
-    avatarBtn.style.color = text;
-    avatarBtn.textContent = getInitials(name);
-    avatarBtn.title = name || 'Unassigned';
+  // Multi-member picker
+  const membersList = modalEl.querySelector('.modal-members-list');
+  const memberAddBtn = modalEl.querySelector('.modal-member-add');
+  const memberDropdown = modalEl.querySelector('.modal-member-dropdown');
+  let selectedMembers = [...taskAssigned];
+
+  function syncMembersHidden() {
+    assignedHidden.value = selectedMembers.join(',');
+  }
+
+  function renderMemberAvatars() {
+    membersList.innerHTML = '';
+    selectedMembers.forEach(name => {
+      const { bg, text } = getAssignedColor(name);
+      const av = document.createElement('button');
+      av.type = 'button';
+      av.className = 'modal-member-avatar';
+      av.style.background = bg;
+      av.style.color = text;
+      av.title = `Remove ${name}`;
+      av.textContent = getInitials(name);
+      av.addEventListener('click', () => {
+        selectedMembers = selectedMembers.filter(n => n !== name);
+        syncMembersHidden();
+        renderMemberAvatars();
+      });
+      membersList.appendChild(av);
+    });
+  }
+
+  function showMemberDropdown() {
+    const available = (options.assignees || []).filter(a => !selectedMembers.includes(a));
+    if (available.length === 0) {
+      memberDropdown.classList.add('hidden');
+      return;
+    }
+    memberDropdown.innerHTML = available.map(a => {
+      const { bg, text } = getAssignedColor(a);
+      return `<button type="button" class="modal-member-option" data-name="${esc(a)}">
+        <span class="modal-member-option-avatar" style="background:${bg};color:${text}">${getInitials(a)}</span>
+        <span>${esc(a)}</span>
+      </button>`;
+    }).join('');
+    memberDropdown.classList.remove('hidden');
+    memberDropdown.querySelectorAll('.modal-member-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedMembers.push(opt.dataset.name);
+        syncMembersHidden();
+        renderMemberAvatars();
+        memberDropdown.classList.add('hidden');
+      });
+    });
+  }
+
+  memberAddBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !memberDropdown.classList.contains('hidden');
+    if (isOpen) {
+      memberDropdown.classList.add('hidden');
+    } else {
+      showMemberDropdown();
+    }
   });
 
-  // Date picker wiring
-  modalEl.querySelectorAll('.date-picker-wrap').forEach(wrap => {
-    const btn = wrap.querySelector('.date-display');
-    const native = wrap.querySelector('.date-native');
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      native.showPicker ? native.showPicker() : native.click();
-    });
-    native.addEventListener('change', () => {
-      if (native.value) {
-        const d = new Date(native.value + 'T00:00:00');
-        btn.textContent = displayDate(d);
-        btn.classList.remove('empty');
-        const label = btn.dataset.for === 'startDate' ? 'Start Date' : 'End Date';
-        native.setAttribute('aria-label', ariaDate(label, d));
-      } else {
-        btn.textContent = 'Set date';
-        btn.classList.add('empty');
-        const label = btn.dataset.for === 'startDate' ? 'Start Date' : 'End Date';
-        native.setAttribute('aria-label', label);
-      }
-    });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.modal-members-wrap')) memberDropdown.classList.add('hidden');
   });
+
+  renderMemberAvatars();
+  syncMembersHidden();
+
+  // Date picker wiring — opens Airbnb-style range picker
+  const startBtn = modalEl.querySelector('.date-display[data-for="startDate"]');
+  const endBtn = modalEl.querySelector('.date-display[data-for="endDate"]');
+  const startNative = modalEl.querySelector('input[name="startDate"]');
+  const endNative = modalEl.querySelector('input[name="endDate"]');
+
+  function updateDateBtn(btn, native, d, field) {
+    if (d) {
+      native.value = fmtDate(d);
+      btn.textContent = displayDate(d);
+      btn.classList.remove('empty');
+      native.setAttribute('aria-label', ariaDate(field, d));
+    } else {
+      native.value = '';
+      btn.textContent = 'Set date';
+      btn.classList.add('empty');
+      native.setAttribute('aria-label', field);
+    }
+  }
+
+  function openRangePickerFrom(anchor) {
+    const curStart = startNative.value ? new Date(startNative.value + 'T00:00:00') : null;
+    const curEnd = endNative.value ? new Date(endNative.value + 'T00:00:00') : null;
+    openDateRangePicker({
+      anchor,
+      startDate: curStart,
+      endDate: curEnd,
+      onSave({ start, end }) {
+        updateDateBtn(startBtn, startNative, start, 'Start Date');
+        updateDateBtn(endBtn, endNative, end, 'End Date');
+      },
+      onCancel() {},
+    });
+  }
+
+  if (startBtn) {
+    startBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openRangePickerFrom(startBtn);
+    });
+  }
+  if (endBtn) {
+    endBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openRangePickerFrom(endBtn);
+    });
+  }
 
   // --- Three-dot menu ---
   const moreBtn = modalEl.querySelector('#modal-more-btn');
@@ -470,7 +621,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     for (const name of fieldNames) {
       updatedFields[name] = fd.get(name) || '';
     }
-    updatedFields.assigned = avatarSelect.value || '';
+    updatedFields.assigned = assignedHidden.value || '';
+    updatedFields.tradeQuote = form.querySelector('[name="tradeQuote"]').checked;
     close();
     onSave({ originalTask: task.task, updatedFields });
   });

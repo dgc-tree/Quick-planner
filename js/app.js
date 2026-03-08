@@ -9,21 +9,26 @@ import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
   loadBin, restoreFromBin,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
-  loadUserName, saveUserName,
+  loadUserName, saveUserName, exportBackup, importBackup,
 } from './storage.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { normaliseRows } from './data.js';
 import { openColorPickerModal } from './color-picker.js';
+import { showContextMenu } from './context-menu.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
   .then(m => { _bgFx = m; })
   .catch(err => console.warn('bg-effects unavailable:', err));
 
+let APP_VERSION = 'dev';
+try { const v = await import('./version.js'); APP_VERSION = v.APP_VERSION; } catch {}
+
 let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
-let filters = { room: '', category: '', assigned: '', search: '' };
+let filters = { room: '', category: '', assigned: '', search: '', dateFrom: '', dateTo: '' };
 let currentProjectId = loadActiveProjectId();
+let _updateFilterBadge = () => {};
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -48,7 +53,7 @@ async function loadProjectData() {
 
   // Ensure at least one project exists so tasks always have a home
   if (!projects.length) {
-    const id = 'renos-' + Date.now();
+    const id = crypto.randomUUID();
     projects = [{ id, name: 'Renos', type: 'local', tasks: [] }];
     saveProjects(projects);
     currentProjectId = id;
@@ -254,7 +259,7 @@ async function migrateRenosFromSheet() {
       existing.tasks = serialised;
       currentProjectId = existing.id;
     } else {
-      const id = 'renos-' + Date.now();
+      const id = crypto.randomUUID();
       projects.push({ id, name: 'Renos', type: 'local', tasks: serialised });
       currentProjectId = id;
     }
@@ -280,7 +285,10 @@ async function init() {
   }
   showLoading(false);
   renderSidebarProjects();
+  import('./sync.js').then(m => m.initSync()).catch(err => console.warn('sync unavailable:', err));
   bgFxReady.then(() => _bgFx.initBgEffects());
+  const versionEl = document.getElementById('settings-version');
+  if (versionEl) versionEl.textContent = `v ${APP_VERSION}`;
 }
 
 function setupFilters() {
@@ -309,13 +317,13 @@ function handleTaskEdit(task) {
 
 function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
   if (action === 'rename') {
-    affectedTasks.forEach(t => { t.room = newRoom; });
+    affectedTasks.forEach(t => { t.room = newRoom; t.updatedAt = Date.now(); });
     setupFilters();
     render();
     persistTaskChange();
     showToast(`Room renamed`, 'success');
   } else if (action === 'delete') {
-    affectedTasks.forEach(t => { t.room = ''; });
+    affectedTasks.forEach(t => { t.room = ''; t.updatedAt = Date.now(); });
     setupFilters();
     render();
     persistTaskChange();
@@ -325,6 +333,7 @@ function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
 
 function handleStatusChange(task, newStatus) {
   task.status = newStatus;
+  task.updatedAt = Date.now();
   persistTaskChange();
 }
 
@@ -341,11 +350,12 @@ function handleTaskDelete(task) {
 function handleTaskDuplicate(task) {
   const copy = {
     ...task,
-    id: Date.now(),
+    id: crypto.randomUUID(),
     task: task.task + ' (copy)',
     startDate: task.startDate ? new Date(task.startDate) : null,
     endDate: task.endDate ? new Date(task.endDate) : null,
     status: 'To Do',
+    updatedAt: Date.now(),
   };
   allTasks.push(copy);
   setupFilters();
@@ -356,15 +366,16 @@ function handleTaskDuplicate(task) {
 
 function handleTaskCreate(fields) {
   const newTask = {
-    id: Date.now(),
+    id: crypto.randomUUID(),
     task: fields.task || 'New Task',
     room: fields.room || '',
     category: fields.category || '',
     status: fields.status || 'To Do',
-    assigned: fields.assigned || '',
+    assigned: fields.assigned ? (Array.isArray(fields.assigned) ? fields.assigned : fields.assigned.split(',').filter(Boolean)) : [],
     startDate: fields.startDate ? new Date(fields.startDate) : null,
     endDate: fields.endDate ? new Date(fields.endDate) : null,
     dependencies: fields.dependencies || '',
+    updatedAt: Date.now(),
   };
   allTasks.push(newTask);
   setupFilters();
@@ -377,11 +388,13 @@ function applyLocalUpdate(task, fields) {
   if (fields.task) task.task = fields.task;
   if (fields.room !== undefined) task.room = fields.room;
   if (fields.category) task.category = fields.category;
-  task.assigned = fields.assigned || '';
+  task.assigned = Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',').filter(Boolean) : []);
   if (fields.status) task.status = fields.status;
   task.startDate = fields.startDate ? new Date(fields.startDate) : null;
   task.endDate = fields.endDate ? new Date(fields.endDate) : null;
   task.dependencies = fields.dependencies || '';
+  task.tradeQuote = !!fields.tradeQuote;
+  task.updatedAt = Date.now();
 }
 
 function render() {
@@ -400,24 +413,115 @@ function render() {
     renderKanban(kanbanContainer, filtered, groupBy, {
       onCardClick: handleTaskEdit,
       onStatusChange: handleStatusChange,
+      onContextMenu: (event, task) => {
+        showContextMenu(event, task, {
+          onEdit: () => handleTaskEdit(task),
+          onDelete: () => handleTaskDelete(task),
+          onDuplicate: () => handleTaskDuplicate(task),
+        });
+      },
     });
   } else if (currentView === 'planner') {
     plannerContainer.classList.remove('hidden');
     renderPlanner(plannerContainer, filtered, {
       onBarClick: handleTaskEdit,
+      onContextMenu: (event, task) => {
+        showContextMenu(event, task, {
+          onEdit: () => handleTaskEdit(task),
+          onDelete: () => handleTaskDelete(task),
+          onDuplicate: () => handleTaskDuplicate(task),
+        });
+      },
+      onReschedule: (task, newStart, newEnd) => {
+        task.startDate = newStart;
+        task.endDate = newEnd;
+        task.updatedAt = Date.now();
+        persistTaskChange();
+        render();
+        showToast('Task rescheduled', 'success');
+      },
     });
   } else if (currentView === 'todolist') {
     todolistContainer.classList.remove('hidden');
     renderTodoList(todolistContainer, filtered, {
       onStatusChange: handleStatusChange,
       onTaskClick: handleTaskEdit,
+      onContextMenu: (event, task) => {
+        showContextMenu(event, task, {
+          onEdit: () => handleTaskEdit(task),
+          onDelete: () => handleTaskDelete(task),
+          onDuplicate: () => handleTaskDuplicate(task),
+        });
+      },
       onAssignChange: (task, newAssigned) => {
-        task.assigned = newAssigned;
+        task.assigned = Array.isArray(newAssigned) ? newAssigned : [newAssigned];
+        task.updatedAt = Date.now();
         persistTaskChange();
-        showToast(`Assigned to ${newAssigned}`, 'success');
+        const label = Array.isArray(newAssigned) ? newAssigned.join(', ') : newAssigned;
+        showToast(`Assigned to ${label}`, 'success');
       },
     });
   }
+  renderFilterChips();
+}
+
+function fmtDateChip(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()} ${d.toLocaleString('en-AU', { month: 'short' })}`;
+}
+
+function renderFilterChips() {
+  const container = $('#filter-chips');
+  if (!container) return;
+  const activeFilters = ['room', 'category', 'assigned'].filter(k => filters[k]);
+  const hasDateFilter = filters.dateFrom || filters.dateTo;
+  if (activeFilters.length === 0 && !hasDateFilter) {
+    container.classList.remove('has-chips');
+    container.innerHTML = '';
+    return;
+  }
+  container.classList.add('has-chips');
+  const labels = { room: 'Room', category: 'Category', assigned: 'Assigned' };
+  let html = '';
+  activeFilters.forEach(key => {
+    html += `<span class="filter-chip"><span class="filter-chip-label">${labels[key]}:</span> ${filters[key]}<button class="filter-chip-remove" data-filter="${key}" title="Remove filter" aria-label="Remove ${labels[key]} filter">&times;</button></span>`;
+  });
+  if (filters.dateFrom) {
+    html += `<span class="filter-chip"><span class="filter-chip-label">From:</span> ${fmtDateChip(filters.dateFrom)}<button class="filter-chip-remove" data-filter="dateFrom" title="Remove filter" aria-label="Remove From date filter">&times;</button></span>`;
+  }
+  if (filters.dateTo) {
+    html += `<span class="filter-chip"><span class="filter-chip-label">To:</span> ${fmtDateChip(filters.dateTo)}<button class="filter-chip-remove" data-filter="dateTo" title="Remove filter" aria-label="Remove To date filter">&times;</button></span>`;
+  }
+  html += `<button class="filter-chips-clear">Clear filters</button>`;
+  container.innerHTML = html;
+
+  const dateFilterIdMap = { dateFrom: 'date-from', dateTo: 'date-to' };
+  container.querySelectorAll('.filter-chip-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.filter;
+      filters[key] = '';
+      const elKey = dateFilterIdMap[key] || key;
+      const d = $(`#filter-${elKey}`); if (d) d.value = '';
+      const m = $(`#m-filter-${elKey}`); if (m) m.value = '';
+      _updateFilterBadge();
+      render();
+    });
+  });
+  container.querySelector('.filter-chips-clear').addEventListener('click', () => {
+    filters.room = ''; filters.category = ''; filters.assigned = '';
+    filters.dateFrom = ''; filters.dateTo = '';
+    ['room', 'category', 'assigned'].forEach(key => {
+      const d = $(`#filter-${key}`); if (d) d.value = '';
+      const m = $(`#m-filter-${key}`); if (m) m.value = '';
+    });
+    const dfFrom = $('#filter-date-from'); if (dfFrom) dfFrom.value = '';
+    const dfTo = $('#filter-date-to'); if (dfTo) dfTo.value = '';
+    const mdfFrom = $('#m-filter-date-from'); if (mdfFrom) mdfFrom.value = '';
+    const mdfTo = $('#m-filter-date-to'); if (mdfTo) mdfTo.value = '';
+    _updateFilterBadge();
+    render();
+  });
 }
 
 function updateSummary() {}
@@ -610,7 +714,7 @@ function setupImportModal() {
     try {
       const tasks = importCSV(pendingCsvText);
       const project = {
-        id: String(Date.now()),
+        id: crypto.randomUUID(),
         name,
         type: 'local',
         tasks: [],
@@ -821,6 +925,28 @@ function setupSettingsPanel() {
       exportToCSV(allTasks, getProjectName());
     });
   }
+
+  // --- Backup / Restore ---
+  const backupBtn = $('#settings-backup-btn');
+  const restoreBtn = $('#settings-restore-btn');
+  const restoreInput = $('#settings-restore-input');
+  if (backupBtn) backupBtn.addEventListener('click', () => exportBackup());
+  if (restoreBtn) restoreBtn.addEventListener('click', () => restoreInput.click());
+  if (restoreInput) restoreInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const count = importBackup(reader.result);
+        alert(`Restored ${count} keys. Reloading…`);
+        location.reload();
+      } catch (err) {
+        alert('Restore failed: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  });
 
   // --- Open / close settings view ---
   function showSettings() {
@@ -1033,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add task — FAB (mobile) + header button (desktop)
   function handleAddTask() {
-    const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: '', startDate: null, endDate: null, dependencies: '' };
+    const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '' };
     openEditModal(blankTask, getModalOptions(), ({ updatedFields }) => {
       handleTaskCreate(updatedFields);
     }, handleRoomChange, {});
@@ -1081,6 +1207,23 @@ document.addEventListener('DOMContentLoaded', () => {
       updateFilterBadge();
       render();
     });
+  });
+
+  // Date filters (desktop)
+  ['filter-date-from', 'filter-date-to'].forEach(id => {
+    const el = $(`#${id}`);
+    if (el) {
+      el.addEventListener('change', (e) => {
+        const key = id === 'filter-date-from' ? 'dateFrom' : 'dateTo';
+        filters[key] = e.target.value;
+        // Sync to mobile
+        const mId = id.replace('filter-', 'm-filter-');
+        const mEl = $(`#${mId}`);
+        if (mEl) mEl.value = e.target.value;
+        updateFilterBadge();
+        render();
+      });
+    }
   });
 
   // Search (desktop)
@@ -1186,7 +1329,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateFilterBadge() {
-    const count = [filters.room, filters.category, filters.assigned].filter(Boolean).length;
+    const count = [filters.room, filters.category, filters.assigned, filters.dateFrom, filters.dateTo].filter(Boolean).length;
     if (mobileFilterBadge) {
       mobileFilterBadge.textContent = count;
       mobileFilterBadge.classList.toggle('hidden', count === 0);
@@ -1196,6 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
       desktopFilterBadge.classList.toggle('hidden', count === 0);
     }
   }
+  _updateFilterBadge = updateFilterBadge;
 
   function syncMobileFilterSelects() {
     // Copy options from desktop selects (populated by buildFilterOptions)
@@ -1207,6 +1351,11 @@ document.addEventListener('DOMContentLoaded', () => {
         mobile.value = filters[key];
       }
     });
+    // Sync date filter values to mobile
+    const mDateFrom = $('#m-filter-date-from');
+    const mDateTo = $('#m-filter-date-to');
+    if (mDateFrom) mDateFrom.value = filters.dateFrom;
+    if (mDateTo) mDateTo.value = filters.dateTo;
     const mGroupBy = $('#m-group-by');
     const dGroupBy = $('#group-by');
     if (mGroupBy && dGroupBy) mGroupBy.value = dGroupBy.value;
@@ -1228,10 +1377,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mobileFilterClear) {
     mobileFilterClear.addEventListener('click', () => {
       filters.room = ''; filters.category = ''; filters.assigned = '';
+      filters.dateFrom = ''; filters.dateTo = '';
       ['room', 'category', 'assigned'].forEach(key => {
         const d = $(`#filter-${key}`); if (d) d.value = '';
         const m = $(`#m-filter-${key}`); if (m) m.value = '';
       });
+      const dfFrom = $('#filter-date-from'); if (dfFrom) dfFrom.value = '';
+      const dfTo = $('#filter-date-to'); if (dfTo) dfTo.value = '';
+      const mdfFrom = $('#m-filter-date-from'); if (mdfFrom) mdfFrom.value = '';
+      const mdfTo = $('#m-filter-date-to'); if (mdfTo) mdfTo.value = '';
       updateFilterBadge();
       render();
     });
@@ -1244,6 +1398,22 @@ document.addEventListener('DOMContentLoaded', () => {
         filters[key] = e.target.value;
         const dSel = $(`#filter-${key}`);
         if (dSel) dSel.value = e.target.value;
+        updateFilterBadge();
+        render();
+      });
+    }
+  });
+
+  // Mobile date filter handlers
+  ['m-filter-date-from', 'm-filter-date-to'].forEach(id => {
+    const el = $(`#${id}`);
+    if (el) {
+      el.addEventListener('change', (e) => {
+        const key = id === 'm-filter-date-from' ? 'dateFrom' : 'dateTo';
+        filters[key] = e.target.value;
+        const dId = id.replace('m-filter-', 'filter-');
+        const dEl = $(`#${dId}`);
+        if (dEl) dEl.value = e.target.value;
         updateFilterBadge();
         render();
       });

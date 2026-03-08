@@ -1,5 +1,6 @@
 import { getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
 import { ASSIGNED_COLORS } from './theme.js';
+import { attachLongPress } from './context-menu.js';
 
 const checkedItems = new Map(); // taskId → previousStatus
 const assignedNames = Object.keys(ASSIGNED_COLORS);
@@ -74,6 +75,14 @@ export function renderTodoList(container, tasks, callbacks = {}) {
     badge.style.color = cat.text;
     badge.textContent = task.category;
 
+    let tqBadge = null;
+    if (task.tradeQuote) {
+      tqBadge = document.createElement('span');
+      tqBadge.className = 'trade-quote-badge';
+      tqBadge.title = 'Trade quote required';
+      tqBadge.textContent = 'TQ';
+    }
+
     const name = document.createElement('span');
     name.className = 'todo-task-name';
     name.textContent = task.task;
@@ -88,37 +97,61 @@ export function renderTodoList(container, tasks, callbacks = {}) {
     dates.textContent = dateRange.text;
     dates.setAttribute('aria-label', dateRange.aria);
 
-    const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
-    const avatar = document.createElement('span');
-    avatar.className = 'card-avatar todo-avatar-tap';
-    avatar.style.background = assignedBg;
-    avatar.style.color = assignedText;
-    avatar.title = task.assigned || '';
-    avatar.textContent = getInitials(task.assigned);
+    const members = Array.isArray(task.assigned) ? task.assigned : (task.assigned ? [task.assigned] : []);
 
-    avatar.addEventListener('click', (e) => {
+    const avatarStack = document.createElement('div');
+    avatarStack.className = 'card-avatar-stack todo-avatar-tap';
+
+    function renderTodoAvatars() {
+      avatarStack.innerHTML = '';
+      const show = members.length > 3 ? members.slice(0, 2) : (members.length > 0 ? members : ['']);
+      show.forEach(name => {
+        const span = document.createElement('span');
+        span.className = 'card-avatar';
+        const { bg, text: txt } = getAssignedColor(name);
+        span.style.background = bg;
+        span.style.color = txt;
+        span.textContent = getInitials(name);
+        span.title = name || 'Unassigned';
+        avatarStack.appendChild(span);
+      });
+      if (members.length > 3) {
+        const overflow = document.createElement('span');
+        overflow.className = 'card-avatar avatar-overflow';
+        overflow.textContent = `+${members.length - 2}`;
+        overflow.title = members.slice(2).join(', ');
+        avatarStack.appendChild(overflow);
+      }
+    }
+    renderTodoAvatars();
+
+    avatarStack.addEventListener('click', (e) => {
       e.stopPropagation();
-      const curIdx = assignedNames.indexOf(task.assigned);
+      // Cycle the first member through available names
+      const firstMember = members[0] || '';
+      const curIdx = assignedNames.indexOf(firstMember);
       const nextIdx = (curIdx + 1) % assignedNames.length;
       const nextName = assignedNames[nextIdx];
-      task.assigned = nextName;
-      const { bg, text: txt } = getAssignedColor(nextName);
-      avatar.style.background = bg;
-      avatar.style.color = txt;
-      avatar.textContent = getInitials(nextName);
-      avatar.title = nextName;
-      if (callbacks.onAssignChange) callbacks.onAssignChange(task, nextName);
+      if (members.length === 0) {
+        members.push(nextName);
+      } else {
+        members[0] = nextName;
+      }
+      task.assigned = [...members];
+      renderTodoAvatars();
+      if (callbacks.onAssignChange) callbacks.onAssignChange(task, [...members]);
     });
 
     const colMeta = document.createElement('div');
     colMeta.className = 'todo-col-meta';
     colMeta.appendChild(room);
     colMeta.appendChild(badge);
+    if (tqBadge) colMeta.appendChild(tqBadge);
 
     const footer = document.createElement('div');
     footer.className = 'todo-footer';
     footer.appendChild(dates);
-    footer.appendChild(avatar);
+    footer.appendChild(avatarStack);
 
     const colMain = document.createElement('div');
     colMain.className = 'todo-col-main';
@@ -134,7 +167,23 @@ export function renderTodoList(container, tasks, callbacks = {}) {
       if (callbacks.onTaskClick) callbacks.onTaskClick(task);
     });
 
+    // Right-click context menu
+    row.addEventListener('contextmenu', (e) => {
+      if (e.shiftKey) return;
+      e.preventDefault();
+      if (callbacks.onContextMenu) callbacks.onContextMenu(e, task);
+    });
+
+    row.dataset.taskId = task.id;
     container.appendChild(row);
   }
+
+  // Long-press for mobile
+  attachLongPress(container, '.todo-item', (el) => {
+    const id = el.dataset.taskId;
+    return actionable.find(t => String(t.id) === id);
+  }, (syntheticEvent, task) => {
+    if (callbacks.onContextMenu) callbacks.onContextMenu(syntheticEvent, task);
+  });
 }
 

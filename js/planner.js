@@ -1,4 +1,5 @@
 import { esc, getInitials, getAssignedColor, getCategoryColor } from './utils.js';
+import { attachLongPress } from './context-menu.js';
 
 let _plannerCallbacks = {};
 let _viewSize = 'medium';
@@ -128,6 +129,44 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     const task = allTasks.find(t => t.id === taskId);
     if (task) _plannerCallbacks.onBarClick(task);
   });
+
+  // Right-click context menu for bars
+  container.addEventListener('contextmenu', (e) => {
+    if (e.shiftKey) return;
+    const bar = e.target.closest('.planner-bar');
+    if (!bar || !_plannerCallbacks.onContextMenu) return;
+    e.preventDefault();
+    const taskId = parseInt(bar.dataset.taskId, 10);
+    const task = allTasks.find(t => t.id === taskId);
+    if (task) _plannerCallbacks.onContextMenu(e, task);
+  });
+
+  // Long-press for mobile
+  attachLongPress(container, '.planner-bar', (el) => {
+    const taskId = parseInt(el.dataset.taskId, 10);
+    return allTasks.find(t => t.id === taskId);
+  }, (syntheticEvent, task) => {
+    if (_plannerCallbacks.onContextMenu) _plannerCallbacks.onContextMenu(syntheticEvent, task);
+  });
+
+  // Drag-to-reschedule
+  setupPlannerDrag(container, allTasks, minDate, totalDays);
+}
+
+function renderBarAvatarStack(assigned) {
+  const members = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+  if (members.length === 0) {
+    const { bg, text } = getAssignedColor('');
+    return `<div class="bar-avatar-stack"><span class="bar-avatar" style="background:${bg};color:${text}" title="Unassigned">?</span></div>`;
+  }
+  const show = members.length > 3 ? members.slice(0, 2) : members;
+  const overflow = members.length > 3 ? members.length - 2 : 0;
+  const avatars = show.map(name => {
+    const { bg, text } = getAssignedColor(name);
+    return `<span class="bar-avatar" style="background:${bg};color:${text}" title="${esc(name)}">${getInitials(name)}</span>`;
+  }).join('');
+  const overflowBadge = overflow > 0 ? `<span class="bar-avatar avatar-overflow" title="${members.slice(2).map(n => esc(n)).join(', ')}">+${overflow}</span>` : '';
+  return `<div class="bar-avatar-stack">${avatars}${overflowBadge}</div>`;
 }
 
 function taskRowHTML(task, minDate, totalDays) {
@@ -136,16 +175,17 @@ function taskRowHTML(task, minDate, totalDays) {
   const duration = daysBetween(task.startDate, task.endDate);
   const leftPct = (startOffset / totalDays) * 100;
   const widthPct = Math.max((duration / totalDays) * 100, 1);
-  const initials = getInitials(task.assigned);
-  const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
+  const assignedTitle = Array.isArray(task.assigned) ? task.assigned.join(', ') : (task.assigned || '');
 
   return `
     <div class="planner-row">
       <div class="planner-bar-container">
-        <div class="planner-bar" data-task-id="${task.id}" style="left:${leftPct}%;width:${widthPct}%;background:${cat.bg};color:${cat.text};border-left:3px solid ${cat.text};cursor:pointer"
-             title="${esc(task.task)} (${esc(task.category)}) - ${esc(task.assigned)}">
+        <div class="planner-bar" data-task-id="${task.id}" data-start-pct="${leftPct}" data-width-pct="${widthPct}" data-duration="${duration}" style="left:${leftPct}%;width:${widthPct}%;background:${cat.bg};color:${cat.text};border-left:3px solid ${cat.text}"
+             title="${esc(task.task)} (${esc(task.category)}) - ${esc(assignedTitle)}">
+          <div class="planner-bar-handle planner-bar-handle--left" data-handle="left"></div>
           <span class="bar-label">${esc(task.task)}</span>
-          <span class="bar-avatar" style="background:${assignedBg};color:${assignedText}">${initials}</span>
+          ${renderBarAvatarStack(task.assigned)}
+          <div class="planner-bar-handle planner-bar-handle--right" data-handle="right"></div>
         </div>
       </div>
     </div>
@@ -178,4 +218,141 @@ function getMonthHeaders(min, max) {
 
 function daysBetween(a, b) {
   return Math.max(1, Math.round((b - a) / (1000 * 60 * 60 * 24)));
+}
+
+/* ── Drag-to-reschedule ─────────────────────────────────────── */
+
+function setupPlannerDrag(container, allTasks, minDate, totalDays) {
+  const THRESHOLD = 5;  // px before drag starts
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  let dragState = null;
+
+  container.addEventListener('pointerdown', (e) => {
+    const bar = e.target.closest('.planner-bar');
+    if (!bar) return;
+
+    const handle = e.target.closest('.planner-bar-handle');
+    const mode = handle ? handle.dataset.handle : 'move';  // 'left', 'right', or 'move'
+
+    const taskId = parseInt(bar.dataset.taskId, 10);
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task || !task.startDate || !task.endDate) return;
+
+    const barContainer = bar.closest('.planner-bar-container');
+    const bodyEl = container.querySelector('.planner-body');
+    const containerWidth = bodyEl.offsetWidth;
+
+    const startPct = parseFloat(bar.dataset.startPct);
+    const widthPct = parseFloat(bar.dataset.widthPct);
+
+    dragState = {
+      bar,
+      barContainer,
+      bodyEl,
+      containerWidth,
+      task,
+      mode,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      startPct,
+      widthPct,
+      ghost: null,
+    };
+
+    bar.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  container.addEventListener('pointermove', (e) => {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+
+    if (!dragState.moved) {
+      if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
+      dragState.moved = true;
+      dragState.bar.classList.add('dragging');
+
+      // Create ghost
+      const ghost = document.createElement('div');
+      ghost.className = 'planner-bar-ghost';
+      ghost.style.background = dragState.bar.style.background;
+      ghost.style.borderLeft = dragState.bar.style.borderLeft;
+      ghost.style.left = dragState.startPct + '%';
+      ghost.style.width = dragState.widthPct + '%';
+      dragState.barContainer.appendChild(ghost);
+      dragState.ghost = ghost;
+    }
+
+    const deltaPct = (dx / dragState.containerWidth) * 100;
+
+    if (dragState.mode === 'move') {
+      const newLeft = Math.max(0, Math.min(dragState.startPct + deltaPct, 100 - dragState.widthPct));
+      dragState.bar.style.left = newLeft + '%';
+      dragState.bar.style.width = dragState.widthPct + '%';
+    } else if (dragState.mode === 'left') {
+      const maxDelta = dragState.widthPct - (1 / totalDays * 100);  // min 1 day
+      const clampedDelta = Math.min(deltaPct, maxDelta);
+      const newLeft = Math.max(0, dragState.startPct + clampedDelta);
+      const newWidth = dragState.widthPct - (newLeft - dragState.startPct);
+      dragState.bar.style.left = newLeft + '%';
+      dragState.bar.style.width = Math.max(newWidth, 1 / totalDays * 100) + '%';
+    } else if (dragState.mode === 'right') {
+      const minWidthPct = (1 / totalDays) * 100;
+      const newWidth = Math.max(dragState.widthPct + deltaPct, minWidthPct);
+      const maxWidth = 100 - dragState.startPct;
+      dragState.bar.style.width = Math.min(newWidth, maxWidth) + '%';
+    }
+  });
+
+  container.addEventListener('pointerup', (e) => {
+    if (!dragState) return;
+    const state = dragState;
+    dragState = null;
+
+    state.bar.classList.remove('dragging');
+    if (state.ghost) state.ghost.remove();
+
+    if (!state.moved) return;  // under threshold — let click handler fire
+
+    // Prevent the delegated click from firing after a drag
+    const suppressClick = (ev) => { ev.stopPropagation(); };
+    container.addEventListener('click', suppressClick, { capture: true, once: true });
+
+    // Compute new dates from final bar position
+    const finalLeftPct = parseFloat(state.bar.style.left);
+    const finalWidthPct = parseFloat(state.bar.style.width);
+
+    const startDayOffset = Math.round((finalLeftPct / 100) * totalDays);
+    const durationDays = Math.max(1, Math.round((finalWidthPct / 100) * totalDays));
+
+    const newStart = new Date(minDate.getTime() + startDayOffset * MS_PER_DAY);
+    const newEnd = new Date(newStart.getTime() + durationDays * MS_PER_DAY);
+
+    // Normalise to midnight
+    newStart.setHours(0, 0, 0, 0);
+    newEnd.setHours(0, 0, 0, 0);
+
+    // Only call back if dates actually changed
+    const startChanged = newStart.getTime() !== state.task.startDate.getTime();
+    const endChanged = newEnd.getTime() !== state.task.endDate.getTime();
+    if ((startChanged || endChanged) && _plannerCallbacks.onReschedule) {
+      _plannerCallbacks.onReschedule(state.task, newStart, newEnd);
+    } else {
+      // Snap bar back to original position
+      state.bar.style.left = state.startPct + '%';
+      state.bar.style.width = state.widthPct + '%';
+    }
+  });
+
+  container.addEventListener('pointercancel', () => {
+    if (!dragState) return;
+    dragState.bar.classList.remove('dragging');
+    if (dragState.ghost) dragState.ghost.remove();
+    // Snap back
+    dragState.bar.style.left = dragState.startPct + '%';
+    dragState.bar.style.width = dragState.widthPct + '%';
+    dragState = null;
+  });
 }

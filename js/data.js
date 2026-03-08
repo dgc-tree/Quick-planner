@@ -5,10 +5,13 @@ export function normaliseRows(rows) {
   return rows.map((row, i) => {
     const room = (row['Room'] || '').trim();
     if (room) currentRoom = room;
-    const assigned = (row['Assigned'] || '').trim();
+    const rawAssigned = (row['Assigned'] || '').trim();
+    const assignedArr = rawAssigned
+      ? rawAssigned.split(',').map(s => s.trim()).filter(Boolean).map(s => ASSIGNED_ALIAS[s] || s)
+      : [];
 
     return {
-      id: i,
+      id: crypto.randomUUID(),
       room: currentRoom,
       status: (row['Status'] || '').trim() === 'Backlog' ? 'To Do' : (row['Status'] || '').trim(),
       task: (row['Task'] || '').trim(),
@@ -16,7 +19,8 @@ export function normaliseRows(rows) {
       category: (row['Category'] || '').trim(),
       startDate: parseDate(row['Start date']),
       endDate: parseDate(row['End date']),
-      assigned: ASSIGNED_ALIAS[assigned] || assigned,
+      assigned: assignedArr,
+      updatedAt: Date.now(),
     };
   }).filter(t => t.task);
 }

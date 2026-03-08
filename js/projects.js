@@ -66,7 +66,7 @@ export function exportToCSV(tasks, filename = 'project') {
       'Category': t.category,
       'Start date': formatDate(t.startDate),
       'End date': formatDate(t.endDate),
-      'Assigned': t.assigned,
+      'Assigned': Array.isArray(t.assigned) ? t.assigned.join(', ') : (t.assigned || ''),
       'Dependencies': t.dependencies,
     };
   });

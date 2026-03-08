@@ -106,6 +106,14 @@
         <label class="mobile-filter-label" for="m-filter-assigned">Assigned</label>
         <select id="m-filter-assigned" class="mobile-filter-select"><option value="">All</option></select>
       </div>
+      <div class="mobile-filter-row">
+        <label class="mobile-filter-label" for="m-filter-date-from">From</label>
+        <input type="date" id="m-filter-date-from" class="mobile-filter-date">
+      </div>
+      <div class="mobile-filter-row">
+        <label class="mobile-filter-label" for="m-filter-date-to">To</label>
+        <input type="date" id="m-filter-date-to" class="mobile-filter-date">
+      </div>
       <div id="m-group-by-wrap" class="mobile-filter-row">
         <label class="mobile-filter-label" for="m-group-by">Group by</label>
         <select id="m-group-by" class="mobile-filter-select">
@@ -170,6 +178,8 @@
     </div>
   </header>
 
+  <div id="filter-chips" class="filter-chips-bar"></div>
+
   <!-- Filter popover at body level — outside app-header's backdrop-filter stacking context -->
   <div id="desktop-filter-popover" class="desktop-filter-popover hidden">
     <div class="filter-popover-grid">
@@ -193,6 +203,14 @@
           <option value="category">Category</option>
           <option value="assigned">Assigned</option>
         </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-date-from">From</label>
+        <input type="date" id="filter-date-from">
+      </div>
+      <div class="filter-group">
+        <label for="filter-date-to">To</label>
+        <input type="date" id="filter-date-to">
       </div>
       <div id="view-size-wrap" class="filter-group hidden">
         <label>View size</label>
@@ -245,13 +263,24 @@
         </section>
 
         <section id="settings-export-section" class="settings-card hidden">
-          <h3 class="settings-card-title">Export project</h3>
-          <p class="settings-card-desc">Download this project as a CSV spreadsheet.</p>
+          <h3 class="settings-card-title">Data</h3>
+          <p class="settings-card-desc">Export this project or back up all app data.</p>
           <div class="settings-card-actions">
             <button id="settings-export-btn" class="modal-btn modal-cancel">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export CSV
             </button>
+          </div>
+          <div class="settings-card-actions settings-backup-actions">
+            <button id="settings-backup-btn" class="modal-btn modal-cancel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Backup all data
+            </button>
+            <button id="settings-restore-btn" class="modal-btn modal-cancel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Restore backup
+            </button>
+            <input type="file" id="settings-restore-input" accept=".json" class="hidden">
           </div>
         </section>
 
@@ -263,6 +292,7 @@
           </div>
         </section>
 
+        <p class="settings-version" id="settings-version"></p>
       </div>
     </div>
 

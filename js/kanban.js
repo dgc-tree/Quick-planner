@@ -2,6 +2,7 @@ import { STATUS_COLORS } from './theme.js';
 import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
 import { openColorPickerModal } from './color-picker.js';
 import { loadColumnColors, saveColumnColors } from './storage.js';
+import { attachLongPress } from './context-menu.js';
 
 const STATUS_ORDER = ['To Do', 'In Progress', 'Blocked', 'Done'];
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
@@ -118,6 +119,14 @@ export function renderKanban(container, tasks, groupBy = 'room', callbacks = {})
     col.appendChild(cardList);
     container.appendChild(col);
   }
+
+  // Long-press for mobile
+  attachLongPress(container, '.kanban-card', (el) => {
+    const id = el.dataset.taskId;
+    return tasks.find(t => String(t.id) === id);
+  }, (syntheticEvent, task) => {
+    if (callbacks.onContextMenu) callbacks.onContextMenu(syntheticEvent, task);
+  });
 }
 
 function contrastText(hex) {
@@ -147,10 +156,24 @@ function openColumnColorPicker(columnName, header) {
   });
 }
 
+function renderAvatarStack(assigned, cls = 'card-avatar') {
+  const members = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+  if (members.length === 0) {
+    const { bg, text } = getAssignedColor('');
+    return `<div class="${cls}-stack"><span class="${cls}" style="background:${bg};color:${text}" title="Unassigned">?</span></div>`;
+  }
+  const show = members.length > 3 ? members.slice(0, 2) : members;
+  const overflow = members.length > 3 ? members.length - 2 : 0;
+  const avatars = show.map(name => {
+    const { bg, text } = getAssignedColor(name);
+    return `<span class="${cls}" style="background:${bg};color:${text}" title="${esc(name)}">${getInitials(name)}</span>`;
+  }).join('');
+  const overflowBadge = overflow > 0 ? `<span class="${cls} avatar-overflow" title="${members.slice(2).map(n => esc(n)).join(', ')}">+${overflow}</span>` : '';
+  return `<div class="${cls}-stack">${avatars}${overflowBadge}</div>`;
+}
+
 function createCard(task) {
   const cat = getCategoryColor(task.category);
-  const { bg: assignedBg, text: assignedText } = getAssignedColor(task.assigned);
-  const initials = getInitials(task.assigned);
   const { text: dates, aria: datesAria } = formatDateRange(task.startDate, task.endDate);
 
   const card = document.createElement('div');
@@ -163,17 +186,20 @@ function createCard(task) {
     depsHTML = `<div class="card-deps">Depends on: ${esc(task.dependencies)}</div>`;
   }
 
+  const assignedTitle = Array.isArray(task.assigned) ? task.assigned.join(', ') : (task.assigned || '');
+
   card.innerHTML = `
     <div class="card-room">${esc(task.room)}</div>
-    <span class="category-badge" style="background:${cat.bg};color:${cat.text}">
-      ${esc(task.category)}
-    </span>
+    <div class="card-badges">
+      <span class="category-badge" style="background:${cat.bg};color:${cat.text}">
+        ${esc(task.category)}
+      </span>
+      ${task.tradeQuote ? '<span class="trade-quote-badge" title="Trade quote required">TQ</span>' : ''}
+    </div>
     <div class="card-title">${esc(task.task)}</div>
     <div class="card-footer">
       <span class="card-dates" aria-label="${datesAria}">${dates}</span>
-      <span class="card-avatar" style="background:${assignedBg};color:${assignedText}" title="${esc(task.assigned)}">
-        ${initials}
-      </span>
+      ${renderAvatarStack(task.assigned)}
     </div>
     ${depsHTML}
   `;
@@ -186,6 +212,13 @@ function createCard(task) {
     } else {
       card.classList.toggle('expanded');
     }
+  });
+
+  // Right-click context menu
+  card.addEventListener('contextmenu', (e) => {
+    if (e.shiftKey) return; // Let native menu through with Shift
+    e.preventDefault();
+    if (_callbacks.onContextMenu) _callbacks.onContextMenu(e, task);
   });
 
   // Drag events (desktop only — draggable suppresses click on touch devices)

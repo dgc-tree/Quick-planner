@@ -86,8 +86,10 @@
   --category-basic-repairs-text: #92400E;
   --category-trade-quote-bg: #FFD6D6;
   --category-trade-quote-text: #C53030;
-  --category-buy-new-bg: #D4EDDA;
-  --category-buy-new-text: #276749;
+  --category-major-projects-bg: #D4EDDA;
+  --category-major-projects-text: #276749;
+  --category-outside-bg: #DBEAFE;
+  --category-outside-text: #1E40AF;
   --category-selling-bg: #FDE2FF;
   --category-selling-text: #9B2C8F;
   --category-in-progress-bg: #D6DFFF;
@@ -145,8 +147,10 @@
   --category-basic-repairs-text: #fbbf24;
   --category-trade-quote-bg: rgba(248,113,113,0.15);
   --category-trade-quote-text: #f87171;
-  --category-buy-new-bg: rgba(110,231,183,0.15);
-  --category-buy-new-text: #6ee7b7;
+  --category-major-projects-bg: rgba(110,231,183,0.15);
+  --category-major-projects-text: #6ee7b7;
+  --category-outside-bg: rgba(96,165,250,0.15);
+  --category-outside-text: #60a5fa;
   --category-selling-bg: rgba(232,121,249,0.15);
   --category-selling-text: #e879f9;
   --category-in-progress-bg: rgba(165,180,252,0.15);
