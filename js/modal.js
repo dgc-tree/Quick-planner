@@ -1,5 +1,7 @@
 import { esc, getInitials, getAssignedColor } from './utils.js';
-import { openDateRangePicker, closeDateRangePicker } from './date-range-picker.js';
+
+let _drp = { openDateRangePicker() {}, closeDateRangePicker() {} };
+import('./date-range-picker.js').then(m => { _drp = m; }).catch(err => console.warn('date-range-picker unavailable:', err));
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Blocked', 'Done'];
 
@@ -201,7 +203,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   }
 
   const close = () => {
-    closeDateRangePicker();
+    _drp.closeDateRangePicker();
     modalEl.classList.remove('open');
     if (menuBtn) menuBtn.style.display = '';
     document.removeEventListener('keydown', onKey);
@@ -514,7 +516,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   function openRangePickerFrom(anchor) {
     const curStart = startNative.value ? new Date(startNative.value + 'T00:00:00') : null;
     const curEnd = endNative.value ? new Date(endNative.value + 'T00:00:00') : null;
-    openDateRangePicker({
+    _drp.openDateRangePicker({
       anchor,
       startDate: curStart,
       endDate: curEnd,

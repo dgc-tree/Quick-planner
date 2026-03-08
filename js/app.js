@@ -9,7 +9,7 @@ import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
   loadBin, restoreFromBin,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
-  loadUserName, saveUserName, exportBackup, importBackup,
+  loadUserName, saveUserName, exportBackup, importBackup, runMigrations,
 } from './storage.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { normaliseRows } from './data.js';
@@ -275,6 +275,7 @@ async function migrateRenosFromSheet() {
 async function init() {
   showLoading(true);
   try {
+    runMigrations();
     await migrateRenosFromSheet();
     await loadProjectData();
     updateSummary();

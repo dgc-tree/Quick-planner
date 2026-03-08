@@ -179,10 +179,11 @@ function migrateAssignedToArray() {
   }
 }
 
-// Run migrations on module load
-migrateToUUIDs();
-migrateCategoryRenames();
-migrateAssignedToArray();
+export function runMigrations() {
+  migrateToUUIDs();
+  migrateCategoryRenames();
+  migrateAssignedToArray();
+}
 
 export function loadProjects() {
   try {
