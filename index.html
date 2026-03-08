@@ -239,6 +239,23 @@
       </div>
       <div class="settings-page-content">
 
+        <section id="settings-account" class="settings-card">
+          <h3 class="settings-card-title">Account</h3>
+          <div id="settings-account-logged-out">
+            <p class="settings-card-desc">Log in to sync your data across devices.</p>
+            <div class="settings-card-actions">
+              <button id="settings-login-btn" class="modal-btn modal-save">Log in / Sign up</button>
+            </div>
+          </div>
+          <div id="settings-account-logged-in" class="hidden">
+            <p class="settings-card-desc">Signed in as <strong id="settings-account-email"></strong></p>
+            <div class="settings-card-actions">
+              <button id="settings-sync-btn" class="modal-btn modal-cancel">Sync now</button>
+              <button id="settings-logout-btn" class="modal-btn modal-cancel">Log out</button>
+            </div>
+          </div>
+        </section>
+
         <section class="settings-card">
           <h3 class="settings-card-title">Brand Palette</h3>
           <p class="settings-card-desc">Pick a theme colour.</p>
@@ -399,6 +416,33 @@
       </div>
     </div>
   </dialog>
+
+  <!-- Auth overlay -->
+  <div id="auth-overlay" class="auth-overlay hidden">
+    <div class="auth-card">
+      <button id="auth-close" class="auth-close" title="Close" aria-label="Close">&times;</button>
+      <h2 id="auth-title" class="auth-title">Log in</h2>
+      <p class="auth-subtitle">Sync your data across devices</p>
+      <form id="auth-form" class="auth-form" autocomplete="on">
+        <div id="auth-name-field" class="auth-field hidden">
+          <label for="auth-name">Name</label>
+          <input id="auth-name" type="text" placeholder="Your name" autocomplete="name">
+        </div>
+        <div class="auth-field">
+          <label for="auth-email">Email</label>
+          <input id="auth-email" type="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label for="auth-password">Password</label>
+          <input id="auth-password" type="password" placeholder="Min 8 characters" required minlength="8" autocomplete="current-password">
+        </div>
+        <div id="auth-error" class="auth-error hidden"></div>
+        <button id="auth-submit" type="submit" class="auth-submit">Log in</button>
+      </form>
+      <p id="auth-toggle" class="auth-toggle">No account? <a href="#" id="auth-toggle-link">Sign up</a></p>
+      <button id="auth-skip" class="auth-skip">Continue without account</button>
+    </div>
+  </div>
 
   <div id="modal-root"></div>
   <div id="toast-root"></div>

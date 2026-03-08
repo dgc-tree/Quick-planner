@@ -14,6 +14,8 @@ import {
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { openColorPickerModal } from './color-picker.js';
 import { showContextMenu } from './context-menu.js';
+import { isLoggedIn, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession } from './auth.js';
+import { syncToServer, syncFromServer, initialSync } from './sync.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -45,6 +47,7 @@ function getProjectName() {
 
 function persistTaskChange() {
   saveProjectTasks(currentProjectId, allTasks);
+  syncToServer();
 }
 
 async function loadProjectData() {
@@ -219,6 +222,7 @@ function handleDeleteProject(id, name) {
     onConfirm: () => {
       const projects = loadProjects().filter(p => p.id !== id);
       saveProjects(projects);
+      syncToServer();
       if (currentProjectId === id) {
         switchProject(projects.length ? projects[0].id : null);
       } else {
@@ -232,6 +236,15 @@ async function init() {
   showLoading(true);
   try {
     runMigrations();
+
+    // If logged in, pull server data before loading UI
+    if (isLoggedIn()) {
+      const valid = await verifySession();
+      if (valid) {
+        await syncFromServer();
+      }
+    }
+
     await loadProjectData();
     updateSummary();
     setupFilters();
@@ -241,10 +254,77 @@ async function init() {
   }
   showLoading(false);
   renderSidebarProjects();
-  import('./sync.js').then(m => m.initSync()).catch(err => console.warn('sync unavailable:', err));
+  initAuthUI();
+  updateAccountUI();
+  setupAccountButtons();
   bgFxReady.then(() => _bgFx.initBgEffects());
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v ${APP_VERSION}`;
+}
+
+function updateAccountUI() {
+  const loggedOut = $('#settings-account-logged-out');
+  const loggedIn = $('#settings-account-logged-in');
+  const emailEl = $('#settings-account-email');
+  if (!loggedOut || !loggedIn) return;
+  if (isLoggedIn()) {
+    loggedOut.classList.add('hidden');
+    loggedIn.classList.remove('hidden');
+    const user = getUser();
+    if (emailEl && user) emailEl.textContent = user.email;
+  } else {
+    loggedOut.classList.remove('hidden');
+    loggedIn.classList.add('hidden');
+  }
+}
+
+function setupAccountButtons() {
+  const loginBtn = $('#settings-login-btn');
+  const logoutBtn = $('#settings-logout-btn');
+  const syncBtn = $('#settings-sync-btn');
+
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+      showAuthModal(async () => {
+        // After login/signup, push local data to server
+        showToast('Syncing data...', 'info');
+        await initialSync();
+        await loadProjectData();
+        render();
+        renderSidebarProjects();
+        updateAccountUI();
+        showToast('Signed in and synced', 'success');
+      });
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      logout();
+      updateAccountUI();
+      showToast('Logged out', 'success');
+    });
+  }
+
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true;
+      syncBtn.textContent = 'Syncing...';
+      try {
+        await syncToServer();
+        await syncFromServer();
+        await loadProjectData();
+        render();
+        renderSidebarProjects();
+        showToast('Synced', 'success');
+      } catch (err) {
+        showToast('Sync failed: ' + err.message, 'error');
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'Sync now';
+      }
+    });
+  }
 }
 
 function setupFilters() {
@@ -680,6 +760,7 @@ function setupImportModal() {
       projects.push(project);
       saveProjects(projects);
       saveProjectTasks(project.id, tasks);
+      syncToServer();
 
       modal.close();
       cancelBtn.disabled = false;
