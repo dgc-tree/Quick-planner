@@ -6,16 +6,19 @@
 const API_BASE = 'https://qp-api.davegregurke.workers.dev';
 const TOKEN_KEY = 'qp-auth-token';
 const USER_KEY = 'qp-auth-user';
+const SANDBOX_KEY = 'qp-sandbox';
 
 // ── State ───────────────────────────────────────────────────────────────────
 
 let _token = localStorage.getItem(TOKEN_KEY) || null;
 let _user = null;
 try { _user = JSON.parse(localStorage.getItem(USER_KEY)); } catch { _user = null; }
+let _sandbox = localStorage.getItem(SANDBOX_KEY) === '1';
 
 export function getToken() { return _token; }
 export function getUser() { return _user; }
-export function isLoggedIn() { return !!_token; }
+export function isLoggedIn() { return !!_token || _sandbox; }
+export function isSandbox() { return _sandbox; }
 
 function setAuth(token, user) {
   _token = token;
@@ -31,6 +34,8 @@ function setAuth(token, user) {
 
 export function logout() {
   setAuth(null, null);
+  _sandbox = false;
+  localStorage.removeItem(SANDBOX_KEY);
 }
 
 // ── API calls ───────────────────────────────────────────────────────────────
@@ -60,6 +65,14 @@ export async function login(email, password) {
   });
   setAuth(data.token, data.user);
   return data.user;
+}
+
+export function loginSandbox() {
+  _sandbox = true;
+  localStorage.setItem(SANDBOX_KEY, '1');
+  _user = { email: 'sandbox', name: 'Sandbox' };
+  localStorage.setItem(USER_KEY, JSON.stringify(_user));
+  return _user;
 }
 
 export async function verifySession() {
@@ -110,31 +123,38 @@ export function hideAuthModal() {
   if (errEl) { errEl.textContent = ''; errEl.classList.add('hidden'); }
 }
 
+let _currentMode = 'login';
+
 function setAuthMode(mode) {
+  _currentMode = mode;
   const title = document.getElementById('auth-title');
   const submitBtn = document.getElementById('auth-submit');
-  const toggleLink = document.getElementById('auth-toggle');
+  const toggleBtn = document.getElementById('auth-toggle-btn');
   const nameField = document.getElementById('auth-name-field');
   if (mode === 'signup') {
     title.textContent = 'Create account';
     submitBtn.textContent = 'Sign up';
-    toggleLink.innerHTML = 'Already have an account? <a href="#" id="auth-toggle-link">Log in</a>';
+    toggleBtn.textContent = 'Back to log in';
     nameField.classList.remove('hidden');
   } else {
     title.textContent = 'Log in';
     submitBtn.textContent = 'Log in';
-    toggleLink.innerHTML = 'No account? <a href="#" id="auth-toggle-link">Sign up</a>';
+    toggleBtn.textContent = 'Create account';
     nameField.classList.add('hidden');
   }
-  toggleLink.querySelector('#auth-toggle-link').addEventListener('click', (e) => {
-    e.preventDefault();
-    setAuthMode(mode === 'login' ? 'signup' : 'login');
-  });
 }
 
 export function initAuthUI() {
   const form = document.getElementById('auth-form');
   if (!form) return;
+
+  // Toggle between login/signup
+  const toggleBtn = document.getElementById('auth-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      setAuthMode(_currentMode === 'login' ? 'signup' : 'login');
+    });
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -143,7 +163,7 @@ export function initAuthUI() {
     const name = document.getElementById('auth-name').value.trim();
     const errEl = document.getElementById('auth-error');
     const submitBtn = document.getElementById('auth-submit');
-    const isSignup = submitBtn.textContent === 'Sign up';
+    const isSignup = _currentMode === 'signup';
 
     errEl.textContent = '';
     errEl.classList.add('hidden');
@@ -151,7 +171,9 @@ export function initAuthUI() {
     submitBtn.textContent = isSignup ? 'Creating...' : 'Logging in...';
 
     try {
-      if (isSignup) {
+      if (email.toLowerCase() === 'sandbox') {
+        loginSandbox();
+      } else if (isSignup) {
         await signup(email, password, name);
       } else {
         await login(email, password);

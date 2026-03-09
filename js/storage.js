@@ -238,11 +238,14 @@ export function saveColumnColors(colors) {
   localStorage.setItem(COLUMN_COLORS_KEY, JSON.stringify(colors));
 }
 
+// Keys that must never be included in backup exports (security-sensitive)
+const BACKUP_EXCLUDE = new Set(['qp-auth-token', 'qp-auth-user', 'qp-sandbox']);
+
 export function exportBackup() {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key.startsWith('qp-')) {
+    if (key.startsWith('qp-') && !BACKUP_EXCLUDE.has(key)) {
       data[key] = localStorage.getItem(key);
     }
   }

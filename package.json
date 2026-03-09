@@ -1,0 +1,19 @@
+{
+  "name": "quick-planner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:tokens": "node scripts/build-tokens.js",
+    "validate": "node scripts/validate-tokens.js",
+    "version:stamp": "node -e \"const p=require('./package.json'); require('fs').writeFileSync('js/version.js', \\\"export const APP_VERSION = '\\\" + p.version + \\\"';\\\\n\\\");\"",
+    "dev": "npm run version:stamp && python3 -m http.server 8000",
+    "setup-hooks": "bash scripts/setup-hooks.sh",
+    "smoke": "node scripts/smoke-test.js http://localhost:8000",
+    "smoke:live": "node scripts/smoke-test.js https://planner.davegregurke.au"
+  },
+  "dependencies": {
+    "culori": "^4.0.1",
+    "puppeteer": "^24.38.0"
+  }
+}

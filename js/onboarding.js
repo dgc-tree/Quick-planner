@@ -25,18 +25,40 @@ function today(offsetDays = 0) {
   return d;
 }
 
-const TEMPLATES = [
+export const TEMPLATES = [
   {
-    id: 'renovation',
-    label: 'Renovation',
-    icon: '🏠',
+    id: 'project',
+    label: 'Project',
+    icon: '🏗️',
     tasks: [
-      { task: 'Measure and quote kitchen', room: 'Kitchen', category: 'Planning', status: 'To Do', assigned: [], startDate: today(0), endDate: today(7), dependencies: '' },
-      { task: 'Install kitchen cabinetry', room: 'Kitchen', category: 'Trade', status: 'To Do', assigned: [], startDate: today(14), endDate: today(21), dependencies: '' },
-      { task: 'Tile bathroom floor', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: [], startDate: today(7), endDate: today(14), dependencies: '' },
-      { task: 'Paint bathroom walls', room: 'Bathroom', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(21), endDate: today(28), dependencies: '' },
-      { task: 'Fit skirting boards', room: 'Living', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(28), endDate: today(35), dependencies: '' },
-      { task: 'Final inspection', room: 'Living', category: 'Planning', status: 'To Do', assigned: [], startDate: today(42), endDate: today(42), dependencies: '' },
+      // Kitchen
+      { task: 'Measure and quote kitchen', room: 'Kitchen', category: 'Planning', status: 'Done', assigned: ['AJ'], startDate: today(-14), endDate: today(-7), dependencies: '' },
+      { task: 'Strip old cabinetry', room: 'Kitchen', category: 'Trade', status: 'Done', assigned: ['AJ', 'MK'], startDate: today(-7), endDate: today(-3), dependencies: '' },
+      { task: 'Install kitchen cabinetry', room: 'Kitchen', category: 'Trade', status: 'In Progress', assigned: ['AJ'], startDate: today(-3), endDate: today(10), dependencies: '' },
+      { task: 'Benchtop templating and install', room: 'Kitchen', category: 'Trade', status: 'To Do', assigned: ['RL'], startDate: today(10), endDate: today(18), dependencies: '' },
+      { task: 'Splashback tiling', room: 'Kitchen', category: 'Trade', status: 'To Do', assigned: ['MK'], startDate: today(18), endDate: today(24), dependencies: '' },
+      // Bathroom
+      { task: 'Demolish old bathroom', room: 'Bathroom', category: 'Trade', status: 'Done', assigned: ['AJ', 'MK'], startDate: today(-21), endDate: today(-14), dependencies: '' },
+      { task: 'Waterproofing', room: 'Bathroom', category: 'Trade', status: 'Done', assigned: ['RL'], startDate: today(-14), endDate: today(-10), dependencies: '' },
+      { task: 'Tile bathroom floor and walls', room: 'Bathroom', category: 'Trade', status: 'In Progress', assigned: ['MK'], startDate: today(-10), endDate: today(3), dependencies: '' },
+      { task: 'Install vanity and fixtures', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: ['RL'], startDate: today(3), endDate: today(8), dependencies: '' },
+      { task: 'Paint bathroom ceiling', room: 'Bathroom', category: 'Finishing', status: 'To Do', assigned: ['AJ'], startDate: today(8), endDate: today(10), dependencies: '' },
+      // Master Bedroom
+      { task: 'Patch walls and sand', room: 'Master Bedroom', category: 'Finishing', status: 'In Progress', assigned: ['AJ'], startDate: today(-5), endDate: today(2), dependencies: '' },
+      { task: 'Paint walls two coats', room: 'Master Bedroom', category: 'Finishing', status: 'To Do', assigned: ['AJ', 'MK'], startDate: today(2), endDate: today(6), dependencies: '' },
+      { task: 'Install new skirting', room: 'Master Bedroom', category: 'Finishing', status: 'To Do', assigned: ['RL'], startDate: today(6), endDate: today(9), dependencies: '' },
+      { task: 'Carpet measure and lay', room: 'Master Bedroom', category: 'Trade', status: 'To Do', assigned: ['RL'], startDate: today(12), endDate: today(14), dependencies: '' },
+      // Living
+      { task: 'Sand and polish floorboards', room: 'Living', category: 'Trade', status: 'To Do', assigned: ['MK'], startDate: today(14), endDate: today(20), dependencies: '' },
+      { task: 'Replace light fixtures', room: 'Living', category: 'Trade', status: 'To Do', assigned: ['RL'], startDate: today(5), endDate: today(6), dependencies: '' },
+      { task: 'Paint feature wall', room: 'Living', category: 'Finishing', status: 'To Do', assigned: ['AJ'], startDate: today(20), endDate: today(23), dependencies: '' },
+      // Exterior
+      { task: 'Pressure wash driveway', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: ['MK'], startDate: today(25), endDate: today(26), dependencies: '' },
+      { task: 'Repaint front door and trim', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: ['AJ'], startDate: today(26), endDate: today(28), dependencies: '' },
+      // General
+      { task: 'Council permit application', room: 'General', category: 'Planning', status: 'Done', assigned: ['AJ'], startDate: today(-30), endDate: today(-20), dependencies: '' },
+      { task: 'Skip bin and waste removal', room: 'General', category: 'Planning', status: 'In Progress', assigned: ['MK'], startDate: today(-21), endDate: today(28), dependencies: '' },
+      { task: 'Final clean and inspection', room: 'General', category: 'Planning', status: 'To Do', assigned: ['AJ', 'MK', 'RL'], startDate: today(30), endDate: today(32), dependencies: '' },
     ],
   },
   {

@@ -17,14 +17,10 @@ const DEFAULTS = {
 let cfg = { ...DEFAULTS };
 let target = { x: 0, y: 0 };
 let current = { x: 0, y: 0 };
-let driftTarget = { x: 0, y: 0 };
-let driftCurrent = { x: 0, y: 0 };
 let raf = null;
 let running = false;
 let isMobile = false;
-const DRIFT_SMOOTHING = 0.004;        // mobile main movement
-const DESKTOP_DRIFT_SMOOTHING = 0.003; // desktop autonomous drift layer
-const DESKTOP_DRIFT_SCALE = 0.45;      // drift amplitude relative to intensity
+const DRIFT_SMOOTHING = 0.004;        // mobile drift easing
 
 /* ── Core ─────────────────────────────────────────── */
 
@@ -34,8 +30,13 @@ function pickWaypoint() {
 }
 
 function onMouseMove(e) {
-  target.x = (e.clientX / window.innerWidth - 0.5) * 2;
-  target.y = (e.clientY / window.innerHeight - 0.5) * 2;
+  // Map cursor position directly to [-1, 1] range — no smoothing, precise tracking
+  const x = (e.clientX / window.innerWidth - 0.5) * 2;
+  const y = (e.clientY / window.innerHeight - 0.5) * 2;
+  target.x = x;
+  target.y = y;
+  current.x = x;
+  current.y = y;
 }
 
 function updateDrift() {
@@ -48,26 +49,14 @@ function updateDrift() {
 function tick() {
   if (isMobile) {
     updateDrift();
-  } else {
-    // Desktop autonomous drift layer
-    const ddx = driftTarget.x - driftCurrent.x;
-    const ddy = driftTarget.y - driftCurrent.y;
-    if (ddx * ddx + ddy * ddy < 0.01) {
-      driftTarget.x = (Math.random() - 0.5) * 2;
-      driftTarget.y = (Math.random() - 0.5) * 2;
-    }
-    driftCurrent.x += ddx * DESKTOP_DRIFT_SMOOTHING;
-    driftCurrent.y += ddy * DESKTOP_DRIFT_SMOOTHING;
+    // Smooth drift toward waypoint
+    current.x += (target.x - current.x) * DRIFT_SMOOTHING;
+    current.y += (target.y - current.y) * DRIFT_SMOOTHING;
   }
+  // Desktop: current is set directly in onMouseMove — no easing needed
 
-  const ease = isMobile ? DRIFT_SMOOTHING : cfg.smoothing;
-  current.x += (target.x - current.x) * ease;
-  current.y += (target.y - current.y) * ease;
-
-  const driftX = isMobile ? 0 : driftCurrent.x * cfg.intensity * DESKTOP_DRIFT_SCALE;
-  const driftY = isMobile ? 0 : driftCurrent.y * cfg.intensity * DESKTOP_DRIFT_SCALE;
-  const dx = current.x * cfg.intensity + driftX;
-  const dy = current.y * cfg.intensity + driftY;
+  const dx = current.x * cfg.intensity;
+  const dy = current.y * cfg.intensity;
 
   const bs = document.body.style;
 
@@ -90,8 +79,6 @@ function start() {
   if (isMobile) {
     pickWaypoint();
   } else {
-    driftTarget.x = (Math.random() - 0.5) * 2;
-    driftTarget.y = (Math.random() - 0.5) * 2;
     document.addEventListener('mousemove', onMouseMove);
   }
   raf = requestAnimationFrame(tick);

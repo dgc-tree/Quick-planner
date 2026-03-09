@@ -4,7 +4,7 @@
  * Server sync happens in the background after each save.
  */
 
-import { isLoggedIn, pushAllData, pullAllData } from './auth.js';
+import { isLoggedIn, isSandbox, pushAllData, pullAllData } from './auth.js';
 import { loadProjects, saveProjects } from './storage.js';
 
 let _syncing = false;
@@ -15,7 +15,7 @@ let _syncing = false;
  * No-op if user is not logged in.
  */
 export async function syncToServer() {
-  if (!isLoggedIn() || _syncing) return;
+  if (isSandbox() || !isLoggedIn() || _syncing) return;
   _syncing = true;
   try {
     const projects = loadProjects();
@@ -52,7 +52,7 @@ export async function syncToServer() {
  * Local-only tasks are preserved.
  */
 export async function syncFromServer() {
-  if (!isLoggedIn()) return false;
+  if (isSandbox() || !isLoggedIn()) return false;
   try {
     const remote = await pullAllData();
     if (!Array.isArray(remote) || remote.length === 0) return false;
@@ -96,7 +96,7 @@ export async function syncFromServer() {
  * Initial sync on login: push local data to server, then pull to merge.
  */
 export async function initialSync() {
-  if (!isLoggedIn()) return;
+  if (isSandbox() || !isLoggedIn()) return;
   await syncToServer();
   await syncFromServer();
 }

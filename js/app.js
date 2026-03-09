@@ -4,7 +4,7 @@ import { renderPlanner, setViewSize } from './planner.js';
 import { renderTodoList } from './todolist.js';
 import { openEditModal } from './modal.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
-import { shouldShowOnboarding, showOnboarding } from './onboarding.js';
+import { shouldShowOnboarding, showOnboarding, TEMPLATES } from './onboarding.js';
 import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
   loadBin, restoreFromBin,
@@ -14,7 +14,7 @@ import {
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { openColorPickerModal } from './color-picker.js';
 import { showContextMenu } from './context-menu.js';
-import { isLoggedIn, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession } from './auth.js';
+import { isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
@@ -237,8 +237,8 @@ async function init() {
   try {
     runMigrations();
 
-    // If logged in, pull server data before loading UI
-    if (isLoggedIn()) {
+    // If logged in (real account), pull server data before loading UI
+    if (isLoggedIn() && !isSandbox()) {
       const valid = await verifySession();
       if (valid) {
         await syncFromServer();
@@ -259,42 +259,131 @@ async function init() {
   setupAccountButtons();
   bgFxReady.then(() => _bgFx.initBgEffects());
   const versionEl = document.getElementById('settings-version');
-  if (versionEl) versionEl.textContent = `v ${APP_VERSION}`;
+  if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
+}
+
+function getInitials(user) {
+  if (!user) return '';
+  if (user.name) {
+    const parts = user.name.trim().split(/\s+/);
+    return parts.map(p => p[0]).slice(0, 2).join('').toUpperCase();
+  }
+  return (user.email || '?')[0].toUpperCase();
 }
 
 function updateAccountUI() {
   const loggedOut = $('#settings-account-logged-out');
   const loggedIn = $('#settings-account-logged-in');
   const emailEl = $('#settings-account-email');
-  if (!loggedOut || !loggedIn) return;
-  if (isLoggedIn()) {
-    loggedOut.classList.add('hidden');
-    loggedIn.classList.remove('hidden');
-    const user = getUser();
-    if (emailEl && user) emailEl.textContent = user.email;
-  } else {
-    loggedOut.classList.remove('hidden');
-    loggedIn.classList.add('hidden');
+  const user = getUser();
+  const loggedInNow = isLoggedIn();
+
+  // Settings card
+  if (loggedOut && loggedIn) {
+    if (loggedInNow) {
+      loggedOut.classList.add('hidden');
+      loggedIn.classList.remove('hidden');
+      if (emailEl && user) emailEl.textContent = isSandbox() ? 'Sandbox mode (demo data)' : user.email;
+    } else {
+      loggedOut.classList.remove('hidden');
+      loggedIn.classList.add('hidden');
+    }
+  }
+
+  // Sandbox body class for badge
+  document.body.classList.toggle('sandbox-mode', isSandbox());
+
+  // Sidebar avatar
+  const sidebarAvatar = $('#sidebar-account-avatar');
+  const sidebarLabel = $('#sidebar-account-label');
+  if (sidebarAvatar) {
+    if (loggedInNow && user) {
+      const initials = isSandbox() ? '🏗️' : getInitials(user);
+      sidebarAvatar.textContent = initials;
+      sidebarAvatar.classList.add('has-initials');
+      if (isSandbox()) sidebarAvatar.classList.add('sandbox');
+      else sidebarAvatar.classList.remove('sandbox');
+      if (sidebarLabel) sidebarLabel.textContent = isSandbox() ? 'Sandbox' : (user.name || user.email.split('@')[0]);
+    } else {
+      sidebarAvatar.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>';
+      sidebarAvatar.classList.remove('has-initials');
+      if (sidebarLabel) sidebarLabel.textContent = 'Account';
+    }
+  }
+
+  // Mobile avatar
+  const mobileAvatar = $('#mobile-account-avatar');
+  const mobileLabel = $('#mobile-account-label');
+  if (mobileAvatar) {
+    if (loggedInNow && user) {
+      const initials = getInitials(user);
+      mobileAvatar.textContent = initials;
+      mobileAvatar.classList.add('has-initials');
+      if (mobileLabel) mobileLabel.textContent = user.name || user.email.split('@')[0];
+    } else {
+      mobileAvatar.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>';
+      mobileAvatar.classList.remove('has-initials');
+      if (mobileLabel) mobileLabel.textContent = 'Account';
+    }
   }
 }
 
 function setupAccountButtons() {
   const loginBtn = $('#settings-login-btn');
   const logoutBtn = $('#settings-logout-btn');
-  const syncBtn = $('#settings-sync-btn');
+
+  // Sidebar + mobile account buttons
+  const authCallback = async () => {
+    if (isSandbox()) {
+      // Load the first template as sandbox data
+      const tpl = TEMPLATES[0];
+      const tasks = tpl.tasks.map(t => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() }));
+      const projectId = crypto.randomUUID();
+      const projects = [{ id: projectId, name: `${tpl.icon} ${tpl.label}`, tasks }];
+      saveProjects(projects);
+      saveActiveProjectId(projectId);
+      await loadProjectData();
+      render();
+      renderSidebarProjects();
+      updateAccountUI();
+      showToast('Sandbox mode - demo data loaded', 'info');
+      return;
+    }
+    showToast('Syncing data...', 'info');
+    await initialSync();
+    await loadProjectData();
+    render();
+    renderSidebarProjects();
+    updateAccountUI();
+    showToast('Signed in and synced', 'success');
+  };
+  const accountHandler = () => {
+    if (isLoggedIn()) {
+      // Navigate to settings (reuse existing settings button)
+      $('#sidebar-settings-btn')?.click();
+    } else {
+      showAuthModal(authCallback);
+    }
+  };
+  const sidebarAccountBtn = $('#sidebar-account-btn');
+  if (sidebarAccountBtn) sidebarAccountBtn.addEventListener('click', accountHandler);
+  const mobileAccountBtn = $('#mobile-account-btn');
+  if (mobileAccountBtn) mobileAccountBtn.addEventListener('click', () => {
+    // Close mobile menu by clicking overlay backdrop, then open auth/settings
+    const overlay = $('#mobile-menu-overlay');
+    if (overlay?.classList.contains('open')) {
+      $('#mobile-menu-btn')?.click(); // toggle close
+    }
+    if (isLoggedIn()) {
+      $('#sidebar-settings-btn')?.click();
+    } else {
+      showAuthModal(authCallback);
+    }
+  });
 
   if (loginBtn) {
     loginBtn.addEventListener('click', () => {
-      showAuthModal(async () => {
-        // After login/signup, push local data to server
-        showToast('Syncing data...', 'info');
-        await initialSync();
-        await loadProjectData();
-        render();
-        renderSidebarProjects();
-        updateAccountUI();
-        showToast('Signed in and synced', 'success');
-      });
+      showAuthModal(authCallback);
     });
   }
 
@@ -306,25 +395,6 @@ function setupAccountButtons() {
     });
   }
 
-  if (syncBtn) {
-    syncBtn.addEventListener('click', async () => {
-      syncBtn.disabled = true;
-      syncBtn.textContent = 'Syncing...';
-      try {
-        await syncToServer();
-        await syncFromServer();
-        await loadProjectData();
-        render();
-        renderSidebarProjects();
-        showToast('Synced', 'success');
-      } catch (err) {
-        showToast('Sync failed: ' + err.message, 'error');
-      } finally {
-        syncBtn.disabled = false;
-        syncBtn.textContent = 'Sync now';
-      }
-    });
-  }
 }
 
 function setupFilters() {
