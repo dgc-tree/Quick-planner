@@ -232,17 +232,32 @@ function handleDeleteProject(id, name) {
   });
 }
 
-async function init() {
+async function initApp() {
   showLoading(true);
   try {
     runMigrations();
 
-    // If logged in (real account), pull server data before loading UI
+    // If logged in (real account), verify token before showing anything
     if (isLoggedIn() && !isSandbox()) {
-      const valid = await verifySession();
-      if (valid) {
-        await syncFromServer();
+      let valid = false;
+      try { valid = await verifySession(); } catch { valid = false; }
+      if (!valid) {
+        // Token expired or invalid — back to login gate
+        showLoading(false);
+        document.body.classList.add('auth-gate');
+        showAuthModal(async () => { await initApp(); }, { gate: true });
+        return;
       }
+      await syncFromServer();
+    }
+
+    // Seed demo data on first sandbox entry
+    if (isSandbox() && !loadProjects().length) {
+      const tpl = TEMPLATES[0];
+      const tasks = tpl.tasks.map(t => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() }));
+      const projectId = crypto.randomUUID();
+      saveProjects([{ id: projectId, name: `${tpl.icon} ${tpl.label}`, tasks }]);
+      saveActiveProjectId(projectId);
     }
 
     await loadProjectData();
@@ -254,12 +269,27 @@ async function init() {
   }
   showLoading(false);
   renderSidebarProjects();
-  initAuthUI();
   updateAccountUI();
-  setupAccountButtons();
+  document.body.classList.remove('auth-gate');
   bgFxReady.then(() => _bgFx.initBgEffects());
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
+}
+
+async function init() {
+  initAuthUI();
+  setupAccountButtons();
+
+  if (!isLoggedIn()) {
+    // Gate: hide app, show login
+    document.body.classList.add('auth-gate');
+    showAuthModal(async () => {
+      await initApp();
+    }, { gate: true });
+    return;
+  }
+
+  await initApp();
 }
 
 function getInitials(user) {
@@ -391,7 +421,11 @@ function setupAccountButtons() {
     logoutBtn.addEventListener('click', () => {
       logout();
       updateAccountUI();
-      showToast('Logged out', 'success');
+      // Return to auth gate — user must log in again
+      document.body.classList.add('auth-gate');
+      showAuthModal(async () => {
+        await initApp();
+      }, { gate: true });
     });
   }
 
@@ -1218,8 +1252,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   init();
 
-  // Onboarding for first-time visitors
-  if (shouldShowOnboarding()) {
+  // Onboarding for first-time visitors (only if already logged in)
+  if (isLoggedIn() && shouldShowOnboarding()) {
     showOnboarding((projectId) => {
       if (projectId && projectId !== 'sheet') switchProject(projectId);
     });

@@ -106,11 +106,16 @@ export async function pullAllData() {
 
 let _onAuthSuccess = null;
 
-export function showAuthModal(onSuccess) {
+export function showAuthModal(onSuccess, { gate = false } = {}) {
   _onAuthSuccess = onSuccess;
   const overlay = document.getElementById('auth-overlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
+  // In gate mode, hide close/skip — user must log in
+  const closeBtn = document.getElementById('auth-close');
+  const skipBtn = document.getElementById('auth-skip');
+  if (closeBtn) closeBtn.style.display = gate ? 'none' : '';
+  if (skipBtn) skipBtn.style.display = gate ? 'none' : '';
   overlay.querySelector('#auth-email').focus();
   // Default to login mode
   setAuthMode('login');

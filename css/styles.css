@@ -4863,6 +4863,14 @@ body.sandbox-mode::after {
 }
 .auth-overlay.hidden { display: none; }
 
+/* Auth gate — hide app shell when user must log in */
+body.auth-gate .sidebar-rail,
+body.auth-gate .primary-nav,
+body.auth-gate .app-header,
+body.auth-gate main,
+body.auth-gate .fab-add,
+body.auth-gate #mobile-menu-overlay { display: none; }
+
 .auth-card {
   position: relative;
   width: min(420px, 92vw);

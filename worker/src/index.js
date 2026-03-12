@@ -276,6 +276,18 @@ async function handleFullSync(request, user, env) {
 
   const stmts = [];
 
+  // Delete server projects not present in the payload (handles client-side deletes)
+  const pushIds = projects.map(p => p.id).filter(Boolean);
+  if (pushIds.length > 0) {
+    const ph = pushIds.map(() => '?').join(',');
+    stmts.push(env.DB.prepare(`DELETE FROM tasks WHERE user_id = ? AND project_id NOT IN (${ph})`).bind(user.sub, ...pushIds));
+    stmts.push(env.DB.prepare(`DELETE FROM projects WHERE user_id = ? AND id NOT IN (${ph})`).bind(user.sub, ...pushIds));
+  } else {
+    // Client has no projects — wipe all server data for this user
+    stmts.push(env.DB.prepare('DELETE FROM tasks WHERE user_id = ?').bind(user.sub));
+    stmts.push(env.DB.prepare('DELETE FROM projects WHERE user_id = ?').bind(user.sub));
+  }
+
   for (const p of projects) {
     const projectId = p.id || crypto.randomUUID();
     stmts.push(env.DB.prepare(

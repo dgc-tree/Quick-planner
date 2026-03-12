@@ -47,9 +47,8 @@ export async function syncToServer() {
 }
 
 /**
- * Pull all data from the server and merge into localStorage.
- * Server data wins for tasks that exist on both sides (by ID).
- * Local-only tasks are preserved.
+ * Pull all data from the server and replace localStorage.
+ * Server is authoritative when logged in — local data is fully replaced.
  */
 export async function syncFromServer() {
   if (isSandbox() || !isLoggedIn()) return false;
@@ -57,12 +56,11 @@ export async function syncFromServer() {
     const remote = await pullAllData();
     if (!Array.isArray(remote) || remote.length === 0) return false;
 
-    const local = loadProjects();
-    const localMap = new Map(local.map(p => [p.id, p]));
-
-    // Merge: remote projects win, but preserve local-only projects
-    for (const rp of remote) {
-      const tasks = (rp.tasks || []).map(t => ({
+    const projects = remote.map(rp => ({
+      id: rp.id,
+      name: rp.name,
+      type: rp.type || 'local',
+      tasks: (rp.tasks || []).map(t => ({
         id: t.id,
         task: t.task,
         status: t.status,
@@ -74,16 +72,10 @@ export async function syncFromServer() {
         dependencies: Array.isArray(t.dependencies) ? t.dependencies : JSON.parse(t.dependencies || '[]'),
         notes: t.notes || '',
         updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
-      }));
-      localMap.set(rp.id, {
-        id: rp.id,
-        name: rp.name,
-        type: rp.type || 'local',
-        tasks,
-      });
-    }
+      })),
+    }));
 
-    saveProjects([...localMap.values()]);
+    saveProjects(projects);
     console.debug('[sync] pulled', remote.length, 'projects from server');
     return true;
   } catch (err) {
