@@ -14,7 +14,11 @@ import {
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { openColorPickerModal } from './color-picker.js';
 import { showContextMenu } from './context-menu.js';
-import { isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession } from './auth.js';
+import {
+  isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession,
+  requestEmailChange, requestPasswordChange, validatePasswordStrength, renderPasswordStrength, verifyToken,
+  hasWeakPassword,
+} from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
@@ -232,9 +236,31 @@ function handleDeleteProject(id, name) {
   });
 }
 
+async function handleVerifyParams() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('verify_token');
+  const type = params.get('verify_type');
+  if (!token || !type) return;
+  window.history.replaceState({}, '', window.location.pathname);
+  try {
+    const result = await verifyToken(token, type);
+    if (result.verified) {
+      const msg = type === 'email_change' ? 'Email updated successfully' : 'Password updated successfully';
+      showToast(msg, 'success');
+      if (getUser()) { await verifySession(); updateAccountUI(); }
+    }
+  } catch (e) {
+    const msg = e.message.includes('expired') ? 'Verification link has expired. Please try again.'
+      : e.message.includes('email_taken') ? 'That email is no longer available.'
+      : 'Invalid or already used verification link.';
+    showToast(msg, 'error');
+  }
+}
+
 async function initApp() {
   showLoading(true);
   try {
+    await handleVerifyParams();
     runMigrations();
 
     // If logged in (real account), verify token before showing anything
@@ -272,6 +298,14 @@ async function initApp() {
   updateAccountUI();
   document.body.classList.remove('auth-gate');
   hideAuthModal();
+
+  // Onboarding for first-time visitors — only if no projects exist yet
+  if (shouldShowOnboarding() && !loadProjects().length) {
+    showOnboarding((projectId) => {
+      if (projectId && projectId !== 'sheet') switchProject(projectId);
+    });
+  }
+
   bgFxReady.then(() => _bgFx.initBgEffects());
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
@@ -387,6 +421,9 @@ function setupAccountButtons() {
     renderSidebarProjects();
     updateAccountUI();
     showToast('Signed in and synced', 'success');
+    if (hasWeakPassword()) {
+      setTimeout(() => showToast('Your password doesn\u2019t meet current security standards. Update it in Settings \u203A Account.', 'warning'), 1500);
+    }
   };
   const accountHandler = () => {
     if (isLoggedIn()) {
@@ -422,7 +459,6 @@ function setupAccountButtons() {
     logoutBtn.addEventListener('click', () => {
       logout();
       updateAccountUI();
-      // Return to auth gate — user must log in again
       document.body.classList.add('auth-gate');
       showAuthModal(async () => {
         await initApp();
@@ -430,6 +466,78 @@ function setupAccountButtons() {
     });
   }
 
+  // ── Change email ──
+  const emailToggle = $('#change-email-toggle');
+  const emailForm = $('#change-email-form');
+  const emailCancel = $('#change-email-cancel');
+  const emailSubmit = $('#change-email-submit');
+  if (emailToggle && emailForm) {
+    emailToggle.addEventListener('click', () => emailForm.classList.toggle('hidden'));
+    emailCancel?.addEventListener('click', () => { emailForm.classList.add('hidden'); setMsg('change-email-msg'); });
+    emailSubmit?.addEventListener('click', async () => {
+      const newEmail = $('#new-email-input')?.value.trim();
+      if (!newEmail) return;
+      emailSubmit.disabled = true;
+      emailSubmit.textContent = 'Sending...';
+      setMsg('change-email-msg');
+      try {
+        const result = await requestEmailChange(newEmail);
+        setMsg('change-email-msg', result.message, 'success');
+      } catch (e) {
+        setMsg('change-email-msg', e.message, 'error');
+      } finally {
+        emailSubmit.disabled = false;
+        emailSubmit.textContent = 'Send verification email';
+      }
+    });
+  }
+
+  // ── Change password ──
+  const pwToggle = $('#change-password-toggle');
+  const pwForm = $('#change-password-form');
+  const pwCancel = $('#change-password-cancel');
+  const pwSubmit = $('#change-password-submit');
+  const newPwInput = $('#new-password-input');
+  const pwStrength = $('#new-password-strength');
+  if (pwToggle && pwForm) {
+    pwToggle.addEventListener('click', () => pwForm.classList.toggle('hidden'));
+    pwCancel?.addEventListener('click', () => { pwForm.classList.add('hidden'); setMsg('change-password-msg'); });
+    if (newPwInput && pwStrength) {
+      newPwInput.addEventListener('input', () => renderPasswordStrength(newPwInput.value, pwStrength));
+    }
+    pwSubmit?.addEventListener('click', async () => {
+      const currentPw = $('#current-password-input')?.value;
+      const newPw = newPwInput?.value;
+      if (!currentPw || !newPw) return;
+      const { valid, checks } = validatePasswordStrength(newPw);
+      if (!valid) {
+        const failed = checks.filter(c => !c.met).map(c => c.label);
+        setMsg('change-password-msg', 'Password needs: ' + failed.join(', '), 'error');
+        return;
+      }
+      pwSubmit.disabled = true;
+      pwSubmit.textContent = 'Sending...';
+      setMsg('change-password-msg');
+      try {
+        const result = await requestPasswordChange(currentPw, newPw);
+        setMsg('change-password-msg', result.message, 'success');
+      } catch (e) {
+        setMsg('change-password-msg', e.message, 'error');
+      } finally {
+        pwSubmit.disabled = false;
+        pwSubmit.textContent = 'Send verification email';
+      }
+    });
+  }
+}
+
+function setMsg(id, text, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!text) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.textContent = text;
+  el.className = `settings-msg ${type}`;
+  el.classList.remove('hidden');
 }
 
 function setupFilters() {
@@ -716,11 +824,12 @@ function showToast(message, type = 'success') {
   toast.className = `toast ${type}`;
   toast.textContent = message;
   root.appendChild(toast);
+  const duration = type === 'warning' ? 6000 : 3000;
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, duration);
 }
 
 // ─── Import modal ─────────────────────────────────────────────────────────────
@@ -1252,13 +1361,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initCustomColors();
 
   init();
-
-  // Onboarding for first-time visitors (only if already logged in)
-  if (isLoggedIn() && shouldShowOnboarding()) {
-    showOnboarding((projectId) => {
-      if (projectId && projectId !== 'sheet') switchProject(projectId);
-    });
-  }
 
   // Settings panel
   setupSettingsPanel();

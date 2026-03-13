@@ -242,7 +242,7 @@ body {
 .sidebar-project-menu {
   display: none;
   position: fixed;
-  z-index: 500;
+  z-index: 1001;
   background: var(--surface);
   backdrop-filter: blur(var(--blur)) saturate(1.2);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
@@ -2460,6 +2460,11 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   color: #fff;
   box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.15), 0 4px 16px rgba(197,48,48,0.3);
 }
+.toast.warning {
+  background: rgba(146,100,12,0.9);
+  color: #fff;
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.15), 0 4px 16px rgba(146,100,12,0.3);
+}
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(30px); }
@@ -2977,7 +2982,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     height: 16px;
     border-radius: 8px;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent-primary1);
     font-family: var(--font);
     font-size: 0.6rem;
     font-weight: 700;
@@ -3027,13 +3032,14 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   }
   .mobile-filter-done {
     font-family: var(--font);
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    color: var(--accent);
-    background: none;
+    color: var(--on-accent-primary1);
+    background: var(--accent);
     border: none;
+    border-radius: 8px;
     cursor: pointer;
-    padding: 8px 0;
+    padding: 8px 18px;
   }
   .mobile-filter-body {
     flex: 1;
@@ -3085,15 +3091,17 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     font-family: var(--font);
     font-size: 0.9rem;
     font-weight: 500;
-    color: #e04040;
-    background: none;
-    border: 1.5px solid rgba(224,64,64,0.25);
+    color: var(--text);
+    background: var(--surface);
+    border: 1.5px solid rgba(0,0,0,0.35);
     border-radius: 12px;
     padding: 13px 20px;
     width: 100%;
     cursor: pointer;
+    box-shadow: var(--shadow-glass);
   }
-  .mobile-filter-clear:active { background: rgba(224,64,64,0.06); }
+  [data-theme="dark"] .mobile-filter-clear { border-color: rgba(255,255,255,0.4); }
+  .mobile-filter-clear:active { background: var(--surface-raised); }
 
 
 
@@ -3693,6 +3701,101 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 }
 [data-theme="dark"] .settings-backup-actions {
   border-color: rgba(255,255,255,0.1);
+}
+.settings-page-content {
+  padding-top: 24px;
+}
+.settings-subsection {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+[data-theme="dark"] .settings-subsection {
+  border-top-color: rgba(255,255,255,0.08);
+}
+.settings-link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+.settings-link-btn:hover {
+  text-decoration: underline;
+}
+.settings-inline-form {
+  margin-top: 12px;
+}
+.settings-msg {
+  font-size: 13px;
+  margin: 8px 0;
+  line-height: 1.4;
+}
+.settings-msg.success {
+  color: #16a34a;
+}
+.settings-msg.error {
+  color: #ef4444;
+}
+[data-theme="dark"] .settings-msg.success {
+  color: #4ade80;
+}
+[data-theme="dark"] .settings-msg.error {
+  color: #f87171;
+}
+/* Password strength indicator */
+.password-strength {
+  margin-top: 8px;
+}
+.password-strength-bar {
+  height: 4px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+[data-theme="dark"] .password-strength-bar {
+  background: rgba(255,255,255,0.1);
+}
+.password-strength-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  transition: width 0.2s, background-color 0.2s;
+}
+.password-strength-checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  columns: 2;
+}
+.password-strength-checks li {
+  margin-bottom: 2px;
+  break-inside: avoid;
+}
+.password-strength-checks li::before {
+  content: '\2715 ';
+  color: #ef4444;
+}
+.password-strength-checks li.met::before {
+  content: '\2713 ';
+  color: #16a34a;
+}
+[data-theme="dark"] .password-strength-checks li::before {
+  color: #f87171;
+}
+[data-theme="dark"] .password-strength-checks li.met::before {
+  color: #4ade80;
+}
+.password-manager-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  opacity: 0.7;
 }
 .settings-version {
   text-align: center;
@@ -4871,9 +4974,14 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 /* Landing page — asymmetric two-panel, generous negative space */
 .landing-page {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: auto auto;
+  gap: 24px;
+  justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
+  margin: 0 auto;
+  padding-left: 10vw;
+  padding-right: 10vw;
 }
 
 /* Left panel — mascot + branding, soft accent wash */
@@ -4891,7 +4999,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 .landing-mascot {
   width: clamp(180px, 22vw, 260px);
   height: auto;
-  margin-bottom: 24px;
+  margin: -12px -12px 0 -12px;
   filter: drop-shadow(0 8px 24px rgba(0,0,0,0.08));
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }

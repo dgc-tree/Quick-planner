@@ -34,6 +34,19 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS verification_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  type TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_vt_token_hash ON verification_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_vt_user ON verification_tokens(user_id);

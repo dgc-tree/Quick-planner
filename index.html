@@ -255,6 +255,46 @@
           </div>
           <div id="settings-account-logged-in" class="hidden">
             <p class="settings-card-desc">Signed in as <strong id="settings-account-email"></strong></p>
+
+            <div id="change-email-section" class="settings-subsection">
+              <button id="change-email-toggle" class="settings-link-btn">Change email</button>
+              <div id="change-email-form" class="settings-inline-form hidden">
+                <div class="modal-field">
+                  <label for="new-email-input">New email address</label>
+                  <input id="new-email-input" type="email" placeholder="new@example.com" required>
+                </div>
+                <div id="change-email-msg" class="settings-msg hidden"></div>
+                <div class="settings-card-actions">
+                  <button id="change-email-submit" class="modal-btn modal-save">Send verification email</button>
+                  <button id="change-email-cancel" type="button" class="modal-btn modal-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="change-password-section" class="settings-subsection">
+              <button id="change-password-toggle" class="settings-link-btn">Change password</button>
+              <div id="change-password-form" class="settings-inline-form hidden">
+                <div class="modal-field">
+                  <label for="current-password-input">Current password</label>
+                  <input id="current-password-input" type="password" autocomplete="current-password">
+                </div>
+                <div class="modal-field">
+                  <label for="new-password-input">New password</label>
+                  <input id="new-password-input" type="password" autocomplete="new-password" placeholder="Min 15 characters">
+                </div>
+                <div id="new-password-strength" class="password-strength hidden">
+                  <div class="password-strength-bar"><div class="password-strength-fill"></div></div>
+                  <ul class="password-strength-checks"></ul>
+                  <p class="password-manager-hint">Tip: Use a password manager to generate and store strong passwords.</p>
+                </div>
+                <div id="change-password-msg" class="settings-msg hidden"></div>
+                <div class="settings-card-actions">
+                  <button id="change-password-submit" class="modal-btn modal-save">Send verification email</button>
+                  <button id="change-password-cancel" type="button" class="modal-btn modal-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+
             <div class="settings-card-actions">
               <button id="settings-logout-btn" class="modal-btn modal-cancel">Log out</button>
             </div>
@@ -454,7 +494,12 @@
             </div>
             <div class="auth-field">
               <label for="auth-password">Password</label>
-              <input id="auth-password" type="password" placeholder="Min 8 characters" required minlength="8" autocomplete="current-password">
+              <input id="auth-password" type="password" placeholder="Password" required minlength="1" autocomplete="current-password">
+            </div>
+            <div id="auth-password-strength" class="password-strength hidden">
+              <div class="password-strength-bar"><div class="password-strength-fill"></div></div>
+              <ul class="password-strength-checks"></ul>
+              <p class="password-manager-hint">Tip: Use a password manager to generate and store strong passwords.</p>
             </div>
             <div id="auth-error" class="auth-error hidden"></div>
             <div class="auth-actions">
@@ -462,7 +507,7 @@
               <button id="auth-toggle-btn" type="button" class="modal-btn modal-cancel">Create account</button>
             </div>
           </form>
-          <p class="auth-free">Free forever. No credit card.</p>
+          <p class="auth-free">Start now for free. No credit card.</p>
           <button id="auth-skip" class="auth-skip">Continue without account</button>
         </div>
       </div>

@@ -58,12 +58,16 @@ export async function signup(email, password, name) {
   return data.user;
 }
 
+let _weakPassword = false;
+export function hasWeakPassword() { return _weakPassword; }
+
 export async function login(email, password) {
   const data = await apiCall('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
   setAuth(data.token, data.user);
+  _weakPassword = !validatePasswordStrength(password).valid;
   return data.user;
 }
 
@@ -102,6 +106,40 @@ export async function pullAllData() {
   return apiCall('/sync');
 }
 
+// ── Account changes ─────────────────────────────────────────────────────────
+
+export async function requestEmailChange(newEmail) {
+  return apiCall('/auth/change-email', {
+    method: 'POST',
+    body: JSON.stringify({ newEmail }),
+  });
+}
+
+export async function requestPasswordChange(currentPassword, newPassword) {
+  return apiCall('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export async function verifyToken(token, type) {
+  return apiCall('/auth/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token, type }),
+  });
+}
+
+export function validatePasswordStrength(password) {
+  const checks = [
+    { met: password.length >= 15, label: 'At least 15 characters' },
+    { met: /[A-Z]/.test(password), label: '1 uppercase letter' },
+    { met: /[a-z]/.test(password), label: '1 lowercase letter' },
+    { met: /[0-9]/.test(password), label: '1 number' },
+    { met: /[^A-Za-z0-9]/.test(password), label: '1 special character' },
+  ];
+  return { valid: checks.every(c => c.met), checks };
+}
+
 // ── Auth modal UI ───────────────────────────────────────────────────────────
 
 let _onAuthSuccess = null;
@@ -136,16 +174,41 @@ function setAuthMode(mode) {
   const submitBtn = document.getElementById('auth-submit');
   const toggleBtn = document.getElementById('auth-toggle-btn');
   const nameField = document.getElementById('auth-name-field');
+  const strengthEl = document.getElementById('auth-password-strength');
+  const pwInput = document.getElementById('auth-password');
   if (mode === 'signup') {
     title.textContent = 'Create account';
     submitBtn.textContent = 'Sign up';
     toggleBtn.textContent = 'Back to log in';
     nameField.classList.remove('hidden');
+    if (pwInput) { pwInput.placeholder = 'Min 15 characters'; pwInput.minLength = 15; }
   } else {
     title.textContent = 'Welcome back';
     submitBtn.textContent = 'Log in';
     toggleBtn.textContent = 'Create account';
     nameField.classList.add('hidden');
+    if (strengthEl) strengthEl.classList.add('hidden');
+    if (pwInput) { pwInput.placeholder = 'Password'; pwInput.minLength = 1; }
+  }
+}
+
+export function renderPasswordStrength(password, container) {
+  if (!password) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+  const { checks } = validatePasswordStrength(password);
+  const metCount = checks.filter(c => c.met).length;
+  const pct = (metCount / checks.length) * 100;
+  const colours = ['#ef4444', '#ef4444', '#f59e0b', '#f59e0b', '#22c55e', '#16a34a'];
+  const fill = container.querySelector('.password-strength-fill');
+  const list = container.querySelector('.password-strength-checks');
+  if (fill) {
+    fill.style.width = pct + '%';
+    fill.style.backgroundColor = colours[metCount];
+  }
+  if (list) {
+    list.innerHTML = checks.map(c =>
+      `<li class="${c.met ? 'met' : ''}">${c.label}</li>`
+    ).join('');
   }
 }
 
@@ -158,6 +221,16 @@ export function initAuthUI() {
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
       setAuthMode(_currentMode === 'login' ? 'signup' : 'login');
+    });
+  }
+
+  // Password strength indicator for signup mode
+  const authPwInput = document.getElementById('auth-password');
+  const authStrength = document.getElementById('auth-password-strength');
+  if (authPwInput && authStrength) {
+    authPwInput.addEventListener('input', () => {
+      if (_currentMode !== 'signup') { authStrength.classList.add('hidden'); return; }
+      renderPasswordStrength(authPwInput.value, authStrength);
     });
   }
 
@@ -179,6 +252,11 @@ export function initAuthUI() {
       if (email.toLowerCase() === 'sandbox') {
         loginSandbox();
       } else if (isSignup) {
+        const { valid, checks } = validatePasswordStrength(password);
+        if (!valid) {
+          const failed = checks.filter(c => !c.met).map(c => c.label);
+          throw new Error('Password needs: ' + failed.join(', '));
+        }
         await signup(email, password, name);
       } else {
         await login(email, password);

@@ -128,6 +128,73 @@ async function authenticate(request, env) {
   return verifyJWT(token, env.JWT_SECRET);
 }
 
+// ── Password policy ─────────────────────────────────────────────────────────
+
+function validatePasswordPolicy(password) {
+  const errors = [];
+  if (password.length < 15) errors.push('At least 15 characters');
+  if (!/[A-Z]/.test(password)) errors.push('At least 1 uppercase letter');
+  if (!/[a-z]/.test(password)) errors.push('At least 1 lowercase letter');
+  if (!/[0-9]/.test(password)) errors.push('At least 1 number');
+  if (!/[^A-Za-z0-9]/.test(password)) errors.push('At least 1 special character');
+  return { valid: errors.length === 0, errors };
+}
+
+// ── Verification tokens ─────────────────────────────────────────────────────
+
+function generateToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashToken(token) {
+  const enc = new TextEncoder();
+  const digest = await crypto.subtle.digest('SHA-256', enc.encode(token));
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── Email sending (Resend) ──────────────────────────────────────────────────
+
+async function sendEmail(env, to, subject, html) {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.EMAIL_FROM || 'Quick Planner <noreply@davegregurke.au>',
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function verifyEmailHtml(headline, body, ctaUrl, ctaLabel) {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
+<tr><td align="center">
+<table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+<tr><td>
+<h1 style="margin:0 0 8px;font-size:20px;color:#1a1a2e;">${headline}</h1>
+<p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.5;">${body}</p>
+<a href="${ctaUrl}" style="display:inline-block;padding:12px 32px;background:#00E3FF;color:#1a1a2e;font-weight:600;font-size:14px;text-decoration:none;border-radius:8px;">${ctaLabel}</a>
+<p style="margin:24px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">This link expires in 15 minutes.<br>If you didn't request this, you can safely ignore this email.</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
 // ── Routes ──────────────────────────────────────────────────────────────────
 
 async function handleSignup(request, env) {
@@ -137,7 +204,8 @@ async function handleSignup(request, env) {
   const { email, password, name } = await request.json();
   if (!email || !password) return err('Email and password required');
   if (!EMAIL_RE.test(email)) return err('Invalid email format');
-  if (password.length < 8) return err('Password must be at least 8 characters');
+  const policy = validatePasswordPolicy(password);
+  if (!policy.valid) return err(policy.errors.join('. '));
   if (name && name.length > 100) return err('Name too long');
 
   const normalEmail = email.toLowerCase().trim();
@@ -351,6 +419,138 @@ async function handleFullPull(user, env) {
   return json(result);
 }
 
+// ── Change email / password ──────────────────────────────────────────────────
+
+async function handleChangeEmail(request, user, env) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  if (isRateLimited(ip)) return err('Too many requests. Try again later.', 429);
+
+  const { newEmail } = await request.json();
+  if (!newEmail) return err('New email required');
+  if (!EMAIL_RE.test(newEmail)) return err('Invalid email format');
+
+  const normalEmail = newEmail.toLowerCase().trim();
+  const u = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(user.sub).first();
+  if (normalEmail === u?.email) return err('New email must be different from current email');
+
+  const taken = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(normalEmail).first();
+  if (taken) return err('Unable to use this email');
+
+  // Invalidate any pending email change tokens for this user
+  await env.DB.prepare("UPDATE verification_tokens SET used_at = datetime('now') WHERE user_id = ? AND type = 'email_change' AND used_at IS NULL")
+    .bind(user.sub).run();
+
+  const rawToken = generateToken();
+  const tokenHash = await hashToken(rawToken);
+  const id = crypto.randomUUID();
+  const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+  const verifyUrl = `${appUrl.replace(/\/$/, '')}/?verify_token=${rawToken}&verify_type=email_change`;
+
+  await env.DB.prepare(
+    "INSERT INTO verification_tokens (id, user_id, token_hash, type, payload, expires_at) VALUES (?, ?, ?, 'email_change', ?, datetime('now', '+15 minutes'))"
+  ).bind(id, user.sub, tokenHash, JSON.stringify({ newEmail: normalEmail })).run();
+
+  const sent = await sendEmail(
+    env, normalEmail,
+    'Confirm your new email address',
+    verifyEmailHtml(
+      'Confirm your new email',
+      'You requested to change your Quick Planner email address. Click below to confirm this change.',
+      verifyUrl, 'Confirm email change'
+    )
+  );
+
+  if (!sent) return err('Failed to send verification email. Please try again.', 500);
+  return json({ ok: true, message: 'Verification email sent to your new address. Check your inbox.' });
+}
+
+async function handleChangePassword(request, user, env) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  if (isRateLimited(ip)) return err('Too many requests. Try again later.', 429);
+
+  const { currentPassword, newPassword } = await request.json();
+  if (!currentPassword || !newPassword) return err('Current and new password required');
+
+  const u = await env.DB.prepare('SELECT password_hash, email FROM users WHERE id = ?').bind(user.sub).first();
+  if (!u) return err('User not found', 404);
+
+  const valid = await verifyPassword(currentPassword, u.password_hash);
+  if (!valid) return err('Current password is incorrect', 401);
+
+  const policy = validatePasswordPolicy(newPassword);
+  if (!policy.valid) return err(policy.errors.join('. '));
+
+  // Invalidate any pending password change tokens for this user
+  await env.DB.prepare("UPDATE verification_tokens SET used_at = datetime('now') WHERE user_id = ? AND type = 'password_change' AND used_at IS NULL")
+    .bind(user.sub).run();
+
+  const newPasswordHash = await hashPassword(newPassword);
+  const rawToken = generateToken();
+  const tokenHash = await hashToken(rawToken);
+  const id = crypto.randomUUID();
+  const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+  const verifyUrl = `${appUrl.replace(/\/$/, '')}/?verify_token=${rawToken}&verify_type=password_change`;
+
+  await env.DB.prepare(
+    "INSERT INTO verification_tokens (id, user_id, token_hash, type, payload, expires_at) VALUES (?, ?, ?, 'password_change', ?, datetime('now', '+15 minutes'))"
+  ).bind(id, user.sub, tokenHash, JSON.stringify({ newPasswordHash })).run();
+
+  const sent = await sendEmail(
+    env, u.email,
+    'Confirm your password change',
+    verifyEmailHtml(
+      'Confirm your password change',
+      'You requested to change your Quick Planner password. Click below to confirm this change.',
+      verifyUrl, 'Confirm password change'
+    )
+  );
+
+  if (!sent) return err('Failed to send verification email. Please try again.', 500);
+  return json({ ok: true, message: 'Verification email sent. Check your inbox to confirm.' });
+}
+
+async function handleVerifyToken(request, env) {
+  const url = new URL(request.url);
+  const rawToken = url.searchParams.get('token');
+  const type = url.searchParams.get('type');
+  const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+
+  if (!rawToken || !type) return json({ error: 'invalid', verified: false }, 400);
+
+  const tokenHash = await hashToken(rawToken);
+  const row = await env.DB.prepare(
+    'SELECT * FROM verification_tokens WHERE token_hash = ? AND type = ? AND used_at IS NULL'
+  ).bind(tokenHash, type).first();
+
+  if (!row) return json({ error: 'invalid', verified: false }, 400);
+
+  // Check expiry
+  const expiresAt = new Date(row.expires_at + 'Z').getTime();
+  if (Date.now() > expiresAt) return json({ error: 'expired', verified: false }, 400);
+
+  const payload = JSON.parse(row.payload);
+
+  if (type === 'email_change') {
+    // Re-check email uniqueness (race condition guard)
+    const taken = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(payload.newEmail).first();
+    if (taken) {
+      await env.DB.prepare("UPDATE verification_tokens SET used_at = datetime('now') WHERE id = ?").bind(row.id).run();
+      return json({ error: 'email_taken', verified: false }, 409);
+    }
+    await env.DB.prepare('UPDATE users SET email = ? WHERE id = ?').bind(payload.newEmail, row.user_id).run();
+  } else if (type === 'password_change') {
+    await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(payload.newPasswordHash, row.user_id).run();
+  }
+
+  // Mark token as used
+  await env.DB.prepare("UPDATE verification_tokens SET used_at = datetime('now') WHERE id = ?").bind(row.id).run();
+
+  // Cleanup expired tokens (best-effort)
+  await env.DB.prepare("DELETE FROM verification_tokens WHERE expires_at < datetime('now', '-1 day')").run();
+
+  return json({ verified: true, type });
+}
+
 // ── Router ──────────────────────────────────────────────────────────────────
 
 export default {
@@ -389,6 +589,7 @@ export default {
     // Auth routes (no token needed)
     if (path === '/auth/signup' && method === 'POST') return respond(await handleSignup(request, env));
     if (path === '/auth/login' && method === 'POST') return respond(await handleLogin(request, env));
+    if (path === '/auth/verify' && method === 'POST') return respond(await handleVerifyToken(request, env));
 
     // All other routes require auth
     const user = await authenticate(request, env);
@@ -399,6 +600,10 @@ export default {
       const u = await env.DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(user.sub).first();
       return respond(u ? json(u) : err('User not found', 404));
     }
+
+    // Account changes
+    if (path === '/auth/change-email' && method === 'POST') return respond(await handleChangeEmail(request, user, env));
+    if (path === '/auth/change-password' && method === 'POST') return respond(await handleChangePassword(request, user, env));
 
     // Full sync
     if (path === '/sync' && method === 'POST') return respond(await handleFullSync(request, user, env));
