@@ -16,8 +16,8 @@ import { openColorPickerModal } from './color-picker.js';
 import { showContextMenu } from './context-menu.js';
 import {
   isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession,
-  requestEmailChange, requestPasswordChange, validatePasswordStrength, renderPasswordStrength, verifyToken,
-  hasWeakPassword,
+  requestEmailChange, requestPasswordChange, validatePasswordLength, checkPasswordBreach,
+  renderPasswordStrength, verifyToken, hasWeakPassword, loadZxcvbn,
 } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
@@ -503,16 +503,20 @@ function setupAccountButtons() {
     pwToggle.addEventListener('click', () => pwForm.classList.toggle('hidden'));
     pwCancel?.addEventListener('click', () => { pwForm.classList.add('hidden'); setMsg('change-password-msg'); });
     if (newPwInput && pwStrength) {
+      newPwInput.addEventListener('focus', () => { loadZxcvbn(); }, { once: true });
       newPwInput.addEventListener('input', () => renderPasswordStrength(newPwInput.value, pwStrength));
     }
     pwSubmit?.addEventListener('click', async () => {
       const currentPw = $('#current-password-input')?.value;
       const newPw = newPwInput?.value;
       if (!currentPw || !newPw) return;
-      const { valid, checks } = validatePasswordStrength(newPw);
-      if (!valid) {
-        const failed = checks.filter(c => !c.met).map(c => c.label);
-        setMsg('change-password-msg', 'Password needs: ' + failed.join(', '), 'error');
+      if (!validatePasswordLength(newPw)) {
+        setMsg('change-password-msg', 'Password must be at least 15 characters', 'error');
+        return;
+      }
+      const breached = await checkPasswordBreach(newPw);
+      if (breached) {
+        setMsg('change-password-msg', 'This password has appeared in a data breach. Please choose a different one.', 'error');
         return;
       }
       pwSubmit.disabled = true;

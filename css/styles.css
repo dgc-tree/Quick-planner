@@ -1962,7 +1962,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 .modal-member-add:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .modal-member-dropdown {
   position: absolute;
@@ -2506,7 +2506,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 }
 
 .room-action-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .room-action-btn.danger:hover {
@@ -2924,7 +2924,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     font-family: var(--font);
     font-size: 0.95rem;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     background: none;
     border: none;
     cursor: pointer;
@@ -3301,8 +3301,8 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     align-items: center;
     gap: 12px;
   }
-  .mobile-menu-project-item:active { color: var(--accent); }
-  .mobile-menu-project-item.active { color: var(--accent); }
+  .mobile-menu-project-item:active { color: var(--accent-text); }
+  .mobile-menu-project-item.active { color: var(--accent-text); }
 
   /* Project items rendered by makeItem() inside mobile menu */
   .mobile-menu-projects-list .sidebar-project-item {
@@ -3716,7 +3716,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 .settings-link-btn {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -3763,39 +3763,39 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   height: 100%;
   width: 0;
   border-radius: 2px;
-  transition: width 0.2s, background-color 0.2s;
+  transition: width 0.3s ease, background-color 0.3s ease;
 }
-.password-strength-checks {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.password-strength-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 12px;
+  margin-bottom: 6px;
+}
+.password-strength-label {
+  font-weight: 600;
+}
+.password-strength-count {
   color: var(--text-muted);
-  columns: 2;
+  font-variant-numeric: tabular-nums;
 }
-.password-strength-checks li {
-  margin-bottom: 2px;
-  break-inside: avoid;
+.password-strength-guidance {
+  background: rgba(0,0,0,0.03);
+  border-radius: 8px;
+  padding: 8px 12px;
 }
-.password-strength-checks li::before {
-  content: '\2715 ';
-  color: #ef4444;
-}
-.password-strength-checks li.met::before {
-  content: '\2713 ';
-  color: #16a34a;
-}
-[data-theme="dark"] .password-strength-checks li::before {
-  color: #f87171;
-}
-[data-theme="dark"] .password-strength-checks li.met::before {
-  color: #4ade80;
-}
-.password-manager-hint {
+.password-strength-guidance p {
+  margin: 0;
   font-size: 11px;
   color: var(--text-secondary);
-  margin-top: 8px;
+  line-height: 1.5;
+}
+.password-strength-guidance p + p {
+  margin-top: 4px;
   opacity: 0.7;
+}
+[data-theme="dark"] .password-strength-guidance {
+  background: rgba(255,255,255,0.05);
 }
 .settings-version {
   text-align: center;
@@ -4141,7 +4141,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 }
 .mobile-import-btn:hover {
   background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mobile-menu-project-item {
   position: relative;
@@ -4294,7 +4294,7 @@ dialog.import-modal::backdrop {
   color: var(--text);
 }
 .import-browse-link {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
   cursor: pointer;
 }

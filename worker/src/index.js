@@ -130,14 +130,27 @@ async function authenticate(request, env) {
 
 // ── Password policy ─────────────────────────────────────────────────────────
 
-function validatePasswordPolicy(password) {
-  const errors = [];
-  if (password.length < 15) errors.push('At least 15 characters');
-  if (!/[A-Z]/.test(password)) errors.push('At least 1 uppercase letter');
-  if (!/[a-z]/.test(password)) errors.push('At least 1 lowercase letter');
-  if (!/[0-9]/.test(password)) errors.push('At least 1 number');
-  if (!/[^A-Za-z0-9]/.test(password)) errors.push('At least 1 special character');
-  return { valid: errors.length === 0, errors };
+function validatePasswordLength(password) {
+  if (password.length < 15) return { valid: false, error: 'Password must be at least 15 characters' };
+  return { valid: true };
+}
+
+async function isPasswordBreached(password) {
+  try {
+    const enc = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-1', enc.encode(password));
+    const hashHex = Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const prefix = hashHex.slice(0, 5);
+    const suffix = hashHex.slice(5);
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: { 'Add-Padding': 'true' },
+    });
+    if (!res.ok) return false; // fail open — don't block user if API is down
+    const text = await res.text();
+    return text.split('\n').some(line => line.startsWith(suffix));
+  } catch {
+    return false; // fail open
+  }
 }
 
 // ── Verification tokens ─────────────────────────────────────────────────────
@@ -204,8 +217,9 @@ async function handleSignup(request, env) {
   const { email, password, name } = await request.json();
   if (!email || !password) return err('Email and password required');
   if (!EMAIL_RE.test(email)) return err('Invalid email format');
-  const policy = validatePasswordPolicy(password);
-  if (!policy.valid) return err(policy.errors.join('. '));
+  const lenCheck = validatePasswordLength(password);
+  if (!lenCheck.valid) return err(lenCheck.error);
+  if (await isPasswordBreached(password)) return err('This password has appeared in a data breach. Please choose a different one.');
   if (name && name.length > 100) return err('Name too long');
 
   const normalEmail = email.toLowerCase().trim();
@@ -477,8 +491,9 @@ async function handleChangePassword(request, user, env) {
   const valid = await verifyPassword(currentPassword, u.password_hash);
   if (!valid) return err('Current password is incorrect', 401);
 
-  const policy = validatePasswordPolicy(newPassword);
-  if (!policy.valid) return err(policy.errors.join('. '));
+  const lenCheck = validatePasswordLength(newPassword);
+  if (!lenCheck.valid) return err(lenCheck.error);
+  if (await isPasswordBreached(newPassword)) return err('This password has appeared in a data breach. Please choose a different one.');
 
   // Invalidate any pending password change tokens for this user
   await env.DB.prepare("UPDATE verification_tokens SET used_at = datetime('now') WHERE user_id = ? AND type = 'password_change' AND used_at IS NULL")
