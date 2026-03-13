@@ -271,6 +271,7 @@ async function initApp() {
   renderSidebarProjects();
   updateAccountUI();
   document.body.classList.remove('auth-gate');
+  hideAuthModal();
   bgFxReady.then(() => _bgFx.initBgEffects());
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;

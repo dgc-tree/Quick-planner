@@ -428,32 +428,44 @@
     </div>
   </dialog>
 
-  <!-- Auth overlay -->
+  <!-- Auth / Landing page -->
   <div id="auth-overlay" class="auth-overlay hidden">
-    <div class="auth-card">
-      <button id="auth-close" class="auth-close" title="Close" aria-label="Close">&times;</button>
-      <h2 id="auth-title" class="auth-title">Log in</h2>
-      <p class="auth-subtitle">Sync your data across devices</p>
-      <form id="auth-form" class="auth-form" autocomplete="on">
-        <div id="auth-name-field" class="auth-field hidden">
-          <label for="auth-name">Name</label>
-          <input id="auth-name" type="text" placeholder="Your name" autocomplete="name">
+    <div class="landing-page">
+      <div class="landing-hero">
+        <img src="images/mascot-trash.png" alt="Quick Planner mascot" class="landing-mascot">
+        <div class="landing-copy">
+          <h1 class="landing-headline">Quick Planner</h1>
+          <p class="landing-tagline">Plan anything. See everything.</p>
         </div>
-        <div class="auth-field">
-          <label for="auth-email">Email</label>
-          <input id="auth-email" type="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="landing-auth">
+        <div class="auth-card">
+          <button id="auth-close" class="auth-close" title="Close" aria-label="Close">&times;</button>
+          <h2 id="auth-title" class="auth-title">Welcome back</h2>
+          <p class="auth-subtitle">Sign in to sync your projects across devices</p>
+          <form id="auth-form" class="auth-form" autocomplete="on">
+            <div id="auth-name-field" class="auth-field hidden">
+              <label for="auth-name">Name</label>
+              <input id="auth-name" type="text" placeholder="Your name" autocomplete="name">
+            </div>
+            <div class="auth-field">
+              <label for="auth-email">Email</label>
+              <input id="auth-email" type="email" placeholder="you@example.com" required autocomplete="email">
+            </div>
+            <div class="auth-field">
+              <label for="auth-password">Password</label>
+              <input id="auth-password" type="password" placeholder="Min 8 characters" required minlength="8" autocomplete="current-password">
+            </div>
+            <div id="auth-error" class="auth-error hidden"></div>
+            <div class="auth-actions">
+              <button id="auth-submit" type="submit" class="modal-btn modal-save">Log in</button>
+              <button id="auth-toggle-btn" type="button" class="modal-btn modal-cancel">Create account</button>
+            </div>
+          </form>
+          <p class="auth-free">Free forever. No credit card.</p>
+          <button id="auth-skip" class="auth-skip">Continue without account</button>
         </div>
-        <div class="auth-field">
-          <label for="auth-password">Password</label>
-          <input id="auth-password" type="password" placeholder="Min 8 characters" required minlength="8" autocomplete="current-password">
-        </div>
-        <div id="auth-error" class="auth-error hidden"></div>
-        <div class="auth-actions">
-          <button id="auth-submit" type="submit" class="modal-btn modal-save">Log in</button>
-          <button id="auth-toggle-btn" type="button" class="modal-btn modal-cancel">Sign up</button>
-        </div>
-      </form>
-      <button id="auth-skip" class="auth-skip">Continue without account</button>
+      </div>
     </div>
   </div>
 

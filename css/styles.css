@@ -4850,16 +4850,13 @@ body.sandbox-mode::after {
 [data-theme="dark"] .mobile-account-item { border-bottom-color: rgba(255,255,255,0.06); }
 
 /* === Auth Overlay === */
+/* ── Auth overlay / Landing page ──────────────────────────────────────────── */
 .auth-overlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  overflow-y: auto;
+  background: #fafafa;
 }
 .auth-overlay.hidden { display: none; }
 
@@ -4871,16 +4868,84 @@ body.auth-gate main,
 body.auth-gate .fab-add,
 body.auth-gate #mobile-menu-overlay { display: none; }
 
+/* Landing page — asymmetric two-panel, generous negative space */
+.landing-page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Left panel — mascot + branding, soft accent wash */
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 48px;
+  background:
+    radial-gradient(ellipse 80% 60% at 30% 70%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 8%, transparent) 0%, transparent 100%),
+    #fafafa;
+}
+
+.landing-mascot {
+  width: clamp(180px, 22vw, 260px);
+  height: auto;
+  margin-bottom: 24px;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.08));
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.landing-mascot:hover {
+  transform: scale(1.08);
+}
+
+.landing-copy {
+  text-align: center;
+}
+
+.landing-headline {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary, #111827);
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+}
+
+.landing-tagline {
+  font-size: clamp(0.92rem, 1.2vw, 1.05rem);
+  color: var(--text-secondary, #6b7280);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Right panel — auth form, vertically centred with max breathing room */
+.landing-auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 48px;
+}
+
+.auth-free {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+/* Auth card */
 .auth-card {
   position: relative;
-  width: min(420px, 92vw);
+  width: min(380px, 92vw);
   padding: 2rem 2rem 1.5rem;
   border-radius: 16px;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12), inset 0 1px 0 0 rgba(255,255,255,0.6);
-  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 0 rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.35);
 }
 
 .auth-close {
@@ -4956,7 +5021,6 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 }
 .auth-error.hidden { display: none; }
 
-/* Auth buttons reuse .modal-btn .modal-save / .modal-cancel from design system */
 .auth-actions {
   display: flex;
   flex-direction: column;
@@ -4980,7 +5044,36 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 }
 .auth-skip:hover { color: var(--text-primary, #111827); }
 
+/* Landing mobile — single column, mascot smaller */
+@media (max-width: 740px) {
+  .landing-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .landing-hero {
+    padding: 40px 24px 24px;
+    gap: 0;
+  }
+  .landing-mascot {
+    width: 140px;
+    margin-bottom: 24px;
+  }
+  .landing-auth {
+    padding: 0 24px 40px;
+    align-items: flex-start;
+  }
+  .auth-card { width: 100%; max-width: 400px; }
+}
+
 /* Auth dark mode */
+[data-theme="dark"] .auth-overlay { background: #0f1117; }
+[data-theme="dark"] .landing-hero {
+  background:
+    radial-gradient(ellipse 80% 60% at 30% 70%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 6%, transparent) 0%, transparent 100%),
+    #0f1117;
+}
+[data-theme="dark"] .landing-headline { color: #f3f4f6; }
+[data-theme="dark"] .landing-tagline { color: #9ca3af; }
 [data-theme="dark"] .auth-card {
   background: rgba(22,24,34,0.92);
   border-color: rgba(255,255,255,0.08);

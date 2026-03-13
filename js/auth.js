@@ -142,7 +142,7 @@ function setAuthMode(mode) {
     toggleBtn.textContent = 'Back to log in';
     nameField.classList.remove('hidden');
   } else {
-    title.textContent = 'Log in';
+    title.textContent = 'Welcome back';
     submitBtn.textContent = 'Log in';
     toggleBtn.textContent = 'Create account';
     nameField.classList.add('hidden');
