@@ -694,7 +694,7 @@ function setupFilters() {
 
 function getModalOptions() {
   const opts = buildFilterOptions(allTasks);
-  return { categories: opts.categories, assignees: opts.assigned, rooms: opts.rooms, allTasks };
+  return { categories: opts.categories, assignees: opts.assigned, rooms: opts.rooms, allTasks, getActiveProjectId: () => currentProjectId };
 }
 
 function handleTaskEdit(task) {

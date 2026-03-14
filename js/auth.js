@@ -40,7 +40,7 @@ export function logout() {
 
 // ── API calls ───────────────────────────────────────────────────────────────
 
-async function apiCall(path, options = {}) {
+export async function apiCall(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
