@@ -20,6 +20,7 @@ import {
   renderPasswordStrength, verifyToken, hasWeakPassword, loadZxcvbn, deleteProjectOnServer,
 } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
+import { initPeopleSection } from './people.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -1324,6 +1325,11 @@ function setupSettingsPanel() {
     reader.readAsText(file);
   });
 
+  // --- People section ---
+  const _people = initPeopleSection($('#settings-people'), {
+    getActiveProjectId: () => currentProjectId,
+  });
+
   // --- Open / close settings view ---
   function showSettings() {
     previousView = currentView;
@@ -1340,6 +1346,8 @@ function setupSettingsPanel() {
     // Refresh export section visibility
     const exportSection = $('#settings-export-section');
     if (exportSection) exportSection.classList.remove('hidden');
+    // Refresh people section
+    if (_people) _people.load();
   }
 
   function hideSettings() {

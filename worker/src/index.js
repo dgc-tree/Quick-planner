@@ -564,6 +564,193 @@ async function handleVerifyToken(request, env) {
   return json({ verified: true, type });
 }
 
+// ── Project Members & Invites ────────────────────────────────────────────
+
+async function requireProjectAdmin(user, env, projectId) {
+  // Owner (legacy: project.user_id) is always admin
+  const project = await env.DB.prepare('SELECT user_id FROM projects WHERE id = ?').bind(projectId).first();
+  if (!project) return { error: 'Project not found', status: 404 };
+  if (project.user_id === user.sub) return { role: 'owner', project };
+
+  const membership = await env.DB.prepare(
+    'SELECT role FROM project_members WHERE project_id = ? AND user_id = ?'
+  ).bind(projectId, user.sub).first();
+  if (!membership) return { error: 'Not a member of this project', status: 403 };
+  if (membership.role !== 'admin' && membership.role !== 'owner') {
+    return { error: 'Admin access required', status: 403 };
+  }
+  return { role: membership.role, project };
+}
+
+async function handleListMembers(user, env, projectId) {
+  const access = await requireProjectAdmin(user, env, projectId);
+  if (access.error) return err(access.error, access.status);
+
+  // Active members
+  const { results: members } = await env.DB.prepare(`
+    SELECT pm.id, pm.user_id, pm.role, pm.created_at,
+           u.email, u.name
+    FROM project_members pm
+    JOIN users u ON u.id = pm.user_id
+    WHERE pm.project_id = ?
+    ORDER BY pm.created_at
+  `).bind(projectId).all();
+
+  // Include owner (from projects.user_id) if not already in members table
+  const ownerInMembers = members.some(m => m.user_id === access.project.user_id);
+  if (!ownerInMembers) {
+    const owner = await env.DB.prepare('SELECT id, email, name FROM users WHERE id = ?')
+      .bind(access.project.user_id).first();
+    if (owner) {
+      members.unshift({
+        id: 'owner',
+        user_id: owner.id,
+        role: 'owner',
+        email: owner.email,
+        name: owner.name,
+        created_at: null,
+      });
+    }
+  }
+
+  // Pending invites
+  const { results: invites } = await env.DB.prepare(`
+    SELECT pi.id, pi.email, pi.role, pi.created_at, pi.invited_by,
+           u.email AS invited_by_email
+    FROM project_invites pi
+    LEFT JOIN users u ON u.id = pi.invited_by
+    WHERE pi.project_id = ? AND pi.accepted_at IS NULL AND pi.revoked_at IS NULL
+    ORDER BY pi.created_at
+  `).bind(projectId).all();
+
+  return json({ members, invites });
+}
+
+async function handleInviteMember(request, user, env, projectId) {
+  const access = await requireProjectAdmin(user, env, projectId);
+  if (access.error) return err(access.error, access.status);
+
+  const { email, role } = await request.json();
+  if (!email) return err('Email required');
+  if (!EMAIL_RE.test(email)) return err('Invalid email format');
+  const normalEmail = email.toLowerCase().trim();
+  const validRoles = ['admin', 'member', 'viewer'];
+  const assignRole = validRoles.includes(role) ? role : 'member';
+
+  // Can't invite the owner
+  const owner = await env.DB.prepare('SELECT email FROM users WHERE id = ?')
+    .bind(access.project.user_id).first();
+  if (owner && owner.email === normalEmail) return err('Cannot invite the project owner');
+
+  // Check if already a member
+  const existingUser = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(normalEmail).first();
+  if (existingUser) {
+    const existingMember = await env.DB.prepare(
+      'SELECT id FROM project_members WHERE project_id = ? AND user_id = ?'
+    ).bind(projectId, existingUser.id).first();
+    if (existingMember) return err('Already a member of this project');
+  }
+
+  // Check for existing pending invite
+  const existingInvite = await env.DB.prepare(
+    'SELECT id FROM project_invites WHERE project_id = ? AND email = ? AND accepted_at IS NULL AND revoked_at IS NULL'
+  ).bind(projectId, normalEmail).first();
+  if (existingInvite) return err('Invitation already pending for this email');
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    'INSERT INTO project_invites (id, project_id, email, role, invited_by) VALUES (?, ?, ?, ?, ?)'
+  ).bind(id, projectId, normalEmail, assignRole, user.sub).run();
+
+  // Send invite email
+  const project = await env.DB.prepare('SELECT name FROM projects WHERE id = ?').bind(projectId).first();
+  const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+  await sendEmail(
+    env, normalEmail,
+    `You've been invited to "${project?.name || 'a project'}" on Quick Planner`,
+    verifyEmailHtml(
+      'You\'re invited!',
+      `You've been invited to collaborate on <strong>${project?.name || 'a project'}</strong> as a <strong>${assignRole}</strong>. Sign in or create an account to get started.`,
+      appUrl, 'Open Quick Planner'
+    )
+  );
+
+  return json({ id, email: normalEmail, role: assignRole, created_at: new Date().toISOString() }, 201);
+}
+
+async function handleUpdateMemberRole(request, user, env, projectId, memberId) {
+  const access = await requireProjectAdmin(user, env, projectId);
+  if (access.error) return err(access.error, access.status);
+
+  const { role } = await request.json();
+  const validRoles = ['admin', 'member', 'viewer'];
+  if (!validRoles.includes(role)) return err('Invalid role. Must be admin, member, or viewer.');
+
+  // Cannot change owner role
+  const member = await env.DB.prepare(
+    'SELECT user_id, role FROM project_members WHERE id = ? AND project_id = ?'
+  ).bind(memberId, projectId).first();
+  if (!member) return err('Member not found', 404);
+  if (member.user_id === access.project.user_id) return err('Cannot change the owner\'s role');
+
+  await env.DB.prepare('UPDATE project_members SET role = ? WHERE id = ?').bind(role, memberId).run();
+  return json({ ok: true, role });
+}
+
+async function handleRevokeMember(user, env, projectId, memberId) {
+  const access = await requireProjectAdmin(user, env, projectId);
+  if (access.error) return err(access.error, access.status);
+
+  const member = await env.DB.prepare(
+    'SELECT user_id FROM project_members WHERE id = ? AND project_id = ?'
+  ).bind(memberId, projectId).first();
+  if (!member) return err('Member not found', 404);
+  if (member.user_id === access.project.user_id) return err('Cannot remove the project owner');
+
+  await env.DB.prepare('DELETE FROM project_members WHERE id = ?').bind(memberId).run();
+  return json({ ok: true });
+}
+
+async function handleRevokeInvite(user, env, projectId, inviteId) {
+  const access = await requireProjectAdmin(user, env, projectId);
+  if (access.error) return err(access.error, access.status);
+
+  const invite = await env.DB.prepare(
+    'SELECT id FROM project_invites WHERE id = ? AND project_id = ? AND accepted_at IS NULL AND revoked_at IS NULL'
+  ).bind(inviteId, projectId).first();
+  if (!invite) return err('Invite not found', 404);
+
+  await env.DB.prepare("UPDATE project_invites SET revoked_at = datetime('now') WHERE id = ?").bind(inviteId).run();
+  return json({ ok: true });
+}
+
+async function handleResendInvite(user, env, projectId, inviteId) {
+  const access = await requireProjectAdmin(user, env, projectId);
+  if (access.error) return err(access.error, access.status);
+
+  const invite = await env.DB.prepare(
+    'SELECT email, role FROM project_invites WHERE id = ? AND project_id = ? AND accepted_at IS NULL AND revoked_at IS NULL'
+  ).bind(inviteId, projectId).first();
+  if (!invite) return err('Invite not found', 404);
+
+  const project = await env.DB.prepare('SELECT name FROM projects WHERE id = ?').bind(projectId).first();
+  const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+  const sent = await sendEmail(
+    env, invite.email,
+    `Reminder: You've been invited to "${project?.name || 'a project'}" on Quick Planner`,
+    verifyEmailHtml(
+      'You\'re invited!',
+      `Reminder: You've been invited to collaborate on <strong>${project?.name || 'a project'}</strong> as a <strong>${invite.role}</strong>.`,
+      appUrl, 'Open Quick Planner'
+    )
+  );
+
+  if (!sent) return err('Failed to send email', 500);
+  // Update created_at to reset staleness
+  await env.DB.prepare("UPDATE project_invites SET created_at = datetime('now') WHERE id = ?").bind(inviteId).run();
+  return json({ ok: true });
+}
+
 // ── Router ──────────────────────────────────────────────────────────────────
 
 export default {
@@ -639,6 +826,34 @@ export default {
       const pid = tasksMatch[1];
       if (method === 'GET') return respond(await handleGetTasks(user, env, pid));
       if (method === 'POST') return respond(await handleSyncTasks(request, user, env, pid));
+    }
+
+    // Members
+    const membersMatch = path.match(/^\/projects\/([^/]+)\/members$/);
+    if (membersMatch) {
+      const pid = membersMatch[1];
+      if (method === 'GET') return respond(await handleListMembers(user, env, pid));
+      if (method === 'POST') return respond(await handleInviteMember(request, user, env, pid));
+    }
+
+    const memberMatch = path.match(/^\/projects\/([^/]+)\/members\/([^/]+)$/);
+    if (memberMatch) {
+      const [, pid, mid] = memberMatch;
+      if (method === 'PUT') return respond(await handleUpdateMemberRole(request, user, env, pid, mid));
+      if (method === 'DELETE') return respond(await handleRevokeMember(user, env, pid, mid));
+    }
+
+    // Invites
+    const inviteRevokeMatch = path.match(/^\/projects\/([^/]+)\/invites\/([^/]+)$/);
+    if (inviteRevokeMatch) {
+      const [, pid, iid] = inviteRevokeMatch;
+      if (method === 'DELETE') return respond(await handleRevokeInvite(user, env, pid, iid));
+    }
+
+    const inviteResendMatch = path.match(/^\/projects\/([^/]+)\/invites\/([^/]+)\/resend$/);
+    if (inviteResendMatch) {
+      const [, pid, iid] = inviteResendMatch;
+      if (method === 'POST') return respond(await handleResendInvite(user, env, pid, iid));
     }
 
     return respond(err('Not found', 404));

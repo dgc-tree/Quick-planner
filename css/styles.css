@@ -5404,3 +5404,208 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 [data-theme="dark"] .auth-skip { color: #9ca3af; }
 [data-theme="dark"] .auth-skip:hover { color: #f3f4f6; }
 
+/* === People / Invite Settings === */
+
+.people-body { margin-top: 8px; }
+.people-loading, .people-error, .people-no-results {
+  font-size: 13px; color: var(--text-muted); padding: 12px 0;
+}
+.people-error { color: var(--danger, #e53e3e); }
+
+/* Invite form */
+.people-invite-form { margin-bottom: 16px; }
+.people-invite-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.people-invite-input-wrap { flex: 1; }
+.people-invite-input {
+  width: 100%; box-sizing: border-box;
+  font-family: var(--font); font-size: 0.95rem;
+  padding: 10px 14px; border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.93);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+  margin-left: -4px;
+}
+.people-invite-input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+[data-theme="dark"] .people-invite-input {
+  background: rgba(22,24,34,0.93);
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+  color: var(--text);
+}
+.people-invite-role {
+  font-family: var(--font); font-size: 0.85rem;
+  padding: 8px 10px; border-radius: 8px; min-width: 90px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.93);
+  cursor: pointer;
+}
+[data-theme="dark"] .people-invite-role {
+  background: rgba(22,24,34,0.93);
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text);
+}
+.people-invite-btn { min-width: auto; padding: 10px 18px; }
+.people-invite-msg {
+  font-size: 13px; margin-top: 8px; padding: 8px 12px;
+  border-radius: 8px;
+}
+.people-invite-msg--error {
+  color: var(--danger, #e53e3e);
+  background: rgba(229,62,62,0.08);
+}
+
+/* Search */
+.people-search-wrap {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.people-search-input {
+  flex: 1; font-family: var(--font); font-size: 0.9rem;
+  padding: 8px 12px; border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.8);
+}
+.people-search-input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+[data-theme="dark"] .people-search-input {
+  background: rgba(22,24,34,0.8);
+  border-color: rgba(255,255,255,0.12);
+  color: var(--text);
+}
+.people-search-count {
+  font-size: 12px; color: var(--text-muted); white-space: nowrap;
+}
+
+/* Empty state */
+.people-empty { text-align: center; padding: 24px 16px; }
+.people-empty-title { font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 4px; }
+.people-empty-desc { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+/* Member table */
+.people-table { display: flex; flex-direction: column; gap: 2px; }
+.people-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  transition: background 0.15s ease;
+}
+.people-row:hover { background: rgba(0,0,0,0.03); }
+[data-theme="dark"] .people-row:hover { background: rgba(255,255,255,0.04); }
+
+/* Pending rows */
+.people-row--pending { opacity: 0.7; border-left: 2px dashed var(--text-muted); padding-left: 10px; }
+.people-row--stale { border-left-color: #d97706; }
+
+/* Avatar */
+.people-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; flex-shrink: 0;
+  background: var(--accent); color: var(--on-accent-primary1);
+}
+.people-avatar--pending {
+  background: rgba(0,0,0,0.06); color: var(--text-muted);
+}
+[data-theme="dark"] .people-avatar--pending {
+  background: rgba(255,255,255,0.08);
+}
+
+/* Info */
+.people-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.people-name { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people-name mark { background: color-mix(in srgb, var(--accent) 25%, transparent); border-radius: 2px; }
+.people-email { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people-invite-date { font-size: 11px; }
+.people-date--stale { color: #d97706; font-weight: 500; }
+
+/* Role pills */
+.people-role-wrap { flex-shrink: 0; }
+.people-role {
+  display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+}
+.people-role--owner { background: var(--text-muted); color: #fff; }
+.people-role--admin { background: var(--accent); color: var(--on-accent-primary1); }
+.people-role--member { background: rgba(0,0,0,0.06); color: var(--text); }
+.people-role--viewer { background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); }
+[data-theme="dark"] .people-role--member { background: rgba(255,255,255,0.1); }
+
+/* Role select (inline) */
+.people-role-select {
+  font-family: var(--font); font-size: 11px; font-weight: 600; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.04); color: var(--text); cursor: pointer;
+  appearance: auto;
+}
+[data-theme="dark"] .people-role-select {
+  background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); color: var(--text);
+}
+
+/* Revoke / action buttons */
+.people-revoke-btn, .people-revoke-invite-btn {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-muted); transition: all 0.15s ease; flex-shrink: 0;
+}
+.people-revoke-btn:hover, .people-revoke-invite-btn:hover {
+  background: rgba(229,62,62,0.1); color: #e53e3e;
+}
+.people-revoke-placeholder { width: 28px; flex-shrink: 0; }
+
+/* Invite row actions */
+.people-invite-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.people-resend-btn {
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.1); background: transparent;
+  color: var(--accent-text, var(--accent)); cursor: pointer;
+  transition: all 0.15s ease;
+}
+.people-resend-btn:hover { background: rgba(0,0,0,0.04); }
+[data-theme="dark"] .people-resend-btn { border-color: rgba(255,255,255,0.15); }
+[data-theme="dark"] .people-resend-btn:hover { background: rgba(255,255,255,0.06); }
+
+/* Inline revoke confirmation */
+.people-confirm-revoke {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin-top: 6px;
+  background: rgba(229,62,62,0.06); border-radius: 8px;
+  font-size: 12px; color: var(--text);
+  opacity: 0; max-height: 0; overflow: hidden;
+  transition: opacity 0.2s ease, max-height 0.2s ease;
+}
+.people-confirm-visible { opacity: 1; max-height: 60px; }
+.people-confirm-yes {
+  font-family: var(--font); font-size: 12px; font-weight: 600;
+  padding: 4px 12px; border-radius: 6px; border: none;
+  background: #e53e3e; color: #fff; cursor: pointer;
+}
+.people-confirm-yes:hover { background: #c53030; }
+.people-confirm-no {
+  font-family: var(--font); font-size: 12px;
+  padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1);
+  background: transparent; color: var(--text); cursor: pointer;
+}
+
+/* Section label */
+.people-section-label {
+  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin: 16px 0 8px; padding: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .people-invite-row { flex-wrap: wrap; }
+  .people-invite-input-wrap { flex: 1 1 100%; }
+  .people-invite-role { flex: 1; }
+  .people-invite-btn { flex: 0 0 auto; }
+  .people-row { padding: 8px 8px; gap: 8px; }
+  .people-invite-actions { gap: 4px; }
+}
+
