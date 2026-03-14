@@ -2569,20 +2569,20 @@ main.settings-open { overflow: hidden; padding: 0; }
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent-primary1);
+  background: #1a1a1a;
+  color: #fff;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--shadow-accent) 50%, transparent), 0 2px 4px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.12);
   transition: transform 0.15s, box-shadow 0.15s;
   z-index: 100;
 }
 .fab-add:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 24px color-mix(in srgb, var(--shadow-accent) 60%, transparent), 0 2px 8px rgba(0,0,0,0.16);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.16);
 }
 .fab-add:active { transform: scale(0.96); }
 /* Hide FAB on desktop — header-add-btn used instead */

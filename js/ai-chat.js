@@ -93,7 +93,7 @@ function injectUI() {
   _chatBubble.className = 'qp-chat-bubble';
   _chatBubble.title = 'Open QP Chat';
   _chatBubble.setAttribute('aria-label', 'Open AI assistant');
-  _chatBubble.innerHTML = `<span class="qp-chat-bubble-text">Qp</span><span class="qp-chat-bubble-dot hidden"></span>`;
+  _chatBubble.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="qp-chat-bubble-dot hidden"></span>`;
   _chatBubble.addEventListener('click', togglePanel);
   document.body.appendChild(_chatBubble);
 

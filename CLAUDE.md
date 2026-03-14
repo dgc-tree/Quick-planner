@@ -19,7 +19,8 @@ Each task gets its own branch and PR. Never reuse a branch for unrelated work. T
   - `claude/feat/export-csv-xK9m2`
   - `claude/style/dark-mode-cards-pQ3r1`
 - **PR title** = plain English summary of the task (under 70 chars)
-- **Result**: merged PR history reads like a done column on a kanban board
+- **PR label** = must match the branch category. Use exactly one of: `bug`, `feature`, `style`, `docs`, `refactor`
+- **Result**: merged PR history reads like a done column on a kanban board — filterable by label
 
 ### Deploy process (follow every time)
 The environment restricts pushes to `claude/` branches only. You **cannot** push to `main` directly. When the user says "commit and push" or expects changes to go live:
