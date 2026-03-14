@@ -207,7 +207,8 @@ export function showAuthModal(onSuccess, { gate = false } = {}) {
   const skipBtn = document.getElementById('auth-skip');
   if (closeBtn) closeBtn.style.display = gate ? 'none' : '';
   if (skipBtn) skipBtn.style.display = gate ? 'none' : '';
-  overlay.querySelector('#auth-email').focus();
+  // Don't auto-focus email — let the user see the landing page first.
+  // On mobile this pulls up the keyboard immediately, hiding the mascot and context.
   // Default to login mode
   setAuthMode('login');
 }
