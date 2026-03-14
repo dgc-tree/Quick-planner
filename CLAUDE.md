@@ -5,12 +5,34 @@
 - **One-shot CSS**: Check all override contexts (dark, mobile, responsive) and apply all changes in one round. Don't iterate with the user as debugger.
 
 ## Commit & Deploy
-This repo deploys directly via Cloudflare Pages. No separate deploy repo.
-When user says "commit and push":
-1. Commit and push this repo (`Quick planner/`). That's it.
+This repo deploys directly via Cloudflare Pages from the `main` branch (~1 minute auto-deploy).
 - **Live URL**: `planner.davegregurke.au` (Cloudflare Pages project: `quick-planner`)
 - **Old URL**: `davegregurke.au/pd2/` redirects via 301 to the new subdomain
-- Cloudflare auto-deploys from `main` branch within ~1 minute
+
+### Deploy process (follow every time)
+The environment restricts pushes to `claude/` branches only. You **cannot** push to `main` directly. When the user says "commit and push" or expects changes to go live:
+
+1. **Commit** to the current `claude/` feature branch
+2. **Push** the feature branch: `git push -u origin claude/<branch-name>`
+3. **Rebase** onto `origin/main` first if the branch was previously merged (otherwise GitHub shows "nothing to compare"): `git fetch origin main && git rebase origin/main && git push --force-with-lease`
+4. **Create a PR** immediately — do not stop at "pushed to branch" and wait for the user to ask. Use the GitHub API via `curl`:
+   ```
+   curl -s -X POST https://api.github.com/repos/dgc-tree/Quick-planner/pulls \
+     -H "Accept: application/vnd.github+json" \
+     -H "Authorization: Bearer $GITHUB_TOKEN" \
+     -d '{"title":"<title>","head":"claude/<branch>","base":"main","body":"<summary>"}'
+   ```
+   If no API token is available, give the user the compare URL and explicitly tell them to create and merge the PR: `https://github.com/dgc-tree/Quick-planner/compare/main...claude/<branch>`
+5. **Never** stop at step 2 and say "done". The user expects live deployment. Pushing to a feature branch alone does nothing.
+
+### What NOT to do
+- Don't attempt `git push origin main` — it will 403 every time
+- Don't try multiple auth workarounds when the first one fails — go straight to giving the user the compare URL
+- Don't tell the user "you'll need to merge yourself" without giving the direct link
+- Don't make the user ask twice for a PR — offer it immediately after the push is blocked
+
+### Incident (March 2026)
+Session pushed 13 commits to the feature branch but never merged to `main` or created a PR. When asked to go live, attempted to push to `main` (403), then spent multiple rounds trying different auth methods for the GitHub API, asking the user to do it manually, and giving broken instructions. The user had to ask 4 times before getting a working link. Root cause: no documented process for the `claude/` branch constraint. All of this should have been one smooth step.
 
 ## Communication
 - Be concise. Don't restate changes back. Don't explain CSS theory.
