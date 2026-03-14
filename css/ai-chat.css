@@ -1,7 +1,7 @@
 /* ─── QP Chat — AI Assistant UI ─────────────────────────────────────────────── */
 
 /* Chat bubble button */
-.qp-chat-bubble {
+.qp-chat-fab {
   position: fixed;
   bottom: 96px;
   right: 24px;
@@ -21,27 +21,27 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-.qp-chat-bubble:hover {
+.qp-chat-fab:hover {
   transform: scale(1.08);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.24);
 }
 
-.qp-chat-bubble:active {
+.qp-chat-fab:active {
   transform: scale(0.95);
 }
 
-.qp-chat-bubble.open {
+.qp-chat-fab.open {
   transform: scale(0);
   pointer-events: none;
 }
 
-.qp-chat-bubble-text {
+.qp-chat-fab-text {
   font-weight: 700;
   font-size: 16px;
   letter-spacing: -0.5px;
 }
 
-.qp-chat-bubble-dot {
+.qp-chat-fab-dot {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -53,7 +53,7 @@
   animation: qp-dot-pulse 2s ease-in-out infinite;
 }
 
-.qp-chat-bubble-dot.hidden { display: none; }
+.qp-chat-fab-dot.hidden { display: none; }
 
 @keyframes qp-dot-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
@@ -421,14 +421,14 @@
 /* ─── Mobile ───────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  .qp-chat-bubble {
+  .qp-chat-fab {
     bottom: 88px;
     right: 16px;
     width: 48px;
     height: 48px;
   }
 
-  .qp-chat-bubble-text {
+  .qp-chat-fab-text {
     font-size: 14px;
   }
 
@@ -451,21 +451,21 @@
 }
 
 /* Hide bubble when settings open (matches FAB behaviour) */
-body:has(#settings-view:not(.hidden)) .qp-chat-bubble,
-body:has(#trash-view:not(.hidden)) .qp-chat-bubble {
+body:has(#settings-view:not(.hidden)) .qp-chat-fab,
+body:has(#trash-view:not(.hidden)) .qp-chat-fab {
   display: none;
 }
 
 /* Position bubble above FAB on mobile */
 @media (max-width: 768px) {
-  .qp-chat-bubble {
+  .qp-chat-fab {
     bottom: 88px;
   }
 }
 
 /* Hide on desktop — bubble still shows on desktop above FAB */
 @media (min-width: 769px) {
-  .qp-chat-bubble {
+  .qp-chat-fab {
     bottom: 28px;
   }
 }
