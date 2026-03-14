@@ -535,7 +535,11 @@ function setupAccountButtons() {
           if (newPwInput.value) renderPasswordStrength(newPwInput.value, pwStrength);
         });
       }, { once: true });
-      newPwInput.addEventListener('input', () => renderPasswordStrength(newPwInput.value, pwStrength));
+      newPwInput.addEventListener('input', () => {
+        renderPasswordStrength(newPwInput.value, pwStrength);
+        // If zxcvbn still loading, re-render once it arrives
+        if (!window.zxcvbn) loadZxcvbn().then(() => renderPasswordStrength(newPwInput.value, pwStrength));
+      });
     }
     pwSubmit?.addEventListener('click', async () => {
       const currentPw = $('#current-password-input')?.value;

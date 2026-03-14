@@ -136,13 +136,15 @@ export async function verifyToken(token, type) {
 // ── Password strength (zxcvbn lazy-loaded) ──────────────────────────────────
 
 let _zxcvbnLoading = null;
+let _zxcvbn = null;
 export function loadZxcvbn() {
-  if (window.zxcvbn) return Promise.resolve(window.zxcvbn);
+  if (_zxcvbn) return Promise.resolve(_zxcvbn);
+  if (window.zxcvbn) { _zxcvbn = window.zxcvbn; return Promise.resolve(_zxcvbn); }
   if (_zxcvbnLoading) return _zxcvbnLoading;
   _zxcvbnLoading = new Promise((resolve) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js';
-    s.onload = () => resolve(window.zxcvbn);
+    s.onload = () => { _zxcvbn = window.zxcvbn; resolve(_zxcvbn); };
     s.onerror = () => resolve(null);
     document.head.appendChild(s);
   });
@@ -290,6 +292,7 @@ export function initAuthUI() {
     authPwInput.addEventListener('input', () => {
       if (_currentMode !== 'signup') { authStrength.classList.add('hidden'); return; }
       renderPasswordStrength(authPwInput.value, authStrength);
+      if (!_zxcvbn) loadZxcvbn().then(() => renderPasswordStrength(authPwInput.value, authStrength));
     });
   }
 
