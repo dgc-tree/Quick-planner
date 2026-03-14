@@ -5217,6 +5217,8 @@ body.sandbox-mode::after {
   z-index: 9999;
   overflow-y: auto;
   background: #fafafa;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .auth-overlay.hidden { display: none; }
 
