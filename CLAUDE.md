@@ -9,6 +9,18 @@ This repo deploys directly via Cloudflare Pages from the `main` branch (~1 minut
 - **Live URL**: `planner.davegregurke.au` (Cloudflare Pages project: `quick-planner`)
 - **Old URL**: `davegregurke.au/pd2/` redirects via 301 to the new subdomain
 
+### Branch naming — one branch per task
+Each task gets its own branch and PR. Never reuse a branch for unrelated work. This keeps the merged PR list readable as a project changelog.
+
+- **Format**: `claude/<category>/<short-description>-<sessionId>`
+- **Categories**: `fix/`, `feat/`, `refactor/`, `docs/`, `style/`
+- **Examples**:
+  - `claude/fix/mobile-overflow-sWJa4`
+  - `claude/feat/export-csv-xK9m2`
+  - `claude/style/dark-mode-cards-pQ3r1`
+- **PR title** = plain English summary of the task (under 70 chars)
+- **Result**: merged PR history reads like a done column on a kanban board
+
 ### Deploy process (follow every time)
 The environment restricts pushes to `claude/` branches only. You **cannot** push to `main` directly. When the user says "commit and push" or expects changes to go live:
 
