@@ -149,10 +149,23 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
   }
 
   function handleDayHover(date) {
-    if (pickingEnd && selStart) {
+    if (pickingEnd && selStart && !sameDay(date, hoverDate)) {
       hoverDate = date;
-      renderPicker();
+      updateDayClasses();
     }
+  }
+
+  function updateDayClasses() {
+    const effStart = getEffectiveStart();
+    const effEnd = getEffectiveEnd();
+    el.querySelectorAll('.drp-day[data-date]').forEach(btn => {
+      if (btn.classList.contains('drp-day--outside')) return;
+      const d = new Date(btn.dataset.date + 'T00:00:00');
+      btn.classList.toggle('drp-day--selected', (effStart && sameDay(d, effStart)) || (effEnd && sameDay(d, effEnd)));
+      btn.classList.toggle('drp-day--start', !!(effStart && sameDay(d, effStart)));
+      btn.classList.toggle('drp-day--end', !!(effEnd && sameDay(d, effEnd)));
+      btn.classList.toggle('drp-day--in-range', !!(effStart && effEnd && d > effStart && d < effEnd));
+    });
   }
 
   function getEffectiveEnd() {
