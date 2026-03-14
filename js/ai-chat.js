@@ -177,6 +177,10 @@ function togglePanel() {
   _panel.classList.toggle('open', _isOpen);
   _chatBubble.classList.toggle('open', _isOpen);
 
+  // Push main content on desktop when panel docks
+  const main = document.querySelector('main');
+  if (main) main.classList.toggle('qp-chat-open', _isOpen);
+
   if (_isOpen) {
     _input.focus();
     _chatBubble.querySelector('.qp-chat-fab-dot')?.classList.add('hidden');
