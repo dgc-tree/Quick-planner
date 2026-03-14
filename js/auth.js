@@ -291,6 +291,10 @@ export function initAuthUI() {
     });
   }
 
+  // Blur focused input on touchstart so keyboard dismisses and click fires in one tap
+  const submitBtn = document.getElementById('auth-submit');
+  submitBtn?.addEventListener('touchstart', () => { document.activeElement?.blur(); }, { passive: true });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('auth-email').value.trim();
