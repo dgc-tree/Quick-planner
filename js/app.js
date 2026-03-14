@@ -21,6 +21,7 @@ import {
 } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
+import { initChat, onProjectSwitch as chatProjectSwitch, clearConversation, hideBubble as hideChatBubble, showBubble as showChatBubble, setTTSEnabled, setBriefingMode, getTTSEnabled, getBriefingMode, openPanel as openChatPanel } from './ai-chat.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -99,6 +100,7 @@ async function switchProject(id) {
   }
   showLoading(false);
   renderSidebarProjects();
+  chatProjectSwitch();
 }
 
 // Position a body-level popover below its trigger, clamped within viewport
@@ -411,6 +413,35 @@ async function initApp() {
   bgFxReady.then(() => _bgFx.initBgEffects());
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
+
+  // Initialise QP Chat assistant
+  initChat({
+    getTasks: () => allTasks,
+    onUpdateTask: (taskId, fields) => {
+      const task = allTasks.find(t => t.id === taskId);
+      if (!task) return;
+      // Partial update — only set fields that were explicitly provided
+      if (fields.task !== undefined) task.task = fields.task;
+      if (fields.room !== undefined) task.room = fields.room;
+      if (fields.category !== undefined) task.category = fields.category;
+      if (fields.status !== undefined) task.status = fields.status;
+      if (fields.assigned !== undefined) task.assigned = Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',').filter(Boolean) : []);
+      if (fields.startDate !== undefined) task.startDate = fields.startDate ? new Date(fields.startDate) : null;
+      if (fields.endDate !== undefined) task.endDate = fields.endDate ? new Date(fields.endDate) : null;
+      if (fields.dependencies !== undefined) task.dependencies = fields.dependencies;
+      task.updatedAt = Date.now();
+      setupFilters();
+      render();
+      persistTaskChange();
+    },
+    onAddTask: (fields) => {
+      handleTaskCreate(fields);
+    },
+    onDeleteTask: (taskId) => {
+      const task = allTasks.find(t => t.id === taskId);
+      if (task) handleTaskDelete(task);
+    },
+  });
 }
 
 async function init() {
@@ -1328,6 +1359,41 @@ function setupSettingsPanel() {
   // --- People section ---
   const _people = initPeopleSection($('#settings-people'), {
     getActiveProjectId: () => currentProjectId,
+  });
+
+  // --- Assistant settings ---
+  const aiKeyInput = $('#settings-ai-key');
+  const aiKeyToggle = $('#settings-ai-key-toggle');
+  const aiTtsToggle = $('#settings-ai-tts');
+  const aiBriefingSelect = $('#settings-ai-briefing');
+  const aiClearBtn = $('#settings-ai-clear');
+
+  // Load saved values
+  if (aiKeyInput) aiKeyInput.value = localStorage.getItem('qp-ai-key') || '';
+  if (aiTtsToggle) aiTtsToggle.checked = getTTSEnabled();
+  if (aiBriefingSelect) aiBriefingSelect.value = getBriefingMode();
+
+  if (aiKeyInput) aiKeyInput.addEventListener('change', () => {
+    const val = aiKeyInput.value.trim();
+    if (val) localStorage.setItem('qp-ai-key', val);
+    else localStorage.removeItem('qp-ai-key');
+  });
+
+  if (aiKeyToggle) aiKeyToggle.addEventListener('click', () => {
+    aiKeyInput.type = aiKeyInput.type === 'password' ? 'text' : 'password';
+  });
+
+  if (aiTtsToggle) aiTtsToggle.addEventListener('change', () => {
+    setTTSEnabled(aiTtsToggle.checked);
+  });
+
+  if (aiBriefingSelect) aiBriefingSelect.addEventListener('change', () => {
+    setBriefingMode(aiBriefingSelect.value);
+  });
+
+  if (aiClearBtn) aiClearBtn.addEventListener('click', () => {
+    clearConversation();
+    showToast('Conversation cleared', 'success');
   });
 
   // --- Open / close settings view ---

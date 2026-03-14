@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/ai-chat.css">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body class="auth-gate">
@@ -355,6 +356,41 @@
               Restore backup
             </button>
             <input type="file" id="settings-restore-input" accept=".json" class="hidden">
+          </div>
+        </section>
+
+        <section class="settings-card" id="settings-assistant">
+          <h3 class="settings-card-title">Assistant</h3>
+          <p class="settings-card-desc">QP Chat uses the Claude API to answer complex questions. Your tasks are sent to Anthropic's API — they do not store data beyond the request.</p>
+          <div class="modal-field" style="margin:12px 0">
+            <label for="settings-ai-key">Claude API key</label>
+            <div class="settings-password-wrap">
+              <input id="settings-ai-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" class="settings-ai-key-input">
+              <button type="button" id="settings-ai-key-toggle" class="settings-password-toggle" title="Show/hide key" aria-label="Toggle API key visibility">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+              </button>
+            </div>
+          </div>
+          <label class="toggle-row">
+            <span>Voice input</span>
+            <input type="checkbox" id="settings-ai-voice" class="toggle-input" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+          <label class="toggle-row">
+            <span>Voice responses (TTS)</span>
+            <input type="checkbox" id="settings-ai-tts" class="toggle-input" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+          <div class="modal-field" style="margin:12px 0">
+            <label for="settings-ai-briefing">Proactive briefings</label>
+            <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
+              <option value="off">Off</option>
+              <option value="today">Today only</option>
+              <option value="week" selected>This week</option>
+            </select>
+          </div>
+          <div class="settings-card-actions">
+            <button id="settings-ai-clear" class="modal-btn modal-cancel">Clear conversation</button>
           </div>
         </section>
 
