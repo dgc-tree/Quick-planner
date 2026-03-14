@@ -40,7 +40,7 @@ export function logout() {
 
 // ── API calls ───────────────────────────────────────────────────────────────
 
-async function apiCall(path, options = {}) {
+export async function apiCall(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -207,7 +207,8 @@ export function showAuthModal(onSuccess, { gate = false } = {}) {
   const skipBtn = document.getElementById('auth-skip');
   if (closeBtn) closeBtn.style.display = gate ? 'none' : '';
   if (skipBtn) skipBtn.style.display = gate ? 'none' : '';
-  overlay.querySelector('#auth-email').focus();
+  // Don't auto-focus email — let the user see the landing page first.
+  // On mobile this pulls up the keyboard immediately, hiding the mascot and context.
   // Default to login mode
   setAuthMode('login');
 }
@@ -327,6 +328,13 @@ export function initAuthUI() {
     } finally {
       submitBtn.disabled = false;
     }
+  });
+
+  // Scroll focused input into view when mobile keyboard opens
+  form.querySelectorAll('input').forEach(input => {
+    input.addEventListener('focus', () => {
+      setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+    });
   });
 
   // Close button
