@@ -321,8 +321,12 @@ async function initApp() {
     showError(err.message);
   }
   showLoading(false);
-  renderSidebarProjects();
-  updateAccountUI();
+  try {
+    renderSidebarProjects();
+    updateAccountUI();
+  } catch (err) {
+    console.error('[init] post-render error:', err);
+  }
   document.body.classList.remove('auth-gate');
   hideAuthModal();
 
