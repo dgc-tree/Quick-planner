@@ -7,6 +7,7 @@ import { esc } from './utils.js';
 import { loadProjects, saveProjects } from './storage.js';
 
 const BACKUP_EXCLUDE = new Set(['qp-projects', 'qp-auth-token', 'qp-auth-user', 'qp-sandbox']);
+const AUTH_KEYS = ['qp-auth-token', 'qp-auth-user', 'qp-sandbox'];
 
 function analyseBackup(backupData) {
   const currentProjects = loadProjects();
@@ -229,9 +230,21 @@ function executeRestore(analysis, { onComplete, showToast }) {
     projectsChanged++;
   }
 
+  // Preserve current auth state across restore
+  const savedAuth = {};
+  for (const k of AUTH_KEYS) {
+    const v = localStorage.getItem(k);
+    if (v !== null) savedAuth[k] = v;
+  }
+
   for (const k of settingsKeys) {
     localStorage.setItem(k, backupData[k]);
     settingsRestored++;
+  }
+
+  // Restore auth state so login survives the reload
+  for (const [k, v] of Object.entries(savedAuth)) {
+    localStorage.setItem(k, v);
   }
 
   if (projectsChanged > 0) {
