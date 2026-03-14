@@ -89,11 +89,11 @@ export function clearConversation() {
 function injectUI() {
   // Chat bubble button
   _chatBubble = document.createElement('button');
-  _chatBubble.id = 'qp-chat-bubble';
-  _chatBubble.className = 'qp-chat-bubble';
+  _chatBubble.id = 'qp-chat-fab';
+  _chatBubble.className = 'qp-chat-fab';
   _chatBubble.title = 'Open QP Chat';
   _chatBubble.setAttribute('aria-label', 'Open AI assistant');
-  _chatBubble.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="qp-chat-bubble-dot hidden"></span>`;
+  _chatBubble.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="qp-chat-fab-dot hidden"></span>`;
   _chatBubble.addEventListener('click', togglePanel);
   document.body.appendChild(_chatBubble);
 
@@ -179,7 +179,7 @@ function togglePanel() {
 
   if (_isOpen) {
     _input.focus();
-    _chatBubble.querySelector('.qp-chat-bubble-dot')?.classList.add('hidden');
+    _chatBubble.querySelector('.qp-chat-fab-dot')?.classList.add('hidden');
     _hasPendingBriefing = false;
     scrollToBottom();
   }
@@ -455,7 +455,7 @@ function triggerBriefing() {
     } else {
       // Show dot indicator on bubble
       _hasPendingBriefing = true;
-      _chatBubble?.querySelector('.qp-chat-bubble-dot')?.classList.remove('hidden');
+      _chatBubble?.querySelector('.qp-chat-fab-dot')?.classList.remove('hidden');
       // Queue briefing for when panel opens
       _messages.push({ role: 'assistant', content: briefing });
       saveConversation();
