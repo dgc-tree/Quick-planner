@@ -9,7 +9,7 @@ import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
   loadBin, restoreFromBin, addProjectToBin, loadProjectBin, restoreProjectFromBin,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
-  loadUserName, saveUserName, exportBackup, importBackup, runMigrations,
+  loadUserName, saveUserName, exportBackup, runMigrations,
 } from './storage.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { openColorPickerModal } from './color-picker.js';
@@ -1229,14 +1229,17 @@ function setupSettingsPanel() {
   if (restoreInput) restoreInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    restoreInput.value = '';
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
-        const count = importBackup(reader.result);
-        alert(`Restored ${count} keys. Reloading…`);
-        location.reload();
+        const data = JSON.parse(reader.result);
+        const keys = Object.keys(data).filter(k => k.startsWith('qp-'));
+        if (!keys.length) { showToast('No backup data found in file', 'error'); return; }
+        const { openRestoreModal } = await import('./restore-modal.js');
+        openRestoreModal(data, { onComplete: () => location.reload(), showToast });
       } catch (err) {
-        alert('Restore failed: ' + err.message);
+        showToast('Invalid backup file', 'error');
       }
     };
     reader.readAsText(file);

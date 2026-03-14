@@ -526,10 +526,7 @@ async function handleChangePassword(request, user, env) {
 }
 
 async function handleVerifyToken(request, env) {
-  const url = new URL(request.url);
-  const rawToken = url.searchParams.get('token');
-  const type = url.searchParams.get('type');
-  const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+  const { token: rawToken, type } = await request.json();
 
   if (!rawToken || !type) return json({ error: 'invalid', verified: false }, 400);
 

@@ -252,7 +252,6 @@ export function renderPasswordStrength(password, container) {
   const pct = Math.max(5, (score / 4) * 100);
   const fill = container.querySelector('.password-strength-fill');
   const labelEl = container.querySelector('.password-strength-label');
-  const countEl = container.querySelector('.password-strength-count');
   if (fill) {
     fill.style.width = pct + '%';
     fill.style.backgroundColor = colour;
@@ -260,11 +259,6 @@ export function renderPasswordStrength(password, container) {
   if (labelEl) {
     labelEl.textContent = label;
     labelEl.style.color = colour;
-  }
-  if (countEl) {
-    const len = password.length;
-    countEl.textContent = `${len} / 15`;
-    countEl.style.color = len >= 15 ? 'var(--text-muted)' : '#ef4444';
   }
 }
 
