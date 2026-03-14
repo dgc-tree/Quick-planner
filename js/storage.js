@@ -69,6 +69,36 @@ export function restoreFromBin(taskName) {
   return entry.task;
 }
 
+const PROJECT_BIN_KEY = 'qp-project-bin';
+
+export function loadProjectBin() {
+  try {
+    const raw = localStorage.getItem(PROJECT_BIN_KEY);
+    if (!raw) return [];
+    const bin = JSON.parse(raw);
+    const cutoff = Date.now() - BIN_TTL_DAYS * 24 * 60 * 60 * 1000;
+    return bin.filter(entry => entry.deletedAt > cutoff);
+  } catch { return []; }
+}
+
+export function addProjectToBin(project) {
+  const bin = loadProjectBin();
+  bin.push({
+    project: JSON.parse(JSON.stringify(project, (k, v) => v instanceof Date ? v.toISOString() : v)),
+    deletedAt: Date.now(),
+  });
+  localStorage.setItem(PROJECT_BIN_KEY, JSON.stringify(bin));
+}
+
+export function restoreProjectFromBin(projectId) {
+  const bin = loadProjectBin();
+  const idx = bin.findIndex(e => e.project.id === projectId);
+  if (idx === -1) return null;
+  const [entry] = bin.splice(idx, 1);
+  localStorage.setItem(PROJECT_BIN_KEY, JSON.stringify(bin));
+  return entry.project;
+}
+
 const BG_EFFECTS_KEY = 'qp-bg-effects';
 
 export function loadBgEffects() {

@@ -106,6 +106,10 @@ export async function pullAllData() {
   return apiCall('/sync');
 }
 
+export async function deleteProjectOnServer(projectId) {
+  return apiCall(`/projects/${projectId}`, { method: 'DELETE' });
+}
+
 // ── Account changes ─────────────────────────────────────────────────────────
 
 export async function requestEmailChange(newEmail) {
@@ -131,26 +135,18 @@ export async function verifyToken(token, type) {
 
 // ── Password strength (zxcvbn lazy-loaded) ──────────────────────────────────
 
-let _zxcvbn = null;
-export async function loadZxcvbn() {
-  if (_zxcvbn) return _zxcvbn;
-  try {
-    const mod = await import('https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js');
-    _zxcvbn = mod.default || window.zxcvbn;
-  } catch {
-    // Fallback: load via script tag
-    if (!window.zxcvbn) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js';
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
-    _zxcvbn = window.zxcvbn;
-  }
-  return _zxcvbn;
+let _zxcvbnLoading = null;
+export function loadZxcvbn() {
+  if (window.zxcvbn) return Promise.resolve(window.zxcvbn);
+  if (_zxcvbnLoading) return _zxcvbnLoading;
+  _zxcvbnLoading = new Promise((resolve) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js';
+    s.onload = () => resolve(window.zxcvbn);
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+  });
+  return _zxcvbnLoading;
 }
 
 export function validatePasswordLength(password) {
@@ -198,6 +194,12 @@ export function showAuthModal(onSuccess, { gate = false } = {}) {
   const overlay = document.getElementById('auth-overlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
+  // Re-trigger entrance animation by removing and re-adding the class
+  const page = overlay.querySelector('.landing-page');
+  if (page) {
+    page.classList.remove('landing-animate');
+    requestAnimationFrame(() => page.classList.add('landing-animate'));
+  }
   // In gate mode, hide close/skip — user must log in
   const closeBtn = document.getElementById('auth-close');
   const skipBtn = document.getElementById('auth-skip');
@@ -280,7 +282,11 @@ export function initAuthUI() {
   const authPwInput = document.getElementById('auth-password');
   const authStrength = document.getElementById('auth-password-strength');
   if (authPwInput && authStrength) {
-    authPwInput.addEventListener('focus', () => { loadZxcvbn(); }, { once: true });
+    authPwInput.addEventListener('focus', () => {
+      loadZxcvbn().then(() => {
+        if (authPwInput.value && _currentMode === 'signup') renderPasswordStrength(authPwInput.value, authStrength);
+      });
+    }, { once: true });
     authPwInput.addEventListener('input', () => {
       if (_currentMode !== 'signup') { authStrength.classList.add('hidden'); return; }
       renderPasswordStrength(authPwInput.value, authStrength);

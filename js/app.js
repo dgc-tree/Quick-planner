@@ -7,7 +7,7 @@ import { initCustomColors, applyCustomColors } from './theme-customizer.js';
 import { shouldShowOnboarding, showOnboarding, TEMPLATES } from './onboarding.js';
 import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
-  loadBin, restoreFromBin,
+  loadBin, restoreFromBin, addProjectToBin, loadProjectBin, restoreProjectFromBin,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
   loadUserName, saveUserName, exportBackup, importBackup, runMigrations,
 } from './storage.js';
@@ -17,7 +17,7 @@ import { showContextMenu } from './context-menu.js';
 import {
   isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession,
   requestEmailChange, requestPasswordChange, validatePasswordLength, checkPasswordBreach,
-  renderPasswordStrength, verifyToken, hasWeakPassword, loadZxcvbn,
+  renderPasswordStrength, verifyToken, hasWeakPassword, loadZxcvbn, deleteProjectOnServer,
 } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
@@ -165,6 +165,16 @@ function renderSidebarProjects() {
     menu.appendChild(exportItem);
 
     if (isLocal) {
+      const renameItem = document.createElement('button');
+      renameItem.className = 'sidebar-project-menu-item';
+      renameItem.textContent = 'Rename project';
+      renameItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.remove('open');
+        handleRenameProject(id, name);
+      });
+      menu.appendChild(renameItem);
+
       const delItem = document.createElement('button');
       delItem.className = 'sidebar-project-menu-item sidebar-project-menu-item--danger';
       delItem.textContent = 'Delete project';
@@ -218,17 +228,34 @@ function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
 }
 
+function handleRenameProject(id, currentName) {
+  const newName = prompt('Rename project:', currentName);
+  if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
+  const projects = loadProjects();
+  const project = projects.find(p => p.id === id);
+  if (!project) return;
+  project.name = newName.trim();
+  saveProjects(projects);
+  syncToServer();
+  renderSidebarProjects();
+}
+
 function handleDeleteProject(id, name) {
   showConfirmDialog({
     title: `Delete "${name}"?`,
-    body: 'This project and all its tasks will be permanently removed.',
+    body: 'This project and all its tasks will be moved to the bin for 30 days.',
     confirmLabel: 'Yes, delete',
     onConfirm: () => {
-      const projects = loadProjects().filter(p => p.id !== id);
-      saveProjects(projects);
-      syncToServer();
+      const projects = loadProjects();
+      const project = projects.find(p => p.id === id);
+      if (project) addProjectToBin(project);
+      const remaining = projects.filter(p => p.id !== id);
+      saveProjects(remaining);
+      // Use targeted DELETE, not full sync — full sync would delete any
+      // server projects whose IDs aren't in the local payload (data loss risk).
+      deleteProjectOnServer(id).catch(err => console.warn('[sync] delete project failed:', err.message));
       if (currentProjectId === id) {
-        switchProject(projects.length ? projects[0].id : null);
+        switchProject(remaining.length ? remaining[0].id : null);
       } else {
         renderSidebarProjects();
       }
@@ -503,7 +530,11 @@ function setupAccountButtons() {
     pwToggle.addEventListener('click', () => pwForm.classList.toggle('hidden'));
     pwCancel?.addEventListener('click', () => { pwForm.classList.add('hidden'); setMsg('change-password-msg'); });
     if (newPwInput && pwStrength) {
-      newPwInput.addEventListener('focus', () => { loadZxcvbn(); }, { once: true });
+      newPwInput.addEventListener('focus', () => {
+        loadZxcvbn().then(() => {
+          if (newPwInput.value) renderPasswordStrength(newPwInput.value, pwStrength);
+        });
+      }, { once: true });
       newPwInput.addEventListener('input', () => renderPasswordStrength(newPwInput.value, pwStrength));
     }
     pwSubmit?.addEventListener('click', async () => {
@@ -1215,6 +1246,7 @@ function setupSettingsPanel() {
     $active.checked = _bgFx.getConfig().active;
     document.querySelector('main').classList.add('settings-open');
     settingsView.scrollTop = 0;
+    sessionStorage.setItem('qp-view', 'settings');
     // Refresh export section visibility
     const exportSection = $('#settings-export-section');
     if (exportSection) exportSection.classList.remove('hidden');
@@ -1225,9 +1257,15 @@ function setupSettingsPanel() {
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
     saveCustomColors(colors);
+    sessionStorage.removeItem('qp-view');
     // Restore previous view
     currentView = previousView;
     render();
+  }
+
+  // Restore settings view if it was open before refresh
+  if (sessionStorage.getItem('qp-view') === 'settings') {
+    showSettings();
   }
 
   $('#sidebar-settings-btn').addEventListener('click', showSettings);
@@ -1258,41 +1296,131 @@ function setupSettingsPanel() {
   }
 
   function renderTrashList(filter = '') {
-    const bin = loadBin();
+    const taskBin = loadBin();
+    const projectBin = loadProjectBin();
     const q = filter.toLowerCase();
-    const items = q ? bin.filter(e => e.task.task?.toLowerCase().includes(q) || e.task.room?.toLowerCase().includes(q)) : bin;
-    if (!items.length) {
+    const filteredTasks = q ? taskBin.filter(e => e.task.task?.toLowerCase().includes(q) || e.task.room?.toLowerCase().includes(q)) : taskBin;
+    const filteredProjects = q ? projectBin.filter(e => e.project.name?.toLowerCase().includes(q)) : projectBin;
+    const totalItems = filteredTasks.length + filteredProjects.length;
+
+    if (!totalItems) {
       trashList.innerHTML = `
         <div class="trash-empty">
           <img class="trash-empty-animal" src="images/mascot-trash.png" alt="" aria-hidden="true">
           <p class="trash-empty-title">${q ? 'No results' : 'Nothing to do.'}</p>
-          <p class="trash-empty-body">${q ? 'No deleted tasks match that search.' : 'You can restore tasks before they are automatically deleted after 30 days.'}</p>
+          <p class="trash-empty-body">${q ? 'No deleted items match that search.' : 'You can restore projects and their tasks before they are automatically deleted after 30 days.'}</p>
         </div>`;
       return;
     }
-    trashList.innerHTML = items.map((entry, i) => {
-      const t = entry.task;
-      const daysAgo = Math.floor((Date.now() - entry.deletedAt) / 86400000);
-      const expires = 30 - daysAgo;
-      return `
-        <div class="trash-item" data-index="${i}">
-          <div class="trash-item-title">${t.task || '(no name)'}</div>
-          <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).join(' · ')}</div>
-          <div class="trash-item-meta">Deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · expires in ${expires}d</div>
-          <div class="trash-item-actions">
-            <button class="modal-btn modal-save trash-restore-btn" data-name="${encodeURIComponent(t.task)}">Restore</button>
-            <button class="modal-btn modal-cancel trash-delete-btn" data-name="${encodeURIComponent(t.task)}">Delete permanently</button>
-          </div>
-        </div>
-      `;
-    }).join('');
 
+    let html = `<p class="trash-intro">You can restore projects and their tasks before they are automatically deleted after 30 days.</p>`;
+
+    // Projects section
+    if (filteredProjects.length) {
+      html += filteredProjects.map((entry) => {
+        const p = entry.project;
+        const daysAgo = Math.floor((Date.now() - entry.deletedAt) / 86400000);
+        const expires = 30 - daysAgo;
+        const taskCount = (p.tasks || []).length;
+        return `
+          <div class="trash-project" data-project-id="${p.id}">
+            <button class="trash-project-header" aria-expanded="false">
+              <span class="trash-project-name">${p.name || '(untitled)'}</span>
+              <span class="trash-project-meta">${taskCount} task${taskCount !== 1 ? 's' : ''} · deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · expires in ${expires}d</span>
+              <svg class="trash-project-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="trash-project-tasks hidden">
+              ${(p.tasks || []).map(t => `
+                <div class="trash-item trash-item--nested">
+                  <div class="trash-item-title">${t.task || '(no name)'}</div>
+                  <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).join(' · ')}</div>
+                </div>
+              `).join('')}
+              <div class="trash-item-actions">
+                <button class="modal-btn modal-save trash-restore-project-btn" data-project-id="${p.id}">Restore project</button>
+                <button class="modal-btn modal-cancel trash-delete-project-btn" data-project-id="${p.id}">Delete permanently</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Tasks section (individual tasks not attached to a project)
+    if (filteredTasks.length) {
+      if (filteredProjects.length) html += `<div class="trash-section-label">Individual tasks</div>`;
+      html += filteredTasks.map((entry, i) => {
+        const t = entry.task;
+        const daysAgo = Math.floor((Date.now() - entry.deletedAt) / 86400000);
+        const expires = 30 - daysAgo;
+        return `
+          <div class="trash-item" data-index="${i}">
+            <div class="trash-item-title">${t.task || '(no name)'}</div>
+            <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).join(' · ')}</div>
+            <div class="trash-item-meta">Deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · expires in ${expires}d</div>
+            <div class="trash-item-actions">
+              <button class="modal-btn modal-save trash-restore-btn" data-name="${encodeURIComponent(t.task)}">Restore</button>
+              <button class="modal-btn modal-cancel trash-delete-btn" data-name="${encodeURIComponent(t.task)}">Delete permanently</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    trashList.innerHTML = html;
+
+    // Project expand/collapse
+    trashList.querySelectorAll('.trash-project-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', !expanded);
+        btn.nextElementSibling.classList.toggle('hidden', expanded);
+      });
+    });
+
+    // Restore project
+    trashList.querySelectorAll('.trash-restore-project-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.projectId;
+        const restored = restoreProjectFromBin(id);
+        if (restored) {
+          // Revive date strings on tasks
+          (restored.tasks || []).forEach(t => {
+            ['startDate', 'endDate'].forEach(k => { if (t[k]) t[k] = new Date(t[k]); });
+          });
+          const projects = loadProjects();
+          projects.push(restored);
+          saveProjects(projects);
+          syncToServer();
+          renderSidebarProjects();
+          showToast('Project restored', 'success');
+          renderTrashList(trashSearch.value);
+        }
+      });
+    });
+
+    // Delete project permanently
+    trashList.querySelectorAll('.trash-delete-project-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.projectId;
+        showConfirmDialog({
+          title: 'Delete permanently?',
+          body: 'This project and all its tasks cannot be recovered.',
+          confirmLabel: 'Delete',
+          onConfirm: () => {
+            restoreProjectFromBin(id); // removes from bin
+            renderTrashList(trashSearch.value);
+          },
+        });
+      });
+    });
+
+    // Restore individual task
     trashList.querySelectorAll('.trash-restore-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = decodeURIComponent(btn.dataset.name);
         const restored = restoreFromBin(name);
         if (restored) {
-          // Revive date strings
           ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
           allTasks.push(restored);
           persistTaskChange();
@@ -1302,6 +1430,7 @@ function setupSettingsPanel() {
       });
     });
 
+    // Delete individual task permanently
     trashList.querySelectorAll('.trash-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = decodeURIComponent(btn.dataset.name);
@@ -1310,7 +1439,7 @@ function setupSettingsPanel() {
           body: 'This task cannot be recovered.',
           confirmLabel: 'Delete',
           onConfirm: () => {
-            restoreFromBin(name); // removes from bin without returning to tasks
+            restoreFromBin(name);
             renderTrashList(trashSearch.value);
           },
         });
