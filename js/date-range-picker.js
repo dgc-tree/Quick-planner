@@ -211,26 +211,37 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
     return html;
   }
 
+  const isMobile = () => window.innerWidth <= 768;
+
   function renderPicker() {
     const rm = rightMonth();
     const leftLabel = `${MONTH_NAMES[leftMonth]} ${leftYear}`;
     const rightLabel = `${MONTH_NAMES[rm.month]} ${rm.year}`;
+    const mobile = isMobile();
+
+    const headerHtml = mobile
+      ? `<span class="drp-month-label">${leftLabel}</span>`
+      : `<span class="drp-month-label">${leftLabel}</span>
+         <span class="drp-month-sep">&mdash;</span>
+         <span class="drp-month-label">${rightLabel}</span>`;
+
+    const monthsHtml = mobile
+      ? `<div class="drp-month">${renderMonth(leftYear, leftMonth)}</div>`
+      : `<div class="drp-month">${renderMonth(leftYear, leftMonth)}</div>
+         <div class="drp-month">${renderMonth(rm.year, rm.month)}</div>`;
 
     el.innerHTML = `
       <div class="drp-header">
         <button type="button" class="drp-nav drp-prev" aria-label="Previous month">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <span class="drp-month-label">${leftLabel}</span>
-        <span class="drp-month-sep">&mdash;</span>
-        <span class="drp-month-label">${rightLabel}</span>
+        ${headerHtml}
         <button type="button" class="drp-nav drp-next" aria-label="Next month">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
       <div class="drp-months">
-        <div class="drp-month">${renderMonth(leftYear, leftMonth)}</div>
-        <div class="drp-month">${renderMonth(rm.year, rm.month)}</div>
+        ${monthsHtml}
       </div>
       <div class="drp-selection-bar">
         <span class="drp-sel-label">
