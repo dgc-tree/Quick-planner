@@ -5336,9 +5336,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 }
 
 .auth-subtitle {
-  font-size: 0.85rem;
-  color: var(--text-secondary, #6b7280);
-  margin-bottom: 1.25rem;
+  display: none;
 }
 
 .auth-form { display: flex; flex-direction: column; gap: 14px; }
@@ -5447,7 +5445,6 @@ body.auth-gate #mobile-menu-overlay { display: none; }
     align-items: flex-start;
   }
   .auth-card { width: 100%; max-width: 400px; padding-left: 16px; padding-right: 16px; }
-  .auth-subtitle { display: none; }
 
   /* Collapse hero when keyboard is open (input focused) */
   .landing-page:focus-within .landing-hero {
