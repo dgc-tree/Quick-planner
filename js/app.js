@@ -390,6 +390,11 @@ async function initApp() {
     updateSummary();
     setupFilters();
     render();
+    // Reset scroll position on mobile after login/init
+    if (window.innerWidth <= 768) {
+      window.scrollTo(0, 0);
+      document.querySelector('main').scrollTop = 0;
+    }
   } catch (err) {
     showError(err.message);
   }
