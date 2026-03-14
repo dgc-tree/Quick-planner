@@ -5355,7 +5355,8 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 @media (max-width: 740px) {
   .landing-page {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto;
+    min-height: auto;
   }
   .landing-hero {
     padding: 40px 24px 24px;
@@ -5370,6 +5371,18 @@ body.auth-gate #mobile-menu-overlay { display: none; }
     align-items: flex-start;
   }
   .auth-card { width: 100%; max-width: 400px; }
+
+  /* Collapse hero when keyboard is open (input focused) */
+  .landing-page:focus-within .landing-hero {
+    padding: 16px 24px 8px;
+  }
+  .landing-page:focus-within .landing-mascot {
+    width: 64px;
+    margin-bottom: 8px;
+  }
+  .landing-page:focus-within .landing-copy {
+    display: none;
+  }
 }
 
 /* Auth dark mode */

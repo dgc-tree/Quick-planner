@@ -330,6 +330,13 @@ export function initAuthUI() {
     }
   });
 
+  // Scroll focused input into view when mobile keyboard opens
+  form.querySelectorAll('input').forEach(input => {
+    input.addEventListener('focus', () => {
+      setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+    });
+  });
+
   // Close button
   const closeBtn = document.getElementById('auth-close');
   if (closeBtn) closeBtn.addEventListener('click', hideAuthModal);
