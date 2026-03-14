@@ -536,15 +536,15 @@
           <form id="auth-form" class="auth-form" autocomplete="on">
             <div id="auth-name-field" class="auth-field hidden">
               <label for="auth-name">Name</label>
-              <input id="auth-name" name="name" type="text" placeholder="Your name" autocomplete="name">
+              <input id="auth-name" name="name" type="text" placeholder="Your name" autocomplete="name" autocorrect="off" autocapitalize="words" enterkeyhint="next">
             </div>
             <div class="auth-field">
               <label for="auth-email">Email</label>
-              <input id="auth-email" name="username" type="email" placeholder="you@example.com" required autocomplete="username">
+              <input id="auth-email" name="username" type="email" placeholder="you@example.com" required autocomplete="username" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">
             </div>
             <div class="auth-field">
               <label for="auth-password">Password</label>
-              <input id="auth-password" name="password" type="password" placeholder="Password" required minlength="1" autocomplete="current-password">
+              <input id="auth-password" name="password" type="password" placeholder="Password" required minlength="1" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
             </div>
             <div id="auth-password-strength" class="password-strength hidden">
               <div class="password-strength-bar"><div class="password-strength-fill"></div></div>
