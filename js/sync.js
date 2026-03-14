@@ -69,7 +69,7 @@ export async function syncFromServer() {
         assigned: Array.isArray(t.assigned) ? t.assigned : JSON.parse(t.assigned || '[]'),
         startDate: t.start_date || null,
         endDate: t.end_date || null,
-        dependencies: Array.isArray(t.dependencies) ? t.dependencies : JSON.parse(t.dependencies || '[]'),
+        dependencies: Array.isArray(t.dependencies) ? t.dependencies.join(', ') : (t.dependencies || ''),
         notes: t.notes || '',
         updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
       })),

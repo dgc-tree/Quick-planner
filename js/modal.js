@@ -55,7 +55,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     status: task.status || '',
     startDate: fmtDate(task.startDate),
     endDate: fmtDate(task.endDate),
-    dependencies: task.dependencies || '',
+    dependencies: Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''),
     assigned: [...taskAssigned].sort().join(','),
     tradeQuote: !!task.tradeQuote,
   };
@@ -160,7 +160,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
           <div class="dep-search-wrap">
             <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
             <div class="dep-dropdown hidden"></div>
-            <input type="hidden" name="dependencies" value="${esc(task.dependencies)}">
+            <input type="hidden" name="dependencies" value="${esc(Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''))}">
             <div class="dep-selected"></div>
           </div>
         </div>
@@ -369,7 +369,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   const depDropdown = modalEl.querySelector('.dep-dropdown');
   const depSelected = modalEl.querySelector('.dep-selected');
   const otherTasks = (options.allTasks || []).filter(t => t.task !== task.task);
-  let selectedDeps = task.dependencies ? task.dependencies.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const depRaw = Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || '');
+  let selectedDeps = depRaw ? depRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
 
   function syncDepHidden() {
     depHidden.value = selectedDeps.join(', ');
