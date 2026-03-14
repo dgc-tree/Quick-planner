@@ -5425,37 +5425,59 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   animation: landing-slide-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
 }
 
-/* Landing mobile — single column, mascot smaller */
+/* Auth card inline brand — hidden on desktop, shown on mobile */
+.auth-card-brand { display: none; }
+
+/* Landing mobile — single column, card fills width */
 @media (max-width: 740px) {
   .landing-page {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
+    display: block;
     min-height: auto;
+    padding: 0;
   }
-  .landing-hero {
-    padding: 40px 24px 24px;
-    gap: 0;
-  }
-  .landing-mascot {
-    width: 140px;
-    margin-bottom: 24px;
-  }
+  .landing-hero { display: none; }
   .landing-auth {
-    padding: 0 24px 40px;
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
     align-items: flex-start;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 24px);
   }
-  .auth-card { width: 100%; max-width: 400px; padding-left: 16px; padding-right: 16px; }
+  .auth-card {
+    width: 100%;
+    max-width: none;
+    padding: 20px 16px 16px;
+  }
+  .auth-title { display: none; }
+  .auth-card-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .auth-card-mascot {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .auth-card-brand-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary, #111827);
+    letter-spacing: -0.02em;
+  }
+  [data-theme="dark"] .auth-card-brand-name { color: #f3f4f6; }
 
-  /* Collapse hero when keyboard is open (input focused) */
-  .landing-page:focus-within .landing-hero {
-    padding: 16px 24px 8px;
+  /* Collapse brand when keyboard is open */
+  .landing-page:focus-within .auth-card-brand .auth-card-mascot {
+    width: 28px;
+    height: 28px;
   }
-  .landing-page:focus-within .landing-mascot {
-    width: 64px;
-    margin-bottom: 8px;
-  }
-  .landing-page:focus-within .landing-copy {
-    display: none;
+  .landing-page:focus-within .auth-card-brand {
+    margin-bottom: 10px;
   }
 }
 
