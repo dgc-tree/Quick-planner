@@ -1237,7 +1237,7 @@ function setupSettingsPanel() {
         const keys = Object.keys(data).filter(k => k.startsWith('qp-'));
         if (!keys.length) { showToast('No backup data found in file', 'error'); return; }
         const { openRestoreModal } = await import('./restore-modal.js');
-        openRestoreModal(data, { onComplete: () => location.reload(), showToast });
+        openRestoreModal(data, { onComplete: () => { window.location.href = window.location.pathname; }, showToast });
       } catch (err) {
         showToast('Invalid backup file', 'error');
       }
