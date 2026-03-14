@@ -170,7 +170,10 @@ export function openRestoreModal(backupData, { onComplete, showToast }) {
 
   // Cancel
   modalEl.querySelector('.restore-cancel-btn').addEventListener('click', close);
-  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) close(); });
+  const onBackdrop = (e) => { if (e.target === modalEl) close(); };
+  modalEl.removeEventListener('click', modalEl._backdropHandler);
+  modalEl._backdropHandler = onBackdrop;
+  modalEl.addEventListener('click', onBackdrop);
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onKey);
 
@@ -249,6 +252,12 @@ function executeRestore(analysis, { onComplete, showToast }) {
 
   if (projectsChanged > 0) {
     saveProjects(projects);
+
+    // Ensure qp-active-project points to a valid project ID
+    const activeId = localStorage.getItem('qp-active-project');
+    if (!activeId || !projects.some(p => p.id === activeId)) {
+      localStorage.setItem('qp-active-project', projects[0].id);
+    }
   }
 
   const parts = [];

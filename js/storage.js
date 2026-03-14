@@ -290,10 +290,4 @@ export function exportBackup() {
   URL.revokeObjectURL(url);
 }
 
-export function importBackup(json) {
-  const data = JSON.parse(json);
-  const keys = Object.keys(data).filter(k => k.startsWith('qp-'));
-  if (keys.length === 0) throw new Error('No qp-* keys found in backup file');
-  keys.forEach(k => localStorage.setItem(k, data[k]));
-  return keys.length;
-}
+
