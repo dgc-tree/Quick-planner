@@ -2858,7 +2858,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   opacity: 0;
   width: 100%;
   height: 100%;
-  cursor: pointer;
+  pointer-events: none;
 }
 [data-theme="dark"] .date-display {
   background-color: color-mix(in srgb, var(--dark-surface) 93%, transparent);
