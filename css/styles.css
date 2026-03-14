@@ -5442,8 +5442,9 @@ body.auth-gate #mobile-menu-overlay { display: none; }
     justify-content: center;
     min-height: 100vh;
     min-height: 100dvh;
-    align-items: flex-start;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 24px);
+    align-items: center;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .auth-card {
     width: 100%;
@@ -5471,7 +5472,11 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   }
   [data-theme="dark"] .auth-card-brand-name { color: #f3f4f6; }
 
-  /* Collapse brand when keyboard is open */
+  /* Push card to top when keyboard is open */
+  .landing-page:focus-within .landing-auth {
+    align-items: flex-start;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
   .landing-page:focus-within .auth-card-brand .auth-card-mascot {
     width: 28px;
     height: 28px;
