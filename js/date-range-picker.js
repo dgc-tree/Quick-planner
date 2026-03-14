@@ -186,10 +186,10 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
       const d = cellToDate(cell);
       const classes = ['drp-day'];
       if (cell.outside) classes.push('drp-day--outside');
-      if (sameDay(d, today)) classes.push('drp-day--today');
-      if (effStart && sameDay(d, effStart)) classes.push('drp-day--selected', 'drp-day--start');
-      if (effEnd && sameDay(d, effEnd)) classes.push('drp-day--selected', 'drp-day--end');
-      if (effStart && effEnd && d > effStart && d < effEnd) classes.push('drp-day--in-range');
+      if (!cell.outside && sameDay(d, today)) classes.push('drp-day--today');
+      if (!cell.outside && effStart && sameDay(d, effStart)) classes.push('drp-day--selected', 'drp-day--start');
+      if (!cell.outside && effEnd && sameDay(d, effEnd)) classes.push('drp-day--selected', 'drp-day--end');
+      if (!cell.outside && effStart && effEnd && d > effStart && d < effEnd) classes.push('drp-day--in-range');
 
       html += `<button type="button" class="${classes.join(' ')}" data-date="${toISO(d)}">${cell.day}</button>`;
     });
@@ -248,12 +248,14 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
       btn.addEventListener('click', () => {
         handleDayClick(new Date(btn.dataset.date + 'T00:00:00'));
       });
-      btn.addEventListener('mouseenter', () => {
+      btn.addEventListener('pointerenter', (e) => {
+        if (e.pointerType === 'touch') return;
         handleDayHover(new Date(btn.dataset.date + 'T00:00:00'));
       });
     });
 
-    el.querySelector('.drp-clear').addEventListener('click', () => {
+    el.querySelector('.drp-clear').addEventListener('click', (e) => {
+      e.stopPropagation();
       selStart = null;
       selEnd = null;
       pickingEnd = false;
@@ -325,6 +327,9 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
 
   // Close on click outside
   function onClickOutside(e) {
+    // After innerHTML re-render, the clicked element is orphaned from the DOM —
+    // treat orphaned nodes as internal clicks (they were picker buttons)
+    if (!document.body.contains(e.target)) return;
     if (!el.contains(e.target) && !anchor.contains(e.target)) {
       closeDateRangePicker();
       if (onCancel) onCancel();

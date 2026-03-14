@@ -175,6 +175,16 @@ function renderSidebarProjects() {
       });
       menu.appendChild(renameItem);
 
+      const dupItem = document.createElement('button');
+      dupItem.className = 'sidebar-project-menu-item';
+      dupItem.textContent = 'Duplicate project';
+      dupItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.remove('open');
+        handleDuplicateProject(id, name);
+      });
+      menu.appendChild(dupItem);
+
       const delItem = document.createElement('button');
       delItem.className = 'sidebar-project-menu-item sidebar-project-menu-item--danger';
       delItem.textContent = 'Delete project';
@@ -238,6 +248,66 @@ function handleRenameProject(id, currentName) {
   saveProjects(projects);
   syncToServer();
   renderSidebarProjects();
+}
+
+function handleDuplicateProject(id, name) {
+  const defaultName = `${name} (copy)`;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal-dialog" role="dialog" style="max-width:360px">
+      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
+        <h1 class="modal-delete-title">Duplicate project</h1>
+        <div class="modal-field" style="margin:16px 0 24px">
+          <label>Project name</label>
+          <input type="text" class="dup-name-input" value="${defaultName.replace(/"/g, '&quot;')}" />
+        </div>
+        <div class="modal-delete-actions">
+          <button class="modal-btn modal-cancel">Cancel</button>
+          <button class="modal-btn modal-save dup-save-btn">Save</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const input = overlay.querySelector('.dup-name-input');
+  const saveBtn = overlay.querySelector('.dup-save-btn');
+  input.focus();
+  input.select();
+
+  const remove = () => overlay.remove();
+  const doDuplicate = () => {
+    const dupName = input.value.trim();
+    if (!dupName) return;
+    remove();
+    const projects = loadProjects();
+    const source = projects.find(p => p.id === id);
+    if (!source) return;
+    const newId = crypto.randomUUID();
+    const now = Date.now();
+    const clonedTasks = (source.tasks || []).map(t => ({
+      ...JSON.parse(JSON.stringify(t)),
+      id: crypto.randomUUID(),
+      updatedAt: now,
+    }));
+    const newProject = { id: newId, name: dupName, type: 'local', tasks: clonedTasks };
+    projects.push(newProject);
+    saveProjects(projects);
+    syncToServer();
+    currentProjectId = newId;
+    saveActiveProjectId(newId);
+    renderSidebarProjects();
+    loadProjectData().then(() => render());
+    showToast(`Duplicated as "${dupName}"`);
+  };
+
+  saveBtn.addEventListener('click', doDuplicate);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doDuplicate();
+    if (e.key === 'Escape') remove();
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
 }
 
 function handleDeleteProject(id, name) {
@@ -698,6 +768,15 @@ function render() {
   kanbanContainer.classList.add('hidden');
   plannerContainer.classList.add('hidden');
   todolistContainer.classList.add('hidden');
+  // Ensure overlay views are dismissed when rendering a task view
+  const settingsEl = $('#settings-view');
+  const trashEl = $('#trash-view');
+  if (!settingsEl.classList.contains('hidden') || !trashEl.classList.contains('hidden')) {
+    settingsEl.classList.add('hidden');
+    trashEl.classList.add('hidden');
+    $('.app-header').classList.remove('hidden');
+    document.querySelector('main').classList.remove('settings-open');
+  }
 
   if (currentView === 'kanban') {
     kanbanContainer.classList.remove('hidden');

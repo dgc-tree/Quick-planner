@@ -4880,9 +4880,10 @@ dialog.import-modal::backdrop {
   color: var(--text-secondary);
 }
 .drp-sel-part {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 8px;
   background: rgba(0,0,0,0.04);
+  font-size: 1.275rem;
 }
 [data-theme="dark"] .drp-sel-part {
   background: rgba(255,255,255,0.06);
@@ -4908,44 +4909,50 @@ dialog.import-modal::backdrop {
 }
 .drp-btn {
   font-family: var(--font);
-  font-size: 0.85rem;
-  font-weight: 500;
-  padding: 8px 18px;
-  border: none;
-  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 .drp-clear {
   background: transparent;
   color: var(--text-secondary);
+  border: none;
 }
 .drp-clear:hover {
   color: var(--text);
   background: rgba(0,0,0,0.04);
 }
 .drp-cancel {
-  background: rgba(0,0,0,0.05);
+  background: var(--surface);
   color: var(--text);
+  border-color: rgba(0,0,0,0.35);
+  box-shadow: var(--shadow-glass);
 }
 .drp-cancel:hover {
-  background: rgba(0,0,0,0.08);
+  background: var(--surface-raised);
 }
 .drp-save {
   background: var(--accent);
-  color: var(--accent-text);
+  color: var(--on-accent-primary1);
+  border-color: color-mix(in srgb, var(--shadow-accent) 10%, transparent);
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.2), 0 2px 8px color-mix(in srgb, var(--shadow-accent) 40%, transparent);
 }
 .drp-save:hover {
-  filter: brightness(1.05);
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.25), 0 4px 16px color-mix(in srgb, var(--shadow-accent-hover) 45%, transparent);
 }
 [data-theme="dark"] .drp-clear:hover {
   background: rgba(255,255,255,0.06);
 }
 [data-theme="dark"] .drp-cancel {
-  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.4);
 }
 [data-theme="dark"] .drp-cancel:hover {
-  background: rgba(255,255,255,0.12);
+  background: var(--surface-raised);
 }
 
 /* Mobile: date range picker as bottom sheet */
