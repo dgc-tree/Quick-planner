@@ -69,7 +69,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
         ${task.id !== null ? `
         <div class="modal-more-wrap">
           <button type="button" class="modal-more-btn" id="modal-more-btn" title="More options" aria-haspopup="true" aria-expanded="false">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
           </button>
           <div class="modal-more-menu hidden" id="modal-more-menu" role="menu">
             <button type="button" class="modal-more-item" id="menu-rename-btn" role="menuitem">
@@ -145,14 +145,21 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 </div>
               </label>
             </div>
-            <div class="modal-field">
-              <span>Dependencies</span>
-              <div class="dep-search-wrap">
-                <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
-                <div class="dep-dropdown hidden"></div>
-                <input type="hidden" name="dependencies" value="${esc(Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''))}">
-                <div class="dep-selected"></div>
+            <div class="modal-row">
+              <div class="modal-field" style="flex:1">
+                <span>Dependencies</span>
+                <div class="dep-search-wrap">
+                  <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
+                  <div class="dep-dropdown hidden"></div>
+                  <input type="hidden" name="dependencies" value="${esc(Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''))}">
+                  <div class="dep-selected"></div>
+                </div>
               </div>
+              <label class="modal-toggle-row modal-toggle-row--inline">
+                <span>Trade quote</span>
+                <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
             </div>
           </div>
           <div class="modal-layout-side">
@@ -167,11 +174,6 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
               </div>
             </div>
-            <label class="modal-toggle-row">
-              <span>Trade quote required</span>
-              <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
           </div>
         </div>
         <div class="modal-actions">
