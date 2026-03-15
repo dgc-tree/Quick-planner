@@ -370,7 +370,7 @@ main {
 }
 
 .qp-chat-input::placeholder {
-  color: var(--content-tertiary);
+  color: var(--content-secondary);
 }
 
 .qp-chat-mic,
