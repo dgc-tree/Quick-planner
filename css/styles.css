@@ -1812,7 +1812,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   border-radius: 20px;
   padding: 32px 36px;
   width: 90%;
-  max-width: 760px;
+  max-width: 960px;
   box-shadow: var(--shadow-glass), 0 20px 60px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
@@ -2117,7 +2117,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   gap: 16px;
 }
 .modal-layout-side {
-  flex: 0 0 240px;
+  flex: 0 0 320px;
   border-left: 1px solid var(--outline-muted);
   padding-left: 32px;
   display: flex;
