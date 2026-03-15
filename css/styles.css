@@ -1967,8 +1967,8 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-member-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
-  left: 0;
+  right: -4px;
+  left: -4px;
   margin-top: 8px;
   background: var(--surface-header);
   backdrop-filter: blur(var(--blur)) saturate(1.4);
@@ -2184,11 +2184,14 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 
 .modal-row:has(.modal-members-wrap) {
-  gap: 8px;
-  position: relative;
+  gap: 12px;
+}
+.modal-row:has(.modal-members-wrap) .modal-field:first-child {
+  flex: 1 1 55%;
+  min-width: 0;
 }
 .modal-row:has(.modal-members-wrap) .modal-field:last-child {
-  flex: 0 0 auto;
+  flex: 0 0 38%;
   min-width: 0;
 }
 
