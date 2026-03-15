@@ -1273,6 +1273,13 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-toggle-row .toggle-track {
   margin-left: 12px;
 }
+.modal-toggle-row--inline {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  padding: 0 0 10px;
+  gap: 8px;
+  white-space: nowrap;
+}
 
 .card-title {
   font-size: 0.9rem;
@@ -1812,7 +1819,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   border-radius: 20px;
   padding: 32px 36px;
   width: 90%;
-  max-width: 960px;
+  max-width: 1040px;
   box-shadow: var(--shadow-glass), 0 20px 60px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
@@ -1833,8 +1840,8 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 
 .modal-more-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   background: none;
@@ -2124,11 +2131,11 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex-direction: column;
   gap: 24px;
 }
-/* Side panel: dropdown fills the column inline */
+/* Side panel: avatars + add button inline, dropdown below */
 .modal-layout-side .modal-members-wrap {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 .modal-layout-side .modal-members-list {
   flex-wrap: wrap;
@@ -2143,6 +2150,13 @@ main.settings-open { overflow: hidden; padding: 0; }
   box-shadow: none;
   background: var(--surface-base);
   border: 1px solid var(--outline-muted);
+}
+.modal-layout-side .modal-member-invite-form {
+  position: relative;
+}
+.modal-layout-side .modal-member-invite-send {
+  position: absolute;
+  right: 8px;
 }
 
 @media (max-width: 768px) {
@@ -2256,7 +2270,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 
 .modal-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
   margin-top: 6px;
@@ -2706,6 +2720,12 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 
 /* === Room Management === */
 .room-field-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-field-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
