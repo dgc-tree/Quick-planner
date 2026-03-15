@@ -3862,7 +3862,8 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 24px 12px;
+  padding: 0 24px;
+  min-height: 98px;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -3870,6 +3871,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   backdrop-filter: blur(var(--blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
   border-bottom: 1px solid var(--border-outer);
+  box-shadow: inset 0 -1px 0 0 var(--border), 0 4px 20px rgba(0,0,0,0.04);
 }
 .settings-view > :not(.settings-page-header):not(.trash-page-header) {
   max-width: 720px;
