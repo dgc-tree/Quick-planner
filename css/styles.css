@@ -1810,9 +1810,9 @@ main.settings-open { overflow: hidden; padding: 0; }
   -webkit-backdrop-filter: blur(calc(var(--blur) * 3)) saturate(1.6);
   border: 1px solid rgba(255,255,255,0.6);
   border-radius: 20px;
-  padding: 24px 28px;
+  padding: 32px 36px;
   width: 90%;
-  max-width: 480px;
+  max-width: 560px;
   box-shadow: var(--shadow-glass), 0 20px 60px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
@@ -1968,8 +1968,8 @@ main.settings-open { overflow: hidden; padding: 0; }
   position: absolute;
   top: 100%;
   right: 0;
+  left: 0;
   margin-top: 8px;
-  min-width: 280px;
   background: var(--surface-header);
   backdrop-filter: blur(var(--blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
@@ -2101,7 +2101,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .modal-field {
@@ -2185,6 +2185,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 
 .modal-row:has(.modal-members-wrap) {
   gap: 8px;
+  position: relative;
 }
 .modal-row:has(.modal-members-wrap) .modal-field:last-child {
   flex: 0 0 auto;
