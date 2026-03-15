@@ -1968,31 +1968,31 @@ main.settings-open { overflow: hidden; padding: 0; }
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
-  min-width: 220px;
+  margin-top: 8px;
+  min-width: 260px;
   background: var(--surface-header);
   backdrop-filter: blur(var(--blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
   border: 1px solid var(--outline-default);
   border-radius: 12px;
-  box-shadow: var(--shadow-glass), 0 8px 24px rgba(0,0,0,0.12);
-  padding: 6px;
+  box-shadow: var(--shadow-glass), 0 12px 32px rgba(0,0,0,0.12);
+  padding: 8px;
   z-index: 100;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 .modal-member-option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  min-height: 44px;
+  gap: 12px;
+  padding: 12px;
+  min-height: 48px;
   border: none;
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.93rem;
+  font-size: 1rem;
   color: var(--content-primary);
   width: 100%;
   text-align: left;
@@ -2002,27 +2002,27 @@ main.settings-open { overflow: hidden; padding: 0; }
   background: var(--surface-highlight);
 }
 .modal-member-option-avatar {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1.5px var(--outline-muted);
 }
 
-/* Invite row inside member dropdown */
+/* Invite section */
 .modal-member-divider {
   height: 1px;
   background: var(--outline-muted);
-  margin: 4px 8px;
+  margin: 4px 12px;
 }
 .modal-member-invite-icon {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2032,32 +2032,33 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-member-invite-form {
   display: flex;
   gap: 8px;
-  padding: 8px;
+  padding: 8px 4px;
   align-items: center;
 }
 .modal-member-invite-input {
   flex: 1;
   min-width: 0;
-  padding: 10px 12px;
-  min-height: 44px;
+  padding: 12px 16px;
+  height: 48px;
   border-radius: 8px;
   border: 1px solid var(--outline-muted);
   background: var(--surface-base);
-  font-size: 0.93rem;
+  font-size: 1rem;
   font-family: var(--font);
   color: var(--content-primary);
   outline: none;
+  box-shadow: var(--shadow-glass);
 }
 .modal-member-invite-input::placeholder {
   color: var(--content-secondary);
 }
 .modal-member-invite-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(0, 227, 255, 0.2);
+  box-shadow: var(--shadow-glass), 0 0 0 2px rgba(0, 227, 255, 0.2);
 }
 .modal-member-invite-send {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 8px;
   border: none;
   background: var(--accent);
@@ -2074,14 +2075,14 @@ main.settings-open { overflow: hidden; padding: 0; }
   opacity: 0.85;
 }
 .modal-member-invite-send:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: default;
 }
 .modal-member-invite-msg {
-  padding: 6px 12px;
+  padding: 8px 12px;
   font-size: 0.85rem;
   border-radius: 8px;
-  margin: 2px 8px 4px;
+  margin: 4px 4px;
 }
 .modal-member-invite-msg--ok {
   background: rgba(34,197,94,0.1);
