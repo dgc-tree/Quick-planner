@@ -1194,11 +1194,12 @@ main.settings-open { overflow: hidden; padding: 0; }
 .kanban-card:hover {
   box-shadow: var(--shadow-glass), var(--shadow-hover);
   transform: translateY(-2px);
-  background: var(--highlight);
+  background: color-mix(in srgb, var(--color-primary1-100) 25%, rgba(255,255,255,0.7));
 }
 
 .kanban-card:active {
   cursor: grabbing;
+  background: color-mix(in srgb, var(--color-primary1-100) 30%, rgba(255,255,255,0.75));
 }
 
 .kanban-card.dragging {
@@ -2875,7 +2876,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 
 .todo-item:hover {
   box-shadow: var(--shadow-glass), var(--shadow-hover);
-  background: var(--highlight);
+  background: color-mix(in srgb, var(--color-primary1-100) 20%, rgba(255,255,255,0.7));
 }
 
 .todo-item.todo-done .todo-col-meta,
