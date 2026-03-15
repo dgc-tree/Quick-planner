@@ -1969,123 +1969,118 @@ main.settings-open { overflow: hidden; padding: 0; }
   top: 100%;
   right: 0;
   margin-top: 4px;
-  min-width: 160px;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  padding: 4px;
+  min-width: 220px;
+  background: var(--surface-header);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--outline-default);
+  border-radius: 12px;
+  box-shadow: var(--shadow-glass), 0 8px 24px rgba(0,0,0,0.12);
+  padding: 6px;
   z-index: 100;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-[data-theme="dark"] .modal-member-dropdown {
-  background: rgba(22,24,34,0.95);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-}
 .modal-member-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
   border: none;
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.88rem;
-  color: var(--text);
+  font-size: 0.93rem;
+  color: var(--content-primary);
   width: 100%;
   text-align: left;
   transition: background 0.12s;
 }
 .modal-member-option:hover {
-  background: rgba(0,0,0,0.06);
-}
-[data-theme="dark"] .modal-member-option:hover {
-  background: rgba(255,255,255,0.08);
+  background: var(--surface-highlight);
 }
 .modal-member-option-avatar {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.15);
-}
-[data-theme="dark"] .modal-member-option-avatar {
-  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.2);
+  box-shadow: inset 0 0 0 1.5px var(--outline-muted);
 }
 
 /* Invite row inside member dropdown */
 .modal-member-divider {
   height: 1px;
-  background: var(--border);
-  margin: 4px 6px;
+  background: var(--outline-muted);
+  margin: 4px 8px;
 }
 .modal-member-invite-icon {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--content-secondary);
   flex-shrink: 0;
 }
 .modal-member-invite-form {
   display: flex;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 8px;
+  padding: 8px;
+  align-items: center;
 }
 .modal-member-invite-input {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface, #fff);
-  font-size: 0.82rem;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-muted);
+  background: var(--surface-base);
+  font-size: 0.93rem;
   font-family: var(--font);
-  color: var(--text);
+  color: var(--content-primary);
   outline: none;
+}
+.modal-member-invite-input::placeholder {
+  color: var(--content-secondary);
 }
 .modal-member-invite-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(44,181,160,0.15);
-}
-[data-theme="dark"] .modal-member-invite-input {
-  background: rgba(22,24,34,0.9);
-  border-color: rgba(255,255,255,0.12);
-  color: #f3f4f6;
+  box-shadow: 0 0 0 2px rgba(0, 227, 255, 0.2);
 }
 .modal-member-invite-send {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
   border: none;
-  background: var(--accent, #2cb5a0);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent-primary1, #000);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   padding: 0;
+  transition: opacity 0.15s;
+}
+.modal-member-invite-send:hover {
+  opacity: 0.85;
 }
 .modal-member-invite-send:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
 }
 .modal-member-invite-msg {
-  padding: 4px 8px;
-  font-size: 0.78rem;
-  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  border-radius: 8px;
   margin: 2px 8px 4px;
 }
 .modal-member-invite-msg--ok {
