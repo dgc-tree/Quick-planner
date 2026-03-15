@@ -2183,7 +2183,8 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-field > select,
 .modal-field > .room-field-wrap,
 .modal-field > .category-field-wrap,
-.modal-field > .date-picker-wrap {
+.modal-field > .date-picker-wrap,
+.modal-field > .dep-search-wrap {
   margin-left: -4px;
 }
 
@@ -2526,30 +2527,46 @@ main.settings-open { overflow: hidden; padding: 0; }
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(238,238,238,0.85);
+  background: rgba(255,255,255,0.93);
   backdrop-filter: blur(var(--blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 10px;
   margin-top: 4px;
-  max-height: 180px;
+  max-height: 220px;
   overflow-y: auto;
   z-index: 10;
-  box-shadow: var(--shadow-glass), var(--shadow-hover);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  padding: 4px 0;
 }
 [data-theme="dark"] .dep-dropdown {
-  background: color-mix(in srgb, var(--dark-surface) 85%, transparent);
+  background: color-mix(in srgb, var(--dark-surface) 93%, transparent);
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
 .dep-option {
-  padding: 8px 12px;
-  font-size: 0.85rem;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   cursor: pointer;
   color: var(--text);
 }
 
+.dep-option + .dep-option {
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+[data-theme="dark"] .dep-option + .dep-option {
+  border-top-color: rgba(255,255,255,0.08);
+}
+
 .dep-option:hover {
-  background: var(--bg);
+  background: rgba(0,0,0,0.04);
+}
+[data-theme="dark"] .dep-option:hover {
+  background: rgba(255,255,255,0.06);
 }
 
 .dep-selected {
@@ -2569,9 +2586,9 @@ main.settings-open { overflow: hidden; padding: 0; }
   gap: 4px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
   color: var(--text);
 }
 
