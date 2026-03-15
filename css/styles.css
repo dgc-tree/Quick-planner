@@ -3979,6 +3979,30 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 }
 .settings-inline-form {
   margin-top: 12px;
+  max-width: 400px;
+}
+/* Compact controls inside settings forms — lower visual weight than modal CTAs */
+.settings-inline-form .modal-field input {
+  font-size: 0.88rem;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.settings-inline-form .modal-field label {
+  font-size: 0.78rem;
+}
+.settings-inline-form .modal-btn,
+#settings-account .settings-card-actions .modal-btn {
+  font-size: 0.82rem;
+  min-height: 36px;
+  min-width: auto;
+  padding: 7px 16px;
+  border-radius: 8px;
+}
+.settings-inline-form .settings-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
 }
 .settings-msg {
   font-size: 13px;
