@@ -1194,12 +1194,12 @@ main.settings-open { overflow: hidden; padding: 0; }
 .kanban-card:hover {
   box-shadow: var(--shadow-glass), var(--shadow-hover);
   transform: translateY(-2px);
-  background: color-mix(in srgb, var(--color-primary1-100) 25%, rgba(255,255,255,0.7));
+  background: color-mix(in srgb, var(--color-primary1-100) 15%, white);
 }
 
 .kanban-card:active {
   cursor: grabbing;
-  background: color-mix(in srgb, var(--color-primary1-100) 30%, rgba(255,255,255,0.75));
+  background: color-mix(in srgb, var(--color-primary1-100) 20%, white);
 }
 
 .kanban-card.dragging {
@@ -2883,7 +2883,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 
 .todo-item:hover {
   box-shadow: var(--shadow-glass), var(--shadow-hover);
-  background: color-mix(in srgb, var(--color-primary1-100) 20%, rgba(255,255,255,0.7));
+  background: color-mix(in srgb, var(--color-primary1-100) 12%, white);
 }
 
 .todo-item.todo-done .todo-col-meta,
@@ -3874,7 +3874,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   min-height: 98px;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 160;
   background: var(--header-bg);
   backdrop-filter: blur(var(--blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
