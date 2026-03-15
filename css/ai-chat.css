@@ -8,8 +8,8 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: var(--accent, #00e3ff);
-  color: var(--content-primary, #101010);
+  background: var(--accent);
+  color: var(--content-primary);
   border: none;
   cursor: pointer;
   z-index: 200;
@@ -49,7 +49,7 @@
   height: 12px;
   background: #ff4444;
   border-radius: 50%;
-  border: 2px solid var(--surface-canvas, #fff);
+  border: 2px solid var(--surface-canvas);
   animation: qp-dot-pulse 2s ease-in-out infinite;
 }
 
@@ -69,11 +69,11 @@
   width: 380px;
   height: 100vh;
   height: 100dvh;
-  background: var(--surface-base, rgba(255, 255, 255, 0.85));
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-left: 1px solid var(--outline-muted, rgba(0, 0, 0, 0.08));
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+  background: var(--surface-header);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border-left: 1px solid var(--outline-default);
+  box-shadow: var(--shadow-glass), -4px 0 24px rgba(0, 0, 0, 0.06);
   z-index: 300;
   display: flex;
   flex-direction: column;
@@ -104,7 +104,7 @@ main {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--outline-muted, rgba(0, 0, 0, 0.06));
+  border-bottom: 1px solid var(--outline-muted);
   flex-shrink: 0;
 }
 
@@ -118,8 +118,8 @@ main {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--accent, #00e3ff);
-  color: var(--content-primary, #101010);
+  background: var(--accent);
+  color: var(--content-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,7 +132,7 @@ main {
 .qp-chat-title {
   font-weight: 600;
   font-size: 15px;
-  color: var(--content-primary, #101010);
+  color: var(--content-primary);
 }
 
 .qp-chat-close {
@@ -142,7 +142,7 @@ main {
   background: none;
   cursor: pointer;
   font-size: 20px;
-  color: var(--content-tertiary, #7f7f7f);
+  color: var(--content-tertiary);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -151,7 +151,7 @@ main {
 }
 
 .qp-chat-close:hover {
-  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
+  background: var(--surface-highlight);
 }
 
 /* Messages area */
@@ -165,6 +165,11 @@ main {
   min-height: 0;
 }
 
+/* Scrollbar */
+.qp-chat-messages::-webkit-scrollbar { width: 6px; }
+.qp-chat-messages::-webkit-scrollbar-track { background: transparent; }
+.qp-chat-messages::-webkit-scrollbar-thumb { background: var(--outline-muted); border-radius: 3px; }
+
 /* Empty state */
 .qp-chat-empty {
   display: flex;
@@ -173,7 +178,7 @@ main {
   text-align: center;
   gap: 12px;
   padding: 32px 16px;
-  color: var(--content-secondary, #565656);
+  color: var(--content-secondary);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -182,8 +187,8 @@ main {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--accent, #00e3ff);
-  color: var(--content-primary, #101010);
+  background: var(--accent);
+  color: var(--content-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,19 +207,20 @@ main {
 
 .qp-chat-suggestion {
   padding: 6px 14px;
-  border: 1px solid var(--outline-default, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--outline-default);
   border-radius: 100px;
-  background: none;
-  color: var(--content-primary, #101010);
+  background: var(--surface-base);
+  color: var(--content-primary);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   font-family: inherit;
+  box-shadow: var(--shadow-glass);
 }
 
 .qp-chat-suggestion:hover {
-  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
-  border-color: var(--accent, #00e3ff);
+  background: var(--surface-raised);
+  border-color: var(--accent);
 }
 
 /* Message bubbles */
@@ -244,8 +250,8 @@ main {
   height: 28px;
   min-width: 28px;
   border-radius: 50%;
-  background: var(--accent, #00e3ff);
-  color: var(--content-primary, #101010);
+  background: var(--accent);
+  color: var(--content-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -267,14 +273,15 @@ main {
 }
 
 .qp-chat-bubble-assistant .qp-chat-msg-content {
-  background: var(--color-primary1-100, #cef7ff);
-  color: var(--content-primary, #101010);
+  background: var(--surface-raised);
+  color: var(--content-primary);
   border-bottom-left-radius: 4px;
+  box-shadow: var(--shadow-glass);
 }
 
 .qp-chat-bubble-user .qp-chat-msg-content {
-  background: var(--accent, #00e3ff);
-  color: var(--content-primary, #101010);
+  background: var(--accent);
+  color: var(--on-accent-primary1, #000);
   border-bottom-right-radius: 4px;
 }
 
@@ -283,10 +290,10 @@ main {
   display: inline-block;
   margin-top: 8px;
   padding: 4px 12px;
-  border: 1px solid var(--outline-default, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--outline-default);
   border-radius: 100px;
-  background: none;
-  color: var(--accent-primary1, #00a8bf);
+  background: var(--surface-base);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -295,13 +302,14 @@ main {
 }
 
 .qp-chat-undo:hover {
-  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
+  background: var(--surface-raised);
 }
 
 .qp-chat-undo-done {
-  color: var(--content-tertiary, #7f7f7f);
+  color: var(--content-tertiary);
   cursor: default;
   border-color: transparent;
+  background: none;
 }
 
 /* Thinking animation */
@@ -319,7 +327,7 @@ main {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--content-tertiary, #7f7f7f);
+  background: var(--content-tertiary);
   animation: qp-dot-bounce 1.4s ease-in-out infinite;
 }
 
@@ -337,30 +345,32 @@ main {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--outline-muted, rgba(0, 0, 0, 0.06));
+  border-top: 1px solid var(--outline-muted);
   flex-shrink: 0;
 }
 
 .qp-chat-input {
   flex: 1;
   min-width: 0;
-  border: 1px solid rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--outline-muted);
   border-radius: 100px;
   padding: 10px 16px;
   font-size: 14px;
   font-family: inherit;
-  background: var(--color-primary1-100, #cef7ff);
-  color: var(--content-primary, #101010);
+  background: var(--surface-base);
+  color: var(--content-primary);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-glass);
 }
 
 .qp-chat-input:focus {
-  border-color: var(--accent, #00e3ff);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glass), 0 0 0 2px rgba(0, 227, 255, 0.2);
 }
 
 .qp-chat-input::placeholder {
-  color: var(--content-tertiary, #7f7f7f);
+  color: var(--content-tertiary);
 }
 
 .qp-chat-mic,
@@ -374,15 +384,15 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--content-secondary, #565656);
+  color: var(--content-secondary);
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
 
 .qp-chat-mic:hover,
 .qp-chat-send:hover {
-  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
-  color: var(--content-primary, #101010);
+  background: var(--surface-highlight);
+  color: var(--content-primary);
 }
 
 .qp-chat-mic-active {
@@ -396,37 +406,7 @@ main {
 }
 
 .qp-chat-send:hover {
-  color: var(--accent, #00e3ff);
-}
-
-/* ─── Dark mode ────────────────────────────────────────────────────────────── */
-
-[data-theme="dark"] .qp-chat-panel {
-  background: var(--dark-card, rgba(24, 24, 27, 0.92));
-  border-color: var(--dark-border, rgba(255, 255, 255, 0.08));
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="dark"] .qp-chat-bubble-assistant .qp-chat-msg-content {
-  background: var(--color-primary1-1100, #00252c);
-}
-
-[data-theme="dark"] .qp-chat-input {
-  background: var(--color-primary1-1100, #00252c);
-  border-color: rgba(255, 255, 255, 0.5);
-  color: var(--content-primary);
-}
-
-[data-theme="dark"] .qp-chat-suggestion {
-  border-color: var(--dark-border, rgba(255, 255, 255, 0.12));
-}
-
-[data-theme="dark"] .qp-chat-suggestion:hover {
-  background: var(--dark-surface, rgba(255, 255, 255, 0.06));
-}
-
-[data-theme="dark"] .qp-chat-undo {
-  border-color: var(--dark-border, rgba(255, 255, 255, 0.12));
+  color: var(--accent);
 }
 
 /* ─── Mobile — full-screen sheet ──────────────────────────────────────────── */
@@ -452,7 +432,6 @@ main {
     height: 100dvh;
     border-left: none;
     border-radius: 0;
-    box-shadow: none;
     transform: translateY(100%);
   }
 
@@ -493,7 +472,7 @@ body:has(#trash-view:not(.hidden)) .qp-chat-fab {
   border: none;
   background: none;
   cursor: pointer;
-  color: var(--content-tertiary, #7f7f7f);
+  color: var(--content-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
