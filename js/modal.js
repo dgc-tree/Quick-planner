@@ -166,13 +166,18 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
             <div class="modal-field">
               <span>Assigned</span>
               <div class="modal-members-wrap">
-                <div class="modal-members-list"></div>
-                <button type="button" class="modal-member-add" title="Add member">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <div class="modal-member-dropdown hidden"></div>
+                <div class="modal-members-grid"></div>
                 <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
               </div>
+            </div>
+            <div class="modal-invite-section hidden">
+              <form class="modal-member-invite-form">
+                <input type="email" class="modal-member-invite-input" placeholder="Invite by email..." required>
+                <button type="submit" class="modal-member-invite-send" title="Send invite">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </form>
+              <div class="modal-member-invite-msg hidden"></div>
             </div>
           </div>
         </div>
@@ -429,153 +434,83 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   renderDepChips();
   syncDepHidden();
 
-  // Multi-member picker
-  const membersList = modalEl.querySelector('.modal-members-list');
-  const memberAddBtn = modalEl.querySelector('.modal-member-add');
-  const memberDropdown = modalEl.querySelector('.modal-member-dropdown');
+  // Toggle-to-assign member grid
+  const membersGrid = modalEl.querySelector('.modal-members-grid');
   let selectedMembers = [...taskAssigned];
+  const allMembers = options.assignees || [];
 
   function syncMembersHidden() {
     assignedHidden.value = selectedMembers.join(',');
   }
 
-  function renderMemberAvatars() {
-    membersList.innerHTML = '';
-    selectedMembers.forEach(name => {
+  function renderMemberGrid() {
+    membersGrid.innerHTML = '';
+    allMembers.forEach(name => {
       const { bg, text } = getAssignedColor(name);
+      const isActive = selectedMembers.includes(name);
       const av = document.createElement('button');
       av.type = 'button';
-      av.className = 'modal-member-avatar';
-      av.style.background = bg;
-      av.style.color = text;
-      av.title = `Remove ${name}`;
+      av.className = 'modal-member-avatar' + (isActive ? '' : ' modal-member-avatar--inactive');
+      av.style.setProperty('--member-bg', bg);
+      av.style.setProperty('--member-text', text);
+      av.title = isActive ? `Remove ${name}` : `Assign ${name}`;
       av.textContent = getInitials(name);
       av.addEventListener('click', () => {
-        selectedMembers = selectedMembers.filter(n => n !== name);
-        syncMembersHidden();
-        renderMemberAvatars();
-      });
-      membersList.appendChild(av);
-    });
-  }
-
-  function showMemberDropdown() {
-    const available = (options.assignees || []).filter(a => !selectedMembers.includes(a));
-    const canInvite = isLoggedIn() && !isSandbox() && typeof options.getActiveProjectId === 'function';
-
-    if (available.length === 0 && !canInvite) {
-      memberDropdown.classList.add('hidden');
-      return;
-    }
-
-    let html = available.map(a => {
-      const { bg, text } = getAssignedColor(a);
-      return `<button type="button" class="modal-member-option" data-name="${esc(a)}">
-        <span class="modal-member-option-avatar" style="background:${bg};color:${text}">${getInitials(a)}</span>
-        <span>${esc(a)}</span>
-      </button>`;
-    }).join('');
-
-    if (canInvite) {
-      if (available.length > 0) html += '<div class="modal-member-divider"></div>';
-      html += `<div class="modal-member-invite">
-        <button type="button" class="modal-member-option modal-member-invite-trigger">
-          <span class="modal-member-invite-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          </span>
-          <span>Invite by email</span>
-        </button>
-        <form class="modal-member-invite-form hidden">
-          <input type="email" class="modal-member-invite-input" placeholder="name@example.com" required>
-          <button type="submit" class="modal-member-invite-send" title="Send invite">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
-        </form>
-        <div class="modal-member-invite-msg hidden"></div>
-      </div>`;
-    }
-
-    memberDropdown.innerHTML = html;
-    memberDropdown.classList.remove('hidden');
-
-    // Existing member options
-    memberDropdown.querySelectorAll('.modal-member-option:not(.modal-member-invite-trigger)').forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectedMembers.push(opt.dataset.name);
-        syncMembersHidden();
-        renderMemberAvatars();
-        memberDropdown.classList.add('hidden');
-      });
-    });
-
-    // Invite flow
-    if (canInvite) {
-      const trigger = memberDropdown.querySelector('.modal-member-invite-trigger');
-      const form = memberDropdown.querySelector('.modal-member-invite-form');
-      const input = memberDropdown.querySelector('.modal-member-invite-input');
-      const msg = memberDropdown.querySelector('.modal-member-invite-msg');
-
-      trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        trigger.classList.add('hidden');
-        form.classList.remove('hidden');
-        input.focus();
-      });
-
-      input.addEventListener('click', (e) => e.stopPropagation());
-
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const email = input.value.trim();
-        if (!email) return;
-        const sendBtn = form.querySelector('.modal-member-invite-send');
-        sendBtn.disabled = true;
-        msg.classList.add('hidden');
-        try {
-          const projectId = options.getActiveProjectId();
-          await apiCall(`/projects/${projectId}/members`, {
-            method: 'POST',
-            body: JSON.stringify({ email, role: 'member' }),
-          });
-          msg.textContent = `Invite sent to ${email}`;
-          msg.className = 'modal-member-invite-msg modal-member-invite-msg--ok';
-          msg.classList.remove('hidden');
-          input.value = '';
-          // Add the email as an assignable name and auto-assign
-          const name = email.split('@')[0];
-          if (!selectedMembers.includes(name) && !selectedMembers.includes(email)) {
-            selectedMembers.push(email);
-            syncMembersHidden();
-            renderMemberAvatars();
-          }
-          setTimeout(() => memberDropdown.classList.add('hidden'), 1200);
-        } catch (err) {
-          msg.textContent = err.message;
-          msg.className = 'modal-member-invite-msg modal-member-invite-msg--err';
-          msg.classList.remove('hidden');
+        if (isActive) {
+          selectedMembers = selectedMembers.filter(n => n !== name);
+        } else {
+          selectedMembers.push(name);
         }
-        sendBtn.disabled = false;
+        syncMembersHidden();
+        renderMemberGrid();
       });
-    }
+      membersGrid.appendChild(av);
+    });
   }
 
-  memberAddBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = !memberDropdown.classList.contains('hidden');
-    if (isOpen) {
-      memberDropdown.classList.add('hidden');
-    } else {
-      showMemberDropdown();
-    }
-  });
+  // Invite flow
+  const inviteSection = modalEl.querySelector('.modal-invite-section');
+  const canInvite = isLoggedIn() && !isSandbox() && typeof options.getActiveProjectId === 'function';
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.modal-members-wrap')) memberDropdown.classList.add('hidden');
-  });
+  if (canInvite) {
+    inviteSection.classList.remove('hidden');
+    const inviteForm = inviteSection.querySelector('.modal-member-invite-form');
+    const inviteInput = inviteSection.querySelector('.modal-member-invite-input');
+    const inviteMsg = inviteSection.querySelector('.modal-member-invite-msg');
 
-  renderMemberAvatars();
+    inviteForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = inviteInput.value.trim();
+      if (!email) return;
+      const sendBtn = inviteForm.querySelector('.modal-member-invite-send');
+      sendBtn.disabled = true;
+      inviteMsg.classList.add('hidden');
+      try {
+        const projectId = options.getActiveProjectId();
+        await apiCall(`/projects/${projectId}/members`, {
+          method: 'POST',
+          body: JSON.stringify({ email, role: 'member' }),
+        });
+        inviteMsg.textContent = `Invite sent to ${email}`;
+        inviteMsg.className = 'modal-member-invite-msg modal-member-invite-msg--ok';
+        inviteMsg.classList.remove('hidden');
+        inviteInput.value = '';
+        const name = email.split('@')[0];
+        if (!selectedMembers.includes(name) && !selectedMembers.includes(email)) {
+          selectedMembers.push(email);
+          syncMembersHidden();
+          renderMemberGrid();
+        }
+      } catch (err) {
+        inviteMsg.textContent = err.message;
+        inviteMsg.className = 'modal-member-invite-msg modal-member-invite-msg--err';
+        inviteMsg.classList.remove('hidden');
+      }
+      sendBtn.disabled = false;
+    });
+  }
+
+  renderMemberGrid();
   syncMembersHidden();
 
   // Date picker wiring — opens Airbnb-style range picker
