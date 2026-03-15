@@ -89,87 +89,91 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
         ` : ''}
       </div>
       <form class="modal-form" autocomplete="off">
-        <div class="modal-field">
-          <span>Room</span>
-          <div class="room-field-wrap" id="room-field-wrap">
-            <select name="room">
-              ${rooms.map(r =>
-                `<option value="${esc(r)}"${r === task.room ? ' selected' : ''}>${esc(r)}</option>`
-              ).join('')}
-              <option value="__new__">+ New Room</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-row">
-          <label class="modal-field" style="flex:1;min-width:0">
-            <span>Task</span>
-            <input type="text" name="task" value="${esc(task.task)}">
-          </label>
-          <div class="modal-field" style="flex:0 0 auto">
-            <span>Assigned</span>
-            <div class="modal-members-wrap">
-              <div class="modal-members-list"></div>
-              <button type="button" class="modal-member-add" title="Add member">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
-              <div class="modal-member-dropdown hidden"></div>
-              <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
+        <div class="modal-layout">
+          <div class="modal-layout-main">
+            <div class="modal-field">
+              <span>Room</span>
+              <div class="room-field-wrap" id="room-field-wrap">
+                <select name="room">
+                  ${rooms.map(r =>
+                    `<option value="${esc(r)}"${r === task.room ? ' selected' : ''}>${esc(r)}</option>`
+                  ).join('')}
+                  <option value="__new__">+ New Room</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-field">
+              <span>Task</span>
+              <input type="text" name="task" value="${esc(task.task)}">
+            </div>
+            <div class="modal-row">
+              <div class="modal-field">
+                <span>Category</span>
+                <div class="category-field-wrap" id="category-field-wrap">
+                  <select name="category">
+                    ${options.categories.map(c =>
+                      `<option value="${esc(c)}"${c === task.category ? ' selected' : ''}>${esc(c)}</option>`
+                    ).join('')}
+                    <option value="__new__">+ New Category</option>
+                  </select>
+                </div>
+              </div>
+              <label class="modal-field">
+                <span>Status</span>
+                <select name="status">
+                  ${STATUS_OPTIONS.map(s =>
+                    `<option value="${esc(s)}"${s === task.status ? ' selected' : ''}>${esc(s)}</option>`
+                  ).join('')}
+                </select>
+              </label>
+            </div>
+            <div class="modal-row">
+              <label class="modal-field">
+                <span>Start Date</span>
+                <div class="date-picker-wrap">
+                  <button type="button" class="date-display${task.startDate ? '' : ' empty'}" data-for="startDate">${displayDate(task.startDate)}</button>
+                  <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}"
+                         aria-label="${ariaDate('Start Date', task.startDate)}">
+                </div>
+              </label>
+              <label class="modal-field">
+                <span>End Date</span>
+                <div class="date-picker-wrap">
+                  <button type="button" class="date-display${task.endDate ? '' : ' empty'}" data-for="endDate">${displayDate(task.endDate)}</button>
+                  <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}"
+                         aria-label="${ariaDate('End Date', task.endDate)}">
+                </div>
+              </label>
+            </div>
+            <div class="modal-field">
+              <span>Dependencies</span>
+              <div class="dep-search-wrap">
+                <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
+                <div class="dep-dropdown hidden"></div>
+                <input type="hidden" name="dependencies" value="${esc(Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''))}">
+                <div class="dep-selected"></div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="modal-row">
-          <div class="modal-field">
-            <span>Category</span>
-            <div class="category-field-wrap" id="category-field-wrap">
-              <select name="category">
-                ${options.categories.map(c =>
-                  `<option value="${esc(c)}"${c === task.category ? ' selected' : ''}>${esc(c)}</option>`
-                ).join('')}
-                <option value="__new__">+ New Category</option>
-              </select>
+          <div class="modal-layout-side">
+            <div class="modal-field">
+              <span>Assigned</span>
+              <div class="modal-members-wrap">
+                <div class="modal-members-list"></div>
+                <button type="button" class="modal-member-add" title="Add member">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="modal-member-dropdown hidden"></div>
+                <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
+              </div>
             </div>
-          </div>
-          <label class="modal-field">
-            <span>Status</span>
-            <select name="status">
-              ${STATUS_OPTIONS.map(s =>
-                `<option value="${esc(s)}"${s === task.status ? ' selected' : ''}>${esc(s)}</option>`
-              ).join('')}
-            </select>
-          </label>
-        </div>
-        <div class="modal-row">
-          <label class="modal-field">
-            <span>Start Date</span>
-            <div class="date-picker-wrap">
-              <button type="button" class="date-display${task.startDate ? '' : ' empty'}" data-for="startDate">${displayDate(task.startDate)}</button>
-              <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}"
-                     aria-label="${ariaDate('Start Date', task.startDate)}">
-            </div>
-          </label>
-          <label class="modal-field">
-            <span>End Date</span>
-            <div class="date-picker-wrap">
-              <button type="button" class="date-display${task.endDate ? '' : ' empty'}" data-for="endDate">${displayDate(task.endDate)}</button>
-              <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}"
-                     aria-label="${ariaDate('End Date', task.endDate)}">
-            </div>
-          </label>
-        </div>
-        <div class="modal-field">
-          <span>Dependencies</span>
-          <div class="dep-search-wrap">
-            <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
-            <div class="dep-dropdown hidden"></div>
-            <input type="hidden" name="dependencies" value="${esc(Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''))}">
-            <div class="dep-selected"></div>
+            <label class="modal-toggle-row">
+              <span>Trade quote required</span>
+              <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
           </div>
         </div>
-        <label class="modal-toggle-row">
-          <span>Trade quote required</span>
-          <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
         <div class="modal-actions">
           <div class="modal-actions-right">
             <button type="button" class="modal-btn modal-cancel">Cancel</button>
