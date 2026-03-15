@@ -61,14 +61,15 @@ export function initPeopleSection(container, { getActiveProjectId }) {
       show();
       return;
     }
-    show();
-    renderLoading();
+    // Keep card hidden until data arrives — prevents "Loading team..." flash
     try {
       const data = await apiCall(`/projects/${currentProjectId}/members`);
       members = data.members || [];
       invites = data.invites || [];
+      show();
       render();
     } catch (e) {
+      show();
       renderError(e.message);
     }
   }

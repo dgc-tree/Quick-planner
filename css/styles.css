@@ -1276,9 +1276,9 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-toggle-row--inline {
   flex: 0 0 auto;
   align-self: flex-end;
-  padding: 0 0 10px;
   gap: 8px;
   white-space: nowrap;
+  height: 44px;
 }
 
 .card-title {
@@ -1930,24 +1930,25 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex-wrap: wrap;
 }
 .modal-member-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #fff;
+  background: var(--member-bg);
+  color: var(--member-text);
   border: 2px solid var(--border);
   cursor: pointer;
-  transition: border-color 0.15s, opacity 0.15s;
+  transition: border-color 0.15s, opacity 0.15s, background 0.15s;
   padding: 0;
   box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.15);
 }
 .modal-member-avatar:hover {
-  border-color: #ef4444;
-  opacity: 0.8;
+  border-color: var(--accent);
+  opacity: 0.85;
 }
 [data-theme="dark"] .modal-member-avatar {
   box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.2);
@@ -2067,6 +2068,8 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-member-invite-send {
   position: absolute;
   right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -2082,12 +2085,12 @@ main.settings-open { overflow: hidden; padding: 0; }
   transition: transform 0.15s, opacity 0.15s;
 }
 .modal-member-invite-send:hover {
-  transform: scale(1.06);
+  transform: translateY(-50%) scale(1.06);
 }
 .modal-member-invite-send:disabled {
   opacity: 0.35;
   cursor: default;
-  transform: none;
+  transform: translateY(-50%);
 }
 .modal-member-invite-msg {
   padding: 8px 16px;
@@ -2131,32 +2134,26 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex-direction: column;
   gap: 24px;
 }
-/* Side panel: avatars + add button inline, dropdown below */
-.modal-layout-side .modal-members-wrap {
+/* Side panel: toggle-to-assign avatar grid */
+.modal-members-grid {
+  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
-.modal-layout-side .modal-members-list {
-  flex-wrap: wrap;
+.modal-member-avatar--inactive {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border: 2px dashed var(--border);
+  opacity: 0.45;
 }
-.modal-layout-side .modal-member-dropdown {
-  position: static;
+.modal-member-avatar--inactive:hover {
+  opacity: 0.8;
+  border-color: var(--accent);
+  border-style: solid;
+}
+/* Invite section — always visible pill input */
+.modal-invite-section {
   margin-top: 8px;
-  left: auto;
-  right: auto;
-  min-width: 0;
-  width: 100%;
-  box-shadow: none;
-  background: var(--surface-base);
-  border: 1px solid var(--outline-muted);
-}
-.modal-layout-side .modal-member-invite-form {
-  position: relative;
-}
-.modal-layout-side .modal-member-invite-send {
-  position: absolute;
-  right: 8px;
 }
 
 @media (max-width: 768px) {
@@ -2170,22 +2167,6 @@ main.settings-open { overflow: hidden; padding: 0; }
     padding-left: 0;
     border-top: 1px solid var(--outline-muted);
     padding-top: 16px;
-  }
-  .modal-layout-side .modal-member-dropdown {
-    position: absolute;
-    width: auto;
-    min-width: 260px;
-    right: 0;
-    left: auto;
-    box-shadow: var(--shadow-glass), 0 12px 32px rgba(0,0,0,0.12);
-    background: var(--surface-header);
-    backdrop-filter: blur(var(--blur)) saturate(1.4);
-    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
-  }
-  .modal-layout-side .modal-members-wrap {
-    flex-direction: row;
-    align-items: center;
-    position: relative;
   }
 }
 
