@@ -170,13 +170,14 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
               </div>
             </div>
-            <div class="modal-invite-section hidden">
-              <form class="modal-member-invite-form">
+            <div class="modal-invite-section modal-field hidden">
+              <span>Invite</span>
+              <div class="modal-member-invite-form">
                 <input type="email" class="modal-member-invite-input" placeholder="Invite by email..." required>
-                <button type="submit" class="modal-member-invite-send" title="Send invite">
+                <button type="button" class="modal-member-invite-send" title="Send invite">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
-              </form>
+              </div>
               <div class="modal-member-invite-msg hidden"></div>
             </div>
           </div>
@@ -437,7 +438,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   // Toggle-to-assign member grid
   const membersGrid = modalEl.querySelector('.modal-members-grid');
   let selectedMembers = [...taskAssigned];
-  const allMembers = options.assignees || [];
+  const allMembers = [...new Set([...selectedMembers, ...(options.assignees || [])])].sort();
 
   function syncMembersHidden() {
     assignedHidden.value = selectedMembers.join(',');
@@ -445,14 +446,25 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
 
   function renderMemberGrid() {
     membersGrid.innerHTML = '';
-    allMembers.forEach(name => {
-      const { bg, text } = getAssignedColor(name);
+    const active = allMembers.filter(n => selectedMembers.includes(n));
+    const inactive = allMembers.filter(n => !selectedMembers.includes(n));
+    const ordered = [...active, ...inactive];
+    let dividerInserted = false;
+
+    ordered.forEach(name => {
       const isActive = selectedMembers.includes(name);
+      if (!isActive && !dividerInserted && active.length > 0) {
+        const sep = document.createElement('span');
+        sep.className = 'modal-members-divider';
+        membersGrid.appendChild(sep);
+        dividerInserted = true;
+      }
+      const { bg, text } = getAssignedColor(name);
       const av = document.createElement('button');
       av.type = 'button';
       av.className = 'modal-member-avatar' + (isActive ? '' : ' modal-member-avatar--inactive');
-      av.style.setProperty('--member-bg', bg);
-      av.style.setProperty('--member-text', text);
+      av.style.background = isActive ? bg : '';
+      av.style.color = isActive ? text : '';
       av.title = isActive ? `Remove ${name}` : `Assign ${name}`;
       av.textContent = getInitials(name);
       av.addEventListener('click', () => {
@@ -478,11 +490,10 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     const inviteInput = inviteSection.querySelector('.modal-member-invite-input');
     const inviteMsg = inviteSection.querySelector('.modal-member-invite-msg');
 
-    inviteForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const sendBtn = inviteForm.querySelector('.modal-member-invite-send');
+    sendBtn.addEventListener('click', async () => {
       const email = inviteInput.value.trim();
       if (!email) return;
-      const sendBtn = inviteForm.querySelector('.modal-member-invite-send');
       sendBtn.disabled = true;
       inviteMsg.classList.add('hidden');
       try {
@@ -507,6 +518,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
         inviteMsg.classList.remove('hidden');
       }
       sendBtn.disabled = false;
+    });
+    inviteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); sendBtn.click(); }
     });
   }
 
