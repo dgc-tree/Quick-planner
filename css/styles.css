@@ -4654,25 +4654,32 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 /* ─── Flat surface mode ─────────────────────────────────────────────────────── */
 /* One token override kills all blur — every blur(var(--blur)) resolves to 0 */
 
+/* Light flat: opaque neutral surfaces from DS tokens */
 [data-surface="flat"] {
   --blur: 0px;
-  --surface-base: rgba(238,238,238,0.88);
-  --surface-raised: rgba(238,238,238,0.93);
-  --surface-header: rgba(240,240,240,0.96);
-  --surface-highlight: rgba(238,238,238,0.82);
+  --surface-base: color-mix(in srgb, var(--color-neutral-100) 88%, transparent);
+  --surface-raised: color-mix(in srgb, var(--color-neutral-100) 93%, transparent);
+  --surface-header: color-mix(in srgb, var(--color-neutral-100) 96%, transparent);
+  --surface-highlight: color-mix(in srgb, var(--color-neutral-100) 82%, transparent);
 }
 
+/* Dark flat: opaque dark surface tokens from DS */
 [data-surface="flat"][data-theme="dark"] {
   --blur: 0px;
-  --surface-base: rgba(0,20,24,0.88);
-  --surface-raised: rgba(0,20,24,0.93);
-  --surface-header: rgba(0,18,22,0.96);
-  --surface-highlight: rgba(0,20,24,0.82);
+  --surface-base: color-mix(in srgb, var(--dark-surface) 88%, transparent);
+  --surface-raised: color-mix(in srgb, var(--dark-surface) 93%, transparent);
+  --surface-header: color-mix(in srgb, var(--dark-surface) 96%, transparent);
+  --surface-highlight: color-mix(in srgb, var(--dark-surface) 82%, transparent);
 }
 
-/* Hide background accent sprites in flat mode */
+/* Flat mode: clean solid canvas, no accent gradient sprites */
 [data-surface="flat"] body {
-  background-image: none !important;
+  background: var(--color-neutral-100) !important;
+}
+
+[data-surface="flat"][data-theme="dark"] body {
+  background: linear-gradient(135deg, var(--dark-surface-deep) 0%, var(--dark-surface) 100%) !important;
+  background-attachment: fixed !important;
 }
 
 /* === Desktop overrides === */
