@@ -3,6 +3,26 @@
 ## CSS Workflow
 - **Read before writing**: Read the full rule + dark mode override + mobile media query before editing any CSS. For layout bugs, read body → main → container chain. Never guess at cascade.
 - **One-shot CSS**: Check all override contexts (dark, mobile, responsive) and apply all changes in one round. Don't iterate with the user as debugger.
+- **Measure before writing**: State target dimensions with arithmetic before writing layout CSS. "Modal = content(640) + sidebar(320) = 960px." One commit, not five iterations.
+- **Verify visually before merging**: Every CSS change must be checked on localhost. Hover/focus/active states must be manually triggered. Never merge visual changes sight-unseen.
+- **Mobile alongside, not after**: Test every visual change at 375px before committing. If it doesn't work on mobile, the feature isn't done.
+- **Batch compliance fixes**: When fixing a token/WCAG/style violation, grep the codebase for the same pattern. Fix all instances in one commit.
+- **Token-driven modes**: The `--blur` token drives all `backdrop-filter` values via `blur(var(--blur))` or `blur(calc(var(--blur) * N))`. Flat surface mode sets `--blur: 0px` — one line cascades to every component. Never add hardcoded `blur(Npx)` values; always use `calc(var(--blur) * factor)`. Same principle applies to any new visual mode: override the token, not the components.
+
+## Automation
+Three Claude Code hooks run automatically (`.claude/hooks/`):
+- **css-guard.js** — blocks CSS edits that use hardcoded rgba/hex instead of semantic tokens
+- **pre-commit-check.js** — advisory check reminding to visually verify CSS changes on localhost
+- **session-start.sh** — alerts when `origin/main` is ahead of the local branch
+
+Two custom commands (`.claude/commands/`):
+- **`/audit-css`** — sweeps the entire codebase for CSS compliance violations (tokens, WCAG, hardcoded values). Fixes all instances in one pass.
+- **`/pre-push`** — runs the full engineering discipline prevention checklist before pushing. Executable version of the engineering-discipline.md checklist.
+
+## Engineering Discipline
+Mandatory pre-push reading: the prevention checklist in the project memory file `engineering-discipline.md` (22 documented errors + 27-item checklist). Run `/pre-push` before every push to execute it automatically.
+
+Key structural rules: stage all imports, safe localStorage defaults, no native OS controls in custom UI, trace CSS ancestor chain before positioning, tokens reference vars not hex, one action = one trigger, measure dimensions with arithmetic before writing CSS, grep for same anti-pattern across codebase, test mobile at 375px alongside desktop.
 
 ## Commit & Deploy
 This repo deploys directly via Cloudflare Pages from the `main` branch (~1 minute auto-deploy).
@@ -43,6 +63,12 @@ The environment restricts pushes to `claude/` branches only. You **cannot** push
 - Don't try multiple auth workarounds when the first one fails — go straight to giving the user the compare URL
 - Don't tell the user "you'll need to merge yourself" without giving the direct link
 - Don't make the user ask twice for a PR — offer it immediately after the push is blocked
+
+### Git Hygiene
+- Never `git stash` on a branch you'll push — stash commits leak into history.
+- After a revert, verify with `git log --oneline -5` it appears exactly once.
+- Before pushing, run `git log --oneline -10` to sanity-check the commit list.
+- ~15 duplicate PR commits from squash-merge are normal GitHub behaviour — no action needed.
 
 ### Incident (March 2026)
 Session pushed 13 commits to the feature branch but never merged to `main` or created a PR. When asked to go live, attempted to push to `main` (403), then spent multiple rounds trying different auth methods for the GitHub API, asking the user to do it manually, and giving broken instructions. The user had to ask 4 times before getting a working link. Root cause: no documented process for the `claude/` branch constraint. All of this should have been one smooth step.
@@ -90,5 +116,6 @@ Session pushed 13 commits to the feature branch but never merged to `main` or cr
 - When a bug involves an external integration (API, sheet sync, third-party service), **ask the user whether that integration is still in use** before debugging it
 - Don't patch plumbing the user has already abandoned — remove dead code instead
 - Prefer deletion over repair when the feature is no longer needed
+- **Integration decision step**: Before touching any integration, first determine: is it staying or going? If going, follow Migration Discipline (section 5). Don't make a different decision each session — check project memory for prior decisions before acting.
 
 # ── END: Claude Guidelines ──

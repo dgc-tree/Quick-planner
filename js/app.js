@@ -22,6 +22,7 @@ import {
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
 import { initChat, onProjectSwitch as chatProjectSwitch, clearConversation, hideBubble as hideChatBubble, showBubble as showChatBubble, setTTSEnabled, setBriefingMode, getTTSEnabled, getBriefingMode, openPanel as openChatPanel } from './ai-chat.js';
+import { getProviderConfig, setProvider, setLocalConfig, testClaudeConnection, testLocalConnection } from './ai-llm.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -1368,26 +1369,159 @@ function setupSettingsPanel() {
 
   // --- Assistant settings ---
   const aiKeyInput = $('#settings-ai-key');
-  const aiKeyToggle = $('#settings-ai-key-toggle');
   const aiTtsToggle = $('#settings-ai-tts');
   const aiBriefingSelect = $('#settings-ai-briefing');
   const aiClearBtn = $('#settings-ai-clear');
+  const aiClaudeRadio = $('#settings-ai-provider-claude');
+  const aiLocalRadio = $('#settings-ai-provider-local');
+  const aiClaudeFields = $('#settings-ai-claude-fields');
+  const aiLocalFields = $('#settings-ai-local-fields');
+  const aiTestBtn = $('#settings-ai-test');
+  const aiStatus = $('#settings-ai-status');
+  const aiEndpointInput = $('#settings-ai-endpoint');
+  const aiModelInput = $('#settings-ai-model');
+  const aiLocalKeyInput = $('#settings-ai-local-key');
+  const aiLocalTestBtn = $('#settings-ai-local-test');
+  const aiLocalStatus = $('#settings-ai-local-status');
 
-  // Load saved values
-  if (aiKeyInput) aiKeyInput.value = localStorage.getItem('qp-ai-key') || '';
+  // Load saved provider config
+  const providerCfg = getProviderConfig();
+  if (aiKeyInput) aiKeyInput.value = providerCfg.apiKey;
+  if (aiEndpointInput) aiEndpointInput.value = providerCfg.endpoint;
+  if (aiModelInput) aiModelInput.value = providerCfg.model;
+  if (aiLocalKeyInput) aiLocalKeyInput.value = providerCfg.localKey;
   if (aiTtsToggle) aiTtsToggle.checked = getTTSEnabled();
   if (aiBriefingSelect) aiBriefingSelect.value = getBriefingMode();
 
-  if (aiKeyInput) aiKeyInput.addEventListener('change', () => {
+  // Show correct provider fields
+  function showProviderFields(provider) {
+    if (aiClaudeFields) aiClaudeFields.classList.toggle('hidden', provider !== 'claude');
+    if (aiLocalFields) aiLocalFields.classList.toggle('hidden', provider !== 'local');
+  }
+  if (providerCfg.provider === 'local' && aiLocalRadio) aiLocalRadio.checked = true;
+  showProviderFields(providerCfg.provider);
+
+  // Provider radio change
+  document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      setProvider(radio.value);
+      showProviderFields(radio.value);
+    });
+  });
+
+  // Helper: update Claude status display
+  function setClaudeStatus(text, type) {
+    if (!aiStatus) return;
+    aiStatus.textContent = text;
+    const cls = type === 'ok' ? 'settings-ai-status-ok'
+      : type === 'err' ? 'settings-ai-status-err'
+      : type === 'info' ? 'settings-ai-status-info' : '';
+    aiStatus.className = `settings-ai-status ${cls}`;
+  }
+
+  // Show persisted verification status on load
+  if (providerCfg.apiKey && aiStatus) {
+    const verified = localStorage.getItem('qp-ai-verified');
+    if (verified === 'ok') {
+      setClaudeStatus('\u2713 Connected — key stored in this browser only', 'ok');
+    } else if (providerCfg.apiKey.startsWith('sk-ant-')) {
+      setClaudeStatus('Key saved — click Test connection to verify', 'info');
+    } else {
+      setClaudeStatus('Key should start with sk-ant-', 'err');
+    }
+  }
+
+  // Claude API key — auto-save on input (paste or type) with debounce
+  let _aiKeySaveTimer = null;
+  function saveApiKey() {
     const val = aiKeyInput.value.trim();
-    if (val) localStorage.setItem('qp-ai-key', val);
-    else localStorage.removeItem('qp-ai-key');
+    if (val) {
+      localStorage.setItem('qp-ai-key', val);
+      localStorage.removeItem('qp-ai-verified');
+      if (!val.startsWith('sk-ant-')) {
+        setClaudeStatus('Key should start with sk-ant-', 'err');
+      } else {
+        setClaudeStatus('Key saved — click Test connection to verify', 'info');
+      }
+    } else {
+      localStorage.removeItem('qp-ai-key');
+      localStorage.removeItem('qp-ai-verified');
+      setClaudeStatus('', '');
+    }
+  }
+
+  if (aiKeyInput) {
+    aiKeyInput.addEventListener('input', () => {
+      clearTimeout(_aiKeySaveTimer);
+      _aiKeySaveTimer = setTimeout(saveApiKey, 400);
+    });
+    aiKeyInput.addEventListener('change', () => {
+      clearTimeout(_aiKeySaveTimer);
+      saveApiKey();
+    });
+  }
+
+  // Claude test connection — button stays standard, feedback in status text only
+  if (aiTestBtn) aiTestBtn.addEventListener('click', async () => {
+    aiTestBtn.disabled = true;
+    aiTestBtn.textContent = 'Testing\u2026';
+    setClaudeStatus('Connecting to Anthropic\u2026', 'info');
+    try {
+      const result = await testClaudeConnection();
+      if (result.ok) {
+        setClaudeStatus(`\u2713 Connected (${result.models})`, 'ok');
+        localStorage.setItem('qp-ai-verified', 'ok');
+        showToast('API key verified — advanced features unlocked', 'success');
+      } else {
+        setClaudeStatus(result.message, 'err');
+        localStorage.removeItem('qp-ai-verified');
+        showToast(result.message, 'error');
+      }
+    } catch (err) {
+      setClaudeStatus(err.message, 'err');
+      localStorage.removeItem('qp-ai-verified');
+      showToast('Could not reach Anthropic API', 'error');
+    }
+    aiTestBtn.disabled = false;
+    aiTestBtn.textContent = 'Test connection';
   });
 
-  if (aiKeyToggle) aiKeyToggle.addEventListener('click', () => {
-    aiKeyInput.type = aiKeyInput.type === 'password' ? 'text' : 'password';
+  // Local LLM settings
+  if (aiEndpointInput) aiEndpointInput.addEventListener('change', () => {
+    setLocalConfig({ endpoint: aiEndpointInput.value.trim() });
+    if (aiLocalStatus) { aiLocalStatus.textContent = ''; aiLocalStatus.className = 'settings-ai-status'; }
+  });
+  if (aiModelInput) aiModelInput.addEventListener('change', () => {
+    setLocalConfig({ model: aiModelInput.value.trim() });
+  });
+  if (aiLocalKeyInput) aiLocalKeyInput.addEventListener('change', () => {
+    setLocalConfig({ localKey: aiLocalKeyInput.value.trim() });
   });
 
+  // Local LLM test connection
+  if (aiLocalTestBtn) aiLocalTestBtn.addEventListener('click', async () => {
+    aiLocalTestBtn.disabled = true;
+    aiLocalTestBtn.textContent = 'Testing…';
+    if (aiLocalStatus) { aiLocalStatus.textContent = ''; aiLocalStatus.className = 'settings-ai-status'; }
+    try {
+      const result = await testLocalConnection();
+      if (aiLocalStatus) {
+        aiLocalStatus.textContent = result.ok
+          ? `Connected (${result.models})`
+          : result.message;
+        aiLocalStatus.className = `settings-ai-status ${result.ok ? 'settings-ai-status-ok' : 'settings-ai-status-err'}`;
+      }
+    } catch (err) {
+      if (aiLocalStatus) {
+        aiLocalStatus.textContent = `Error: ${err.message}`;
+        aiLocalStatus.className = 'settings-ai-status settings-ai-status-err';
+      }
+    }
+    aiLocalTestBtn.disabled = false;
+    aiLocalTestBtn.textContent = 'Test connection';
+  });
+
+  // TTS + briefing + clear
   if (aiTtsToggle) aiTtsToggle.addEventListener('change', () => {
     setTTSEnabled(aiTtsToggle.checked);
   });
@@ -1397,8 +1531,29 @@ function setupSettingsPanel() {
   });
 
   if (aiClearBtn) aiClearBtn.addEventListener('click', () => {
-    clearConversation();
-    showToast('Conversation cleared', 'success');
+    showConfirmDialog({
+      title: 'Clear chat history?',
+      body: 'All assistant messages will be permanently deleted.',
+      confirmLabel: 'Clear',
+      onConfirm: () => {
+        clearConversation();
+        showToast('Conversation cleared', 'success');
+      },
+    });
+  });
+
+  // --- Settings tabs ---
+  const settingsTabs = document.querySelectorAll('.settings-tab');
+  const settingsPanels = document.querySelectorAll('.settings-tab-panel');
+
+  function switchSettingsTab(tabName) {
+    settingsTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+    settingsPanels.forEach(p => p.classList.toggle('active', p.dataset.panel === tabName));
+    settingsView.scrollTop = 0;
+  }
+
+  settingsTabs.forEach(tab => {
+    tab.addEventListener('click', () => switchSettingsTab(tab.dataset.tab));
   });
 
   // --- Open / close settings view ---
@@ -1412,11 +1567,9 @@ function setupSettingsPanel() {
     settingsView.classList.remove('hidden');
     $active.checked = _bgFx.getConfig().active;
     document.querySelector('main').classList.add('settings-open');
-    settingsView.scrollTop = 0;
+    // Reset to General tab
+    switchSettingsTab('general');
     sessionStorage.setItem('qp-view', 'settings');
-    // Refresh export section visibility
-    const exportSection = $('#settings-export-section');
-    if (exportSection) exportSection.classList.remove('hidden');
     // Refresh people section
     if (_people) _people.load();
   }
@@ -2026,25 +2179,74 @@ document.addEventListener('DOMContentLoaded', () => {
   menuOverlay.addEventListener('click', (e) => {
     if (e.target === menuOverlay) closeMenu();
   });
-  // Theme toggle helper
-  function toggleTheme() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    localStorage.setItem('qp-theme', isDark ? 'light' : 'dark');
-    syncThemeCheckboxes();
+  // Theme mode: light | dark | system
+  const THEME_MODES = ['light', 'dark', 'system'];
+  let _themeMode = localStorage.getItem('qp-theme-mode') || 'system';
+
+  function applyThemeMode(mode) {
+    _themeMode = mode;
+    localStorage.setItem('qp-theme-mode', mode);
+    let resolved = mode;
+    if (mode === 'system') {
+      resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', resolved);
+    localStorage.setItem('qp-theme', resolved);
+    syncThemeUI();
   }
 
-  function syncThemeCheckboxes() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const sidebarCb = document.getElementById('sidebar-theme-checkbox');
+  function cycleThemeMode() {
+    const next = THEME_MODES[(THEME_MODES.indexOf(_themeMode) + 1) % 3];
+    applyThemeMode(next);
+  }
+
+  function syncThemeUI() {
+    // Sidebar mode icon
+    const group = document.querySelector('.sidebar-theme-group');
+    if (group) group.setAttribute('data-mode', _themeMode);
+    // Sidebar mode buttons
+    document.querySelectorAll('.sidebar-mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === _themeMode);
+    });
+    // Sidebar surface buttons
+    const surface = localStorage.getItem('qp-surface') || 'frost';
+    document.querySelectorAll('.sidebar-surface-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.surface === surface);
+    });
+    // Mobile checkbox (keep compatible)
     const mobileCb = document.getElementById('mobile-theme-checkbox');
-    if (sidebarCb) sidebarCb.checked = isDark;
-    if (mobileCb) mobileCb.checked = isDark;
+    if (mobileCb) mobileCb.checked = document.documentElement.getAttribute('data-theme') === 'dark';
   }
-  syncThemeCheckboxes();
 
-  // Sidebar buttons
-  document.getElementById('sidebar-theme-checkbox').addEventListener('change', toggleTheme);
+  // Listen for OS theme changes when in system mode
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (_themeMode === 'system') applyThemeMode('system');
+  });
+
+  // Init
+  applyThemeMode(_themeMode);
+
+  // Sidebar theme panel toggle
+  const themeCycleBtn = document.getElementById('sidebar-theme-cycle');
+  const themeGroup = document.getElementById('sidebar-theme-group');
+  if (themeCycleBtn) themeCycleBtn.addEventListener('click', () => {
+    themeGroup.classList.toggle('open');
+  });
+
+  // Sidebar mode buttons
+  document.querySelectorAll('.sidebar-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyThemeMode(btn.dataset.mode));
+  });
+
+  // Sidebar surface buttons
+  document.querySelectorAll('.sidebar-surface-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.surface;
+      localStorage.setItem('qp-surface', val);
+      document.documentElement.setAttribute('data-surface', val);
+      syncThemeUI();
+    });
+  });
 
   // Sidebar expand/collapse toggle (WCAG 1.4.13 keyboard accessible)
   const sidebarRail = document.querySelector('.sidebar-rail');
@@ -2070,7 +2272,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mobileCb) mobileCb.addEventListener('change', () => {
     // Capture theme before toggling so Cancel can revert
     _savedTheme = document.documentElement.getAttribute('data-theme') || 'light';
-    toggleTheme();
+    cycleThemeMode();
     if (themeFooter) themeFooter.classList.add('visible');
   });
   const mobileThemeCancel = document.getElementById('mobile-theme-cancel');
@@ -2079,7 +2281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (_savedTheme) {
       document.documentElement.setAttribute('data-theme', _savedTheme);
       localStorage.setItem('qp-theme', _savedTheme);
-      syncThemeCheckboxes();
+      syncThemeUI();
     }
     _savedTheme = null;
     hideThemeFooter();
