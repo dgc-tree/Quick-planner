@@ -4656,13 +4656,23 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 
 [data-surface="flat"] {
   --blur: 0px;
-  --surface-base: rgba(238,238,238,0.85);
-  --surface-raised: rgba(238,238,238,0.92);
+  --surface-base: rgba(238,238,238,0.88);
+  --surface-raised: rgba(238,238,238,0.93);
+  --surface-header: rgba(240,240,240,0.96);
+  --surface-highlight: rgba(238,238,238,0.82);
 }
 
 [data-surface="flat"][data-theme="dark"] {
-  --surface-base: rgba(238,238,238,0.1);
-  --surface-raised: rgba(238,238,238,0.14);
+  --blur: 0px;
+  --surface-base: rgba(0,20,24,0.88);
+  --surface-raised: rgba(0,20,24,0.93);
+  --surface-header: rgba(0,18,22,0.96);
+  --surface-highlight: rgba(0,20,24,0.82);
+}
+
+/* Hide background accent sprites in flat mode */
+[data-surface="flat"] body {
+  background-image: none !important;
 }
 
 /* === Desktop overrides === */
