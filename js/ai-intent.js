@@ -417,10 +417,10 @@ export function resolveIntent(message, context) {
  * Generate a proactive briefing message (pure JS, no LLM).
  * @param {object[]} tasks - Current project tasks (with Date objects for dates)
  * @param {string} userName
- * @param {'off'|'today'|'week'} mode
+ * @param {'off'|'daily'|'weekly'|'monthly'} mode
  * @returns {string|null}
  */
-export function generateBriefing(tasks, userName, mode = 'week') {
+export function generateBriefing(tasks, userName, mode = 'daily') {
   if (mode === 'off' || !tasks.length) return null;
 
   const todayDate = today();
@@ -436,14 +436,14 @@ export function generateBriefing(tasks, userName, mode = 'week') {
     return fmtDate(new Date(t.endDate)) === fmtDate(todayDate);
   });
 
-  let dueThisWeek = [];
-  if (mode === 'week') {
-    const endOfWeek = new Date(todayDate);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
-    dueThisWeek = tasks.filter(t => {
+  let dueUpcoming = [];
+  if (mode === 'weekly' || mode === 'monthly') {
+    const horizon = new Date(todayDate);
+    horizon.setDate(horizon.getDate() + (mode === 'monthly' ? 30 : 7));
+    dueUpcoming = tasks.filter(t => {
       if (!t.endDate || t.status === 'Done') return false;
       const d = new Date(t.endDate);
-      return d > todayDate && d <= endOfWeek;
+      return d > todayDate && d <= horizon;
     });
   }
 
@@ -456,8 +456,9 @@ export function generateBriefing(tasks, userName, mode = 'week') {
   if (dueToday.length > 0) {
     parts.push(`${dueToday.length} due today`);
   }
-  if (dueThisWeek.length > 0) {
-    parts.push(`${dueThisWeek.length} due this week`);
+  if (dueUpcoming.length > 0) {
+    const label = mode === 'monthly' ? 'due this month' : 'due this week';
+    parts.push(`${dueUpcoming.length} ${label}`);
   }
 
   if (parts.length === 0) return null;

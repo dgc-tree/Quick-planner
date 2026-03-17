@@ -20,10 +20,11 @@ let _isOpen = false;
 let _messages = [];           // { role: 'user'|'assistant', content: string }
 let _pendingAction = null;    // Pending clarification action
 let _recogniser = null;
-let _ttsEnabled = true;
-let _briefingMode = 'week';   // 'off' | 'today' | 'week'
+let _ttsEnabled = false;
+let _briefingMode = 'daily';  // 'off' | 'daily' | 'weekly' | 'monthly'
 let _chatBubble = null;
 let _hasPendingBriefing = false;
+let _voiceRoundTrip = false;  // True when current message came from mic input
 
 // Callbacks to app.js
 let _onUpdateTask = null;
@@ -49,9 +50,13 @@ export function initChat(callbacks) {
   _onGetTasks = callbacks.getTasks;
   _onProjectSwitch = callbacks.onProjectSwitch;
 
-  // Load settings
-  _ttsEnabled = localStorage.getItem('qp-ai-tts') !== '0';
-  _briefingMode = localStorage.getItem('qp-ai-briefing') || 'week';
+  // Load settings — TTS defaults OFF (opt-in via settings toggle)
+  _ttsEnabled = localStorage.getItem('qp-ai-tts') === '1';
+  const savedMode = localStorage.getItem('qp-ai-briefing');
+  // Migrate old values: 'today' → 'daily', 'week' → 'weekly'
+  _briefingMode = savedMode === 'today' ? 'daily'
+    : savedMode === 'week' ? 'weekly'
+    : savedMode || 'daily';
 
   injectUI();
   loadConversation();
@@ -195,10 +200,11 @@ export function openPanel() {
 
 // ─── Message handling ─────────────────────────────────────────────────────────
 
-async function sendMessage() {
+async function sendMessage(fromVoice = false) {
   const text = _input.value.trim();
   if (!text) return;
   _input.value = '';
+  _voiceRoundTrip = fromVoice;
 
   // Remove empty state
   const empty = _messageList.querySelector('.qp-chat-empty');
@@ -207,6 +213,7 @@ async function sendMessage() {
   appendBubble('user', text);
 
   await processMessage(text);
+  _voiceRoundTrip = false;
 }
 
 async function processMessage(text) {
@@ -370,8 +377,8 @@ function appendBubble(role, content, opts = {}) {
       contentEl.appendChild(chip);
     }
 
-    // TTS for short responses
-    if (_ttsEnabled && isTTSSupported() && !skipSave && content.length < 200) {
+    // TTS: speak response if voice mode is on OR this was a voice-to-voice round trip
+    if ((_ttsEnabled || _voiceRoundTrip) && isTTSSupported() && !skipSave && content.length < 200) {
       speak(content);
     }
   } else {
@@ -383,7 +390,11 @@ function appendBubble(role, content, opts = {}) {
   scrollToBottom();
 
   if (!skipSave) {
-    _messages.push({ role, content, undoData: undoData || undefined });
+    _messages.push({
+      role, content,
+      timestamp: new Date().toLocaleString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      undoData: undoData || undefined,
+    });
     saveConversation();
   }
 }
@@ -417,8 +428,8 @@ function setupVoice() {
     onResult(text) {
       _input.value = text;
       _micBtn.classList.remove('qp-chat-mic-active');
-      // Auto-send after voice input
-      setTimeout(() => sendMessage(), 200);
+      // Auto-send after voice input — flag as voice round trip for TTS response
+      setTimeout(() => sendMessage(true), 200);
     },
     onError(err) {
       _micBtn.classList.remove('qp-chat-mic-active');
@@ -487,17 +498,39 @@ export function getBriefingMode() { return _briefingMode; }
 
 function saveConversation() {
   try {
-    // Only keep last 50 messages
+    // Only keep last 50 messages — persist to localStorage (survives tab close)
     const toSave = _messages.slice(-50);
-    sessionStorage.setItem('qp-ai-chat', JSON.stringify(toSave));
+    localStorage.setItem('qp-ai-chat', JSON.stringify(toSave));
+    // Also save a plain-text transcript for durability
+    saveTranscript(toSave);
   } catch { /* quota exceeded — ignore */ }
 }
 
 function loadConversation() {
   try {
-    const raw = sessionStorage.getItem('qp-ai-chat');
+    // Migrate from sessionStorage if present (one-time)
+    const legacy = sessionStorage.getItem('qp-ai-chat');
+    if (legacy) {
+      localStorage.setItem('qp-ai-chat', legacy);
+      sessionStorage.removeItem('qp-ai-chat');
+    }
+    const raw = localStorage.getItem('qp-ai-chat');
     if (raw) _messages = JSON.parse(raw);
   } catch { _messages = []; }
+}
+
+/**
+ * Save a plain-text transcript alongside the JSON conversation.
+ * Readable in any text editor; survives connection drops.
+ */
+function saveTranscript(messages) {
+  if (!messages.length) return;
+  const lines = messages.map(m => {
+    const ts = m.timestamp || '';
+    const prefix = m.role === 'user' ? 'You' : 'QP';
+    return `[${prefix}]${ts ? ' ' + ts : ''} ${m.content}`;
+  });
+  localStorage.setItem('qp-ai-transcript', lines.join('\n\n'));
 }
 
 // ─── Visibility ───────────────────────────────────────────────────────────────

@@ -51,16 +51,39 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
         <span class="sidebar-label">Settings</span>
       </button>
-      <label id="sidebar-theme-toggle" class="sidebar-item sidebar-theme-item" title="Toggle dark mode">
-        <input type="checkbox" class="toggle-input" id="sidebar-theme-checkbox">
-        <span class="theme-pill">
-          <span class="theme-pill-thumb">
-            <svg class="theme-pill-icon icon-sun" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
-            <svg class="theme-pill-icon icon-moon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+      <div class="sidebar-theme-group" id="sidebar-theme-group">
+        <button id="sidebar-theme-cycle" class="sidebar-item" title="Theme options">
+          <span class="theme-mode-icon theme-mode-icon-light">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
           </span>
-        </span>
-        <span class="sidebar-label">Theme mode</span>
-      </label>
+          <span class="theme-mode-icon theme-mode-icon-dark">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+          </span>
+          <span class="theme-mode-icon theme-mode-icon-auto">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </span>
+          <span class="sidebar-label">Theme</span>
+        </button>
+        <div class="sidebar-theme-sub">
+          <span class="sidebar-sub-label">Mode</span>
+          <div class="sidebar-sub-row">
+            <button class="sidebar-mode-btn" data-mode="light" title="Light">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+            </button>
+            <button class="sidebar-mode-btn" data-mode="dark" title="Dark">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+            </button>
+            <button class="sidebar-mode-btn" data-mode="system" title="Auto">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </button>
+          </div>
+          <span class="sidebar-sub-label">Surface</span>
+          <div class="sidebar-sub-row">
+            <button class="sidebar-surface-btn" data-surface="frost" title="Frost">Frost</button>
+            <button class="sidebar-surface-btn" data-surface="flat" title="Flat">Flat</button>
+          </div>
+        </div>
+      </div>
     </nav>
     <button id="sidebar-account-btn" class="sidebar-item sidebar-account-btn" title="Account">
       <span id="sidebar-account-avatar" class="sidebar-account-avatar">
@@ -246,165 +269,233 @@
         </button>
         <h2 class="settings-page-title">Settings</h2>
       </div>
+      <nav class="settings-tabs" id="settings-tabs">
+        <button class="settings-tab active" data-tab="general">General</button>
+        <button class="settings-tab" data-tab="account">Account</button>
+        <button class="settings-tab" data-tab="data">Data</button>
+        <button class="settings-tab" data-tab="assistant">Assistant</button>
+      </nav>
       <div class="settings-page-content">
 
-        <section id="settings-account" class="settings-card">
-          <h3 class="settings-card-title">Account</h3>
-          <div id="settings-account-logged-out">
-            <p class="settings-card-desc">Log in to sync your data across devices.</p>
-            <div class="settings-card-actions">
-              <button id="settings-login-btn" class="modal-btn modal-save">Log in / Sign up</button>
-            </div>
-          </div>
-          <div id="settings-account-logged-in" class="hidden">
-            <p class="settings-card-desc">Signed in as <strong id="settings-account-email"></strong></p>
-
-            <div id="change-email-section" class="settings-subsection">
-              <button id="change-email-toggle" class="settings-link-btn">Change email</button>
-              <div id="change-email-form" class="settings-inline-form hidden">
-                <div class="modal-field">
-                  <label for="new-email-input">New email address</label>
-                  <input id="new-email-input" type="email" placeholder="new@example.com" required>
-                </div>
-                <div id="change-email-msg" class="settings-msg hidden"></div>
-                <div class="settings-card-actions">
-                  <button id="change-email-submit" class="modal-btn modal-save">Send verification email</button>
-                  <button id="change-email-cancel" type="button" class="modal-btn modal-cancel">Cancel</button>
-                </div>
+        <!-- ═══ General tab ═══ -->
+        <div class="settings-tab-panel active" data-panel="general">
+          <section class="settings-card">
+            <h3 class="settings-card-title">Brand Palette</h3>
+            <p class="settings-card-desc">Pick a theme colour.</p>
+            <div class="settings-swatch-group">
+              <div id="settings-swatches" class="onboarding-swatches"></div>
+              <div id="settings-user-swatches-wrap" class="settings-user-swatches-wrap" style="display:none;">
+                <div class="settings-separator"></div>
+                <div id="settings-user-swatches" class="onboarding-swatches"></div>
               </div>
             </div>
+            <div class="settings-card-actions">
+              <button id="settings-reset" class="modal-btn modal-cancel">Reset to defaults</button>
+            </div>
+          </section>
 
-            <div id="change-password-section" class="settings-subsection">
-              <button id="change-password-toggle" class="settings-link-btn">Change password</button>
-              <div id="change-password-form" class="settings-inline-form hidden">
-                <div class="modal-field">
-                  <label for="current-password-input">Current password</label>
-                  <input id="current-password-input" type="password" autocomplete="current-password">
-                </div>
-                <div class="modal-field">
-                  <label for="new-password-input">New password</label>
-                  <input id="new-password-input" type="password" autocomplete="new-password" placeholder="Min 15 characters">
-                </div>
-                <div id="new-password-strength" class="password-strength hidden">
-                  <div class="password-strength-bar"><div class="password-strength-fill"></div></div>
-                  <div class="password-strength-meta">
-                    <span class="password-strength-label"></span>
+          <section class="settings-card">
+            <label class="toggle-row">
+              <span>Background effects</span>
+              <input type="checkbox" id="bgfx-active" class="toggle-input">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </section>
 
-                  </div>
-                  <div class="password-strength-guidance">
-                    <p>Longer is stronger. Mixing uppercase, numbers or symbols helps but isn't required.</p>
-                    <p>Tip: Use a password manager to generate and store strong passwords.</p>
-                  </div>
-                </div>
-                <div id="change-password-msg" class="settings-msg hidden"></div>
-                <div class="settings-card-actions">
-                  <button id="change-password-submit" class="modal-btn modal-save">Send verification email</button>
-                  <button id="change-password-cancel" type="button" class="modal-btn modal-cancel">Cancel</button>
-                </div>
+          <section class="settings-card">
+            <h3 class="settings-card-title">Quick Start</h3>
+            <p class="settings-card-desc">Re-run the setup wizard to pick a theme or load a project.</p>
+            <div class="settings-card-actions">
+              <button id="settings-master-setup" class="modal-btn modal-cancel">Master setup</button>
+            </div>
+          </section>
+
+          <p class="settings-version" id="settings-version"></p>
+        </div>
+
+        <!-- ═══ Account tab ═══ -->
+        <div class="settings-tab-panel" data-panel="account">
+          <section id="settings-account" class="settings-card">
+            <h3 class="settings-card-title">Account</h3>
+            <div id="settings-account-logged-out">
+              <p class="settings-card-desc">Log in to sync your data across devices.</p>
+              <div class="settings-card-actions">
+                <button id="settings-login-btn" class="modal-btn modal-save">Log in / Sign up</button>
               </div>
             </div>
+            <div id="settings-account-logged-in" class="hidden">
+              <p class="settings-card-desc">Signed in as <strong id="settings-account-email"></strong></p>
 
+              <div id="change-email-section" class="settings-subsection">
+                <button id="change-email-toggle" class="settings-link-btn">Change email</button>
+                <div id="change-email-form" class="settings-inline-form hidden">
+                  <div class="modal-field">
+                    <label for="new-email-input">New email address</label>
+                    <input id="new-email-input" type="email" placeholder="new@example.com" required>
+                  </div>
+                  <div id="change-email-msg" class="settings-msg hidden"></div>
+                  <div class="settings-card-actions">
+                    <button id="change-email-submit" class="modal-btn modal-save">Send verification email</button>
+                    <button id="change-email-cancel" type="button" class="modal-btn modal-cancel">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="change-password-section" class="settings-subsection">
+                <button id="change-password-toggle" class="settings-link-btn">Change password</button>
+                <div id="change-password-form" class="settings-inline-form hidden">
+                  <div class="modal-field">
+                    <label for="current-password-input">Current password</label>
+                    <input id="current-password-input" type="password" autocomplete="current-password">
+                  </div>
+                  <div class="modal-field">
+                    <label for="new-password-input">New password</label>
+                    <input id="new-password-input" type="password" autocomplete="new-password" placeholder="Min 15 characters">
+                  </div>
+                  <div id="new-password-strength" class="password-strength hidden">
+                    <div class="password-strength-bar"><div class="password-strength-fill"></div></div>
+                    <div class="password-strength-meta">
+                      <span class="password-strength-label"></span>
+                    </div>
+                    <div class="password-strength-guidance">
+                      <p>Longer is stronger. Mixing uppercase, numbers or symbols helps but isn't required.</p>
+                      <p>Tip: Use a password manager to generate and store strong passwords.</p>
+                    </div>
+                  </div>
+                  <div id="change-password-msg" class="settings-msg hidden"></div>
+                  <div class="settings-card-actions">
+                    <button id="change-password-submit" class="modal-btn modal-save">Send verification email</button>
+                    <button id="change-password-cancel" type="button" class="modal-btn modal-cancel">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-card-actions">
+                <button id="settings-logout-btn" class="modal-btn modal-cancel">Log out</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="settings-people" class="settings-card hidden">
+            <h3 class="settings-card-title">People</h3>
+            <p class="settings-card-desc">Manage who has access to this project.</p>
+            <div class="people-body"></div>
+          </section>
+        </div>
+
+        <!-- ═══ Data tab ═══ -->
+        <div class="settings-tab-panel" data-panel="data">
+          <section id="settings-export-section" class="settings-card">
+            <h3 class="settings-card-title">Data</h3>
+            <p class="settings-card-desc">Export this project or back up all app data.</p>
             <div class="settings-card-actions">
-              <button id="settings-logout-btn" class="modal-btn modal-cancel">Log out</button>
-            </div>
-          </div>
-        </section>
-
-        <section id="settings-people" class="settings-card hidden">
-          <h3 class="settings-card-title">People</h3>
-          <p class="settings-card-desc">Manage who has access to this project.</p>
-          <div class="people-body"></div>
-        </section>
-
-        <section class="settings-card">
-          <h3 class="settings-card-title">Brand Palette</h3>
-          <p class="settings-card-desc">Pick a theme colour.</p>
-          <div class="settings-swatch-group">
-            <div id="settings-swatches" class="onboarding-swatches"></div>
-            <div id="settings-user-swatches-wrap" class="settings-user-swatches-wrap" style="display:none;">
-              <div class="settings-separator"></div>
-              <div id="settings-user-swatches" class="onboarding-swatches"></div>
-            </div>
-          </div>
-          <div class="settings-card-actions">
-            <button id="settings-reset" class="modal-btn modal-cancel">Reset to defaults</button>
-          </div>
-        </section>
-
-        <section class="settings-card">
-          <label class="toggle-row">
-            <span>Background effects</span>
-            <input type="checkbox" id="bgfx-active" class="toggle-input">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </section>
-
-        <section id="settings-export-section" class="settings-card hidden">
-          <h3 class="settings-card-title">Data</h3>
-          <p class="settings-card-desc">Export this project or back up all app data.</p>
-          <div class="settings-card-actions">
-            <button id="settings-export-btn" class="modal-btn modal-cancel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export CSV
-            </button>
-          </div>
-          <div class="settings-card-actions settings-backup-actions">
-            <button id="settings-backup-btn" class="modal-btn modal-cancel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Backup all data
-            </button>
-            <button id="settings-restore-btn" class="modal-btn modal-cancel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Restore backup
-            </button>
-            <input type="file" id="settings-restore-input" accept=".json" class="hidden">
-          </div>
-        </section>
-
-        <section class="settings-card" id="settings-assistant">
-          <h3 class="settings-card-title">Assistant</h3>
-          <p class="settings-card-desc">QP Chat answers most questions locally - no API needed. Add a Claude API key to unlock advanced queries like rescheduling and multi-step commands. Your tasks are only sent when the API is used - Anthropic does not store data beyond the request.</p>
-          <div class="modal-field" style="margin:12px 0">
-            <label for="settings-ai-key">Claude API key</label>
-            <div class="settings-password-wrap">
-              <input id="settings-ai-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" class="settings-ai-key-input">
-              <button type="button" id="settings-ai-key-toggle" class="settings-password-toggle" title="Show/hide key" aria-label="Toggle API key visibility">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+              <button id="settings-export-btn" class="modal-btn modal-cancel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
               </button>
             </div>
-          </div>
-          <label class="toggle-row">
-            <span>Voice input</span>
-            <input type="checkbox" id="settings-ai-voice" class="toggle-input" checked>
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-          <label class="toggle-row">
-            <span>Voice responses (TTS)</span>
-            <input type="checkbox" id="settings-ai-tts" class="toggle-input" checked>
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-          <div class="modal-field" style="margin:12px 0">
-            <label for="settings-ai-briefing">Proactive briefings</label>
-            <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
-              <option value="off">Off</option>
-              <option value="today">Today only</option>
-              <option value="week" selected>This week</option>
-            </select>
-          </div>
-          <div class="settings-card-actions">
-            <button id="settings-ai-clear" class="modal-btn modal-cancel">Clear conversation</button>
-          </div>
-        </section>
+            <div class="settings-card-actions settings-backup-actions">
+              <button id="settings-backup-btn" class="modal-btn modal-cancel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Backup all data
+              </button>
+              <button id="settings-restore-btn" class="modal-btn modal-cancel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Restore backup
+              </button>
+              <input type="file" id="settings-restore-input" accept=".json" class="hidden">
+            </div>
+          </section>
+        </div>
 
-        <section class="settings-card">
-          <h3 class="settings-card-title">Quick Start</h3>
-          <p class="settings-card-desc">Re-run the setup wizard to pick a theme or load a project.</p>
-          <div class="settings-card-actions">
-            <button id="settings-master-setup" class="modal-btn modal-cancel">Master setup</button>
-          </div>
-        </section>
+        <!-- ═══ Assistant tab ═══ -->
+        <div class="settings-tab-panel" data-panel="assistant">
+          <section class="settings-card" id="settings-assistant">
+            <h3 class="settings-card-title">Assistant</h3>
+            <p class="settings-card-desc">QP Chat answers most questions locally - no API needed. Connect a provider below to unlock advanced queries like rescheduling and multi-step commands.</p>
 
-        <p class="settings-version" id="settings-version"></p>
+            <div class="modal-field" style="margin:12px 0">
+              <label>Provider</label>
+              <div class="settings-ai-provider-group">
+                <label class="settings-ai-provider-option">
+                  <input type="radio" name="ai-provider" value="claude" id="settings-ai-provider-claude" checked>
+                  <span>Claude API</span>
+                </label>
+                <label class="settings-ai-provider-option">
+                  <input type="radio" name="ai-provider" value="local" id="settings-ai-provider-local">
+                  <span>Local LLM</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Claude API fields -->
+            <div id="settings-ai-claude-fields">
+              <div class="modal-field" style="margin:12px 0">
+                <label for="settings-ai-key">Claude API key</label>
+                <p class="settings-field-hint">Paste your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Your key is saved in this browser only - never copy it into emails, messages or shared documents.</p>
+                <input id="settings-ai-key" type="password" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false">
+                <div id="settings-ai-status" class="settings-ai-status"></div>
+              </div>
+              <p class="settings-field-hint">Check that your key is valid and can reach the API. Required before advanced features will work.</p>
+              <button type="button" id="settings-ai-test" class="modal-btn modal-cancel">Test connection</button>
+            </div>
+
+            <!-- Local LLM fields -->
+            <div id="settings-ai-local-fields" class="hidden">
+              <div class="modal-field" style="margin:12px 0">
+                <label for="settings-ai-endpoint">Endpoint URL</label>
+                <input id="settings-ai-endpoint" type="url" placeholder="http://127.0.0.1:1234/v1/chat/completions" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="modal-field" style="margin:12px 0">
+                <label for="settings-ai-model">Model name</label>
+                <input id="settings-ai-model" type="text" placeholder="qwen3.5-35b-a3b" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="modal-field" style="margin:12px 0">
+                <label for="settings-ai-local-key">API key <span class="settings-ai-optional">(optional)</span></label>
+                <input id="settings-ai-local-key" type="password" placeholder="Leave blank if not required" autocomplete="off" spellcheck="false">
+              </div>
+              <div id="settings-ai-local-status" class="settings-ai-status"></div>
+              <button type="button" id="settings-ai-local-test" class="modal-btn modal-cancel">Test connection</button>
+            </div>
+
+            <hr class="settings-card-divider">
+
+            <div class="settings-toggle-pair">
+              <label class="toggle-row">
+                <span>Voice input</span>
+                <input type="checkbox" id="settings-ai-voice" class="toggle-input" checked>
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <label class="toggle-row">
+                <span>Voice responses (TTS)</span>
+                <input type="checkbox" id="settings-ai-tts" class="toggle-input">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+
+            <hr class="settings-card-divider">
+
+            <div class="modal-field" style="margin:0">
+              <label for="settings-ai-briefing">Task summary</label>
+              <p class="settings-field-hint">Get a quick overview of upcoming and overdue tasks when you open the app.</p>
+              <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
+                <option value="off">Off</option>
+                <option value="daily" selected>Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            <hr class="settings-card-divider">
+
+            <div class="settings-card-subsection">
+              <label>Chat history</label>
+              <p class="settings-field-hint">Delete all messages in the assistant conversation. This can't be undone.</p>
+              <button id="settings-ai-clear" class="modal-btn modal-cancel">Clear conversation</button>
+            </div>
+          </section>
+        </div>
+
       </div>
     </div>
 
@@ -433,6 +524,8 @@
     (function() {
       const saved = localStorage.getItem('qp-theme');
       if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      const surface = localStorage.getItem('qp-surface');
+      if (surface) document.documentElement.setAttribute('data-surface', surface);
       const v = localStorage.getItem('qp-view') || 'kanban';
       const btn = document.querySelector('.view-btn[data-view="' + v + '"]');
       if (btn) btn.classList.add('active');

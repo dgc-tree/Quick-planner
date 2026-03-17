@@ -99,6 +99,8 @@ export function showOnboarding(onFinish) {
   let selectedTemplateId = null;
   let droppedFile = null;
   let step = 1;
+  let selectedSurface = localStorage.getItem('qp-surface') || 'frost';
+  let selectedMode = localStorage.getItem('qp-theme') || 'system';
 
   const overlay = document.createElement('div');
   overlay.className = 'onboarding-overlay';
@@ -107,6 +109,11 @@ export function showOnboarding(onFinish) {
   dialog.className = 'onboarding-dialog';
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
+
+  // Click outside to dismiss
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) finish();
+  });
 
   function dots(active) {
     return `<div class="ob-dots">
@@ -249,6 +256,8 @@ export function showOnboarding(onFinish) {
   async function finish() {
     saveCustomColors(colors);
     applyCustomColors(colors);
+    applySurface(selectedSurface);
+    applyMode(selectedMode);
     markVisited();
 
     let projectId = null;
@@ -281,35 +290,106 @@ export function showOnboarding(onFinish) {
     if (onFinish) onFinish(projectId || 'sheet');
   }
 
+  function applySurface(value) {
+    selectedSurface = value;
+    localStorage.setItem('qp-surface', value);
+    document.documentElement.setAttribute('data-surface', value);
+  }
+
+  function applyMode(value) {
+    selectedMode = value;
+    localStorage.setItem('qp-theme-mode', value);
+    if (value === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      localStorage.setItem('qp-theme', prefersDark ? 'dark' : 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', value);
+      localStorage.setItem('qp-theme', value);
+    }
+    // Sync sidebar checkbox if it exists
+    const sidebarCb = document.getElementById('sidebar-theme-checkbox');
+    if (sidebarCb) sidebarCb.checked = document.documentElement.getAttribute('data-theme') === 'dark';
+  }
+
+  const ICON_SUN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>';
+  const ICON_MOON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>';
+  const ICON_AUTO = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
+
+  function buildSegmented(parent, options, activeValue, onChange) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ob-segmented';
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'ob-seg-btn' + (opt.value === activeValue ? ' active' : '');
+      btn.innerHTML = opt.icon ? `<span class="ob-seg-icon">${opt.icon}</span><span>${opt.label}</span>` : opt.label;
+      btn.addEventListener('click', () => {
+        wrap.querySelectorAll('.ob-seg-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        onChange(opt.value);
+      });
+      wrap.appendChild(btn);
+    });
+    parent.appendChild(wrap);
+  }
+
+
   function renderStep(n) {
     step = n;
     dialog.innerHTML = '';
 
     if (n === 1) {
       dialog.innerHTML = `
-        ${dots(1)}
-        <div class="ob-mascot-wrap">
+        <div class="ob-hero">
           <img src="images/mascot-trash.png" class="ob-mascot" alt="">
+          <div>
+            <h2 class="ob-title">Welcome to Qp!</h2>
+            <p class="ob-intro">Make it yours - pick a colour and style.</p>
+          </div>
         </div>
-        <h2 class="ob-title">Welcome to Qp!</h2>
-        <p class="ob-intro">Let's get your planner set up in 3 quick steps.</p>
+        <label class="ob-section-label">Accent colour</label>
         <div class="onboarding-swatches ob-swatches"></div>
+        <div class="ob-design-row">
+          <div class="ob-design-group">
+            <label class="ob-section-label">Surface</label>
+            <div class="ob-surface-pick"></div>
+          </div>
+          <div class="ob-design-group">
+            <label class="ob-section-label">Mode</label>
+            <div class="ob-mode-pick"></div>
+          </div>
+        </div>
         <div class="ob-footer">
+          ${dots(1)}
           <button class="modal-btn modal-save ob-next">Next →</button>
         </div>
       `;
       buildSwatches(dialog.querySelector('.ob-swatches'));
+
+      buildSegmented(dialog.querySelector('.ob-surface-pick'), [
+        { value: 'frost', label: 'Frost' },
+        { value: 'flat', label: 'Flat' },
+      ], selectedSurface, applySurface);
+
+      buildSegmented(dialog.querySelector('.ob-mode-pick'), [
+        { value: 'light', label: 'Light', icon: ICON_SUN },
+        { value: 'dark', label: 'Dark', icon: ICON_MOON },
+        { value: 'system', label: 'Auto', icon: ICON_AUTO },
+      ], selectedMode, applyMode);
+
       dialog.querySelector('.ob-next').addEventListener('click', () => renderStep(2));
 
     } else if (n === 2) {
       dialog.innerHTML = `
-        ${dots(2)}
         <h2 class="ob-title">Choose a template</h2>
         <div class="ob-template-list"></div>
         <div class="ob-footer">
-          <button class="modal-btn modal-cancel ob-back">← Back</button>
-          <button class="modal-btn modal-cancel ob-skip">Skip</button>
-          <button class="modal-btn modal-save ob-next">Next →</button>
+          <button class="modal-btn modal-cancel ob-back">\u2190 Back</button>
+          ${dots(2)}
+          <div class="ob-footer-right">
+            <button class="modal-btn modal-cancel ob-skip">Skip</button>
+            <button class="modal-btn modal-save ob-next">Next \u2192</button>
+          </div>
         </div>
       `;
       buildTemplateList(dialog.querySelector('.ob-template-list'));
@@ -319,12 +399,12 @@ export function showOnboarding(onFinish) {
 
     } else if (n === 3) {
       dialog.innerHTML = `
-        ${dots(3)}
         <h2 class="ob-title">Import data</h2>
         <p class="ob-intro">Optionally import a CSV file to load your own data.</p>
         <div class="ob-drop-wrap"></div>
         <div class="ob-footer">
-          <button class="modal-btn modal-cancel ob-back">← Back</button>
+          <button class="modal-btn modal-cancel ob-back">\u2190 Back</button>
+          ${dots(3)}
           <button class="modal-btn modal-save ob-finish">Finish</button>
         </div>
       `;

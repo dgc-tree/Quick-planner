@@ -103,6 +103,41 @@ export function createRecogniser(opts = {}) {
  * @param {function} opts.onEnd - Called when speech finishes
  * @returns {{ cancel: function }} Controller to cancel speech
  */
+/**
+ * Pick the best available voice — prefer natural/premium voices over robotic defaults.
+ * macOS ships "Karen" (AU English, premium) and Chrome has Google voices.
+ */
+let _preferredVoice = null;
+let _voicesLoaded = false;
+
+function loadPreferredVoice() {
+  if (_voicesLoaded) return;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return; // voices not loaded yet
+
+  _voicesLoaded = true;
+
+  // Priority order: premium/enhanced AU English → any AU English → premium UK → fallback
+  const ranked = [
+    v => v.lang === 'en-AU' && /premium|enhanced|natural|neural/i.test(v.name),
+    v => v.lang === 'en-AU' && !/compact|alex/i.test(v.name),
+    v => v.lang === 'en-AU',
+    v => v.lang.startsWith('en-') && /premium|enhanced|natural|neural|google/i.test(v.name),
+    v => v.lang === 'en-GB',
+  ];
+
+  for (const test of ranked) {
+    const match = voices.find(test);
+    if (match) { _preferredVoice = match; return; }
+  }
+}
+
+// Voices load asynchronously in most browsers
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = loadPreferredVoice;
+  loadPreferredVoice(); // try immediately in case already loaded
+}
+
 export function speak(text, opts = {}) {
   if (!isTTSSupported()) {
     opts.onEnd?.();
@@ -116,6 +151,10 @@ export function speak(text, opts = {}) {
   utterance.lang = 'en-AU';
   utterance.rate = 1.0;
   utterance.pitch = 1.0;
+
+  // Use the best available natural voice instead of OS default
+  loadPreferredVoice();
+  if (_preferredVoice) utterance.voice = _preferredVoice;
 
   utterance.onend = () => opts.onEnd?.();
   utterance.onerror = () => opts.onEnd?.();

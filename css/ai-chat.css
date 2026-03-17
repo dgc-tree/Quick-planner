@@ -220,7 +220,7 @@ main {
 
 .qp-chat-suggestion:hover {
   background: var(--surface-raised);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 /* Message bubbles */
@@ -365,7 +365,7 @@ main {
 }
 
 .qp-chat-input:focus {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   box-shadow: var(--shadow-glass), 0 0 0 2px rgba(0, 227, 255, 0.2);
 }
 
@@ -406,7 +406,7 @@ main {
 }
 
 .qp-chat-send:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ─── Mobile — full-screen sheet ──────────────────────────────────────────── */
@@ -451,34 +451,59 @@ body:has(#trash-view:not(.hidden)) .qp-chat-fab {
   display: none;
 }
 
-/* ─── Settings — API key field ─────────────────────────────────────────────── */
+/* ─── Settings — Provider & API key ───────────────────────────────────────── */
 
-.settings-password-wrap {
-  position: relative;
+.settings-ai-provider-group {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.settings-ai-provider-option {
   display: flex;
   align-items: center;
-}
-
-.settings-ai-key-input {
-  width: 100%;
-  padding-right: 40px;
-}
-
-.settings-password-toggle {
-  position: absolute;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: none;
+  gap: 6px;
   cursor: pointer;
-  color: var(--content-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.settings-password-toggle:hover {
+  font-size: 0.9rem;
   color: var(--content-primary);
 }
+
+.settings-ai-provider-option input[type="radio"] {
+  accent-color: var(--accent-text);
+  margin: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.settings-ai-status {
+  font-size: 0.8rem;
+  margin-top: 6px;
+  min-height: 1.2em;
+}
+
+.settings-ai-status-ok {
+  color: #15803d;
+}
+
+[data-theme="dark"] .settings-ai-status-ok {
+  color: #4ade80;
+}
+
+.settings-ai-status-err {
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .settings-ai-status-err {
+  color: #f87171;
+}
+
+.settings-ai-status-info {
+  color: var(--content-secondary);
+}
+
+.settings-ai-optional {
+  font-size: 0.75rem;
+  color: var(--content-tertiary);
+  font-weight: 400;
+}
+
