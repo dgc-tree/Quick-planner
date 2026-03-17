@@ -102,7 +102,7 @@ export function initPeopleSection(container, { getActiveProjectId }) {
 
     let html = '';
 
-    // Invite form
+    // Invite form — email + inline role select + primary invite button
     html += `
       <div class="people-invite-form">
         <div class="people-invite-row">
@@ -120,13 +120,18 @@ export function initPeopleSection(container, { getActiveProjectId }) {
       </div>
     `;
 
-    // Search
-    html += `
-      <div class="people-search-wrap">
-        <input type="search" class="people-search-input" placeholder="Filter members..." value="${searchQuery.replace(/"/g, '&quot;')}" aria-label="Filter members">
-        <span class="people-search-count">${totalCount} ${totalCount === 1 ? 'person' : 'people'}</span>
-      </div>
-    `;
+    // Avatar grid grouped by role
+    const grouped = { owner: [], admin: [], member: [], viewer: [] };
+    for (const m of filteredMembers) grouped[m.role]?.push(m);
+
+    // Search (only show if 5+ people)
+    if (totalCount >= 5) {
+      html += `
+        <div class="people-search-wrap">
+          <input type="search" class="people-search-input" placeholder="Filter members..." value="${searchQuery.replace(/"/g, '&quot;')}" aria-label="Filter members">
+        </div>
+      `;
+    }
 
     // Empty state
     if (filteredMembers.length === 0 && filteredInvites.length === 0) {
@@ -142,42 +147,31 @@ export function initPeopleSection(container, { getActiveProjectId }) {
       }
     }
 
-    // Members table
-    if (filteredMembers.length > 0) {
-      html += '<div class="people-table">';
-      for (const m of filteredMembers) {
-        const isOwner = m.role === 'owner';
+    // Render avatar groups
+    const groupLabels = { owner: 'Owner', admin: 'Admins', member: 'Members', viewer: 'Viewers' };
+    for (const role of ['owner', 'admin', 'member', 'viewer']) {
+      if (grouped[role].length === 0) continue;
+      html += `<div class="people-group">`;
+      html += `<h4 class="people-section-label">${groupLabels[role]}</h4>`;
+      html += `<div class="people-avatar-grid">`;
+      for (const m of grouped[role]) {
         const initial = (m.name || m.email)[0].toUpperCase();
         const displayName = m.name || m.email.split('@')[0];
-
+        const isOwner = m.role === 'owner';
         html += `
-          <div class="people-row" data-member-id="${m.id}" data-user-id="${m.user_id}">
+          <div class="people-avatar-card" data-member-id="${m.id}" data-user-id="${m.user_id}" title="${esc(escHtml(m.email))}">
             <div class="people-avatar">${initial}</div>
-            <div class="people-info">
-              <span class="people-name">${esc(highlightMatch(displayName, q))}</span>
-              <span class="people-email">${esc(highlightMatch(m.email, q))}</span>
-            </div>
-            <div class="people-role-wrap">
-              ${isOwner
-                ? `<span class="${roleClass(m.role)}">${ROLE_LABELS[m.role]}</span>`
-                : `<select class="people-role-select ${roleClass(m.role)}" data-member-id="${m.id}" aria-label="Role for ${esc(m.email)}">
-                    ${['admin', 'member', 'viewer'].map(r =>
-                      `<option value="${r}" ${r === m.role ? 'selected' : ''}>${ROLE_LABELS[r]}</option>`
-                    ).join('')}
-                  </select>`
-              }
-            </div>
-            ${!isOwner ? `<button class="people-revoke-btn" data-member-id="${m.id}" title="Remove member" aria-label="Remove ${esc(m.email)}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>` : '<div class="people-revoke-placeholder"></div>'}
+            <span class="people-avatar-name">${esc(highlightMatch(displayName, q))}</span>
+            ${!isOwner ? `<button class="people-remove-btn" data-member-id="${m.id}" aria-label="Remove ${esc(escHtml(m.email))}">Remove</button>` : ''}
           </div>
         `;
       }
-      html += '</div>';
+      html += `</div></div>`;
     }
 
     // Pending invites
     if (filteredInvites.length > 0) {
+      html += '<div class="people-group">';
       html += '<h4 class="people-section-label">Pending invitations</h4>';
       html += '<div class="people-table people-table--pending">';
       for (const inv of filteredInvites) {
@@ -193,19 +187,15 @@ export function initPeopleSection(container, { getActiveProjectId }) {
                 Invited ${fmtDate(inv.created_at)}${stale ? ' - stale' : ''}
               </span>
             </div>
-            <div class="people-role-wrap">
-              <span class="${roleClass(inv.role)}">${ROLE_LABELS[inv.role]}</span>
-            </div>
+            <span class="${roleClass(inv.role)}">${ROLE_LABELS[inv.role]}</span>
             <div class="people-invite-actions">
               <button class="people-resend-btn" data-invite-id="${inv.id}" title="Resend invitation">Resend</button>
-              <button class="people-revoke-invite-btn" data-invite-id="${inv.id}" title="Cancel invitation" aria-label="Cancel invitation for ${esc(inv.email)}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+              <button class="people-remove-invite-btn" data-invite-id="${inv.id}" aria-label="Cancel invitation for ${esc(escHtml(inv.email))}">Remove</button>
             </div>
           </div>
         `;
       }
-      html += '</div>';
+      html += '</div></div>';
     }
 
     body.innerHTML = html;
@@ -256,40 +246,21 @@ export function initPeopleSection(container, { getActiveProjectId }) {
       });
     }
 
-    // Role change (inline select)
-    body.querySelectorAll('.people-role-select').forEach(sel => {
-      sel.addEventListener('change', async () => {
-        const mid = sel.dataset.memberId;
-        const newRole = sel.value;
-        try {
-          await apiCall(`/projects/${currentProjectId}/members/${mid}`, {
-            method: 'PUT',
-            body: JSON.stringify({ role: newRole }),
-          });
-          const m = members.find(m => m.id === mid);
-          if (m) m.role = newRole;
-          render();
-        } catch (e) {
-          sel.value = members.find(m => m.id === mid)?.role || 'member';
-        }
-      });
-    });
-
-    // Revoke member — inline confirmation
-    body.querySelectorAll('.people-revoke-btn').forEach(btn => {
+    // Remove member — inline confirmation
+    body.querySelectorAll('.people-remove-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const mid = btn.dataset.memberId;
-        const row = btn.closest('.people-row');
-        if (row.querySelector('.people-confirm-revoke')) return; // already showing
+        const card = btn.closest('.people-avatar-card');
+        if (card.querySelector('.people-confirm-revoke')) return;
 
         const confirm = document.createElement('div');
         confirm.className = 'people-confirm-revoke';
         confirm.innerHTML = `
-          <span>Remove this member?</span>
-          <button class="people-confirm-yes">Remove</button>
+          <span>Remove?</span>
+          <button class="people-confirm-yes">Yes</button>
           <button class="people-confirm-no">Cancel</button>
         `;
-        row.appendChild(confirm);
+        card.appendChild(confirm);
         requestAnimationFrame(() => confirm.classList.add('people-confirm-visible'));
 
         confirm.querySelector('.people-confirm-no').addEventListener('click', () => {
@@ -308,16 +279,19 @@ export function initPeopleSection(container, { getActiveProjectId }) {
       });
     });
 
-    // Revoke invite
-    body.querySelectorAll('.people-revoke-invite-btn').forEach(btn => {
+    // Remove invite
+    body.querySelectorAll('.people-remove-invite-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const iid = btn.dataset.inviteId;
+        btn.disabled = true;
+        btn.textContent = 'Removing...';
         try {
           await apiCall(`/projects/${currentProjectId}/invites/${iid}`, { method: 'DELETE' });
           invites = invites.filter(i => i.id !== iid);
           render();
         } catch (e) {
-          // silently fail
+          btn.textContent = 'Failed';
+          setTimeout(() => { btn.textContent = 'Remove'; btn.disabled = false; }, 2000);
         }
       });
     });
