@@ -1406,6 +1406,7 @@ function setupSettingsPanel() {
     radio.addEventListener('change', () => {
       setProvider(radio.value);
       showProviderFields(radio.value);
+      showToast(`Provider set to ${radio.value === 'claude' ? 'Claude API' : 'Local LLM'}`, 'success');
     });
   });
 
@@ -1490,12 +1491,15 @@ function setupSettingsPanel() {
   if (aiEndpointInput) aiEndpointInput.addEventListener('change', () => {
     setLocalConfig({ endpoint: aiEndpointInput.value.trim() });
     if (aiLocalStatus) { aiLocalStatus.textContent = ''; aiLocalStatus.className = 'settings-ai-status'; }
+    showToast('Endpoint saved', 'success');
   });
   if (aiModelInput) aiModelInput.addEventListener('change', () => {
     setLocalConfig({ model: aiModelInput.value.trim() });
+    showToast('Model saved', 'success');
   });
   if (aiLocalKeyInput) aiLocalKeyInput.addEventListener('change', () => {
     setLocalConfig({ localKey: aiLocalKeyInput.value.trim() });
+    showToast('API key saved', 'success');
   });
 
   // Local LLM test connection
@@ -1511,11 +1515,13 @@ function setupSettingsPanel() {
           : result.message;
         aiLocalStatus.className = `settings-ai-status ${result.ok ? 'settings-ai-status-ok' : 'settings-ai-status-err'}`;
       }
+      showToast(result.ok ? `Connected to local LLM (${result.models})` : result.message, result.ok ? 'success' : 'error');
     } catch (err) {
       if (aiLocalStatus) {
         aiLocalStatus.textContent = `Error: ${err.message}`;
         aiLocalStatus.className = 'settings-ai-status settings-ai-status-err';
       }
+      showToast(`Could not reach local LLM: ${err.message}`, 'error');
     }
     aiLocalTestBtn.disabled = false;
     aiLocalTestBtn.textContent = 'Test connection';
@@ -1524,10 +1530,12 @@ function setupSettingsPanel() {
   // TTS + briefing + clear
   if (aiTtsToggle) aiTtsToggle.addEventListener('change', () => {
     setTTSEnabled(aiTtsToggle.checked);
+    showToast(`Voice responses ${aiTtsToggle.checked ? 'enabled' : 'disabled'}`, 'success');
   });
 
   if (aiBriefingSelect) aiBriefingSelect.addEventListener('change', () => {
     setBriefingMode(aiBriefingSelect.value);
+    showToast(`Task summary set to ${aiBriefingSelect.value}`, 'success');
   });
 
   if (aiClearBtn) aiClearBtn.addEventListener('click', () => {

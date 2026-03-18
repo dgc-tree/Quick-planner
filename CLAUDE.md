@@ -1,7 +1,7 @@
 # Quick Planner — Project Rules
 
 ## CSS Workflow
-- **Read before writing**: Read the full rule + dark mode override + mobile media query before editing any CSS. For layout bugs, read body → main → container chain. Never guess at cascade.
+- **Read before writing**: Read the full rule + dark mode override + mobile media query before editing any CSS. For layout bugs, read body → main → container chain AND every sibling that shares the same layout context (header, tabs, content). Map the complete box model (padding, margin, max-width, position) of ALL related elements in one pass before writing a single line. Never guess at cascade.
 - **One-shot CSS**: Check all override contexts (dark, mobile, responsive) and apply all changes in one round. Don't iterate with the user as debugger.
 - **Measure before writing**: State target dimensions with arithmetic before writing layout CSS. "Modal = content(640) + sidebar(320) = 960px." One commit, not five iterations.
 - **Verify visually before merging**: Every CSS change must be checked on localhost. Hover/focus/active states must be manually triggered. Never merge visual changes sight-unseen.
