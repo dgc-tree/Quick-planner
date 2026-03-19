@@ -1,7 +1,7 @@
 import { normaliseRows } from './data.js';
 
 const REQUIRED_COLS = ['Room', 'Task', 'Status', 'Category', 'Start date', 'End date', 'Assigned', 'Dependencies'];
-const EXPORT_COLS = ['Room', 'Task', 'Status', 'Category', 'Start date', 'End date', 'Assigned', 'Dependencies'];
+const EXPORT_COLS = ['Room', 'Task', 'Status', 'Category', 'Start date', 'End date', 'Assigned', 'Dependencies', 'Notes', 'Cost', 'Contact'];
 
 /**
  * Parse and validate CSV text. Returns normalised task array.
@@ -68,6 +68,9 @@ export function exportToCSV(tasks, filename = 'project') {
       'End date': formatDate(t.endDate),
       'Assigned': Array.isArray(t.assigned) ? t.assigned.join(', ') : (t.assigned || ''),
       'Dependencies': t.dependencies,
+      'Notes': t.notes || '',
+      'Cost': t.cost != null ? t.cost : '',
+      'Contact': t.contact || '',
     };
   });
 

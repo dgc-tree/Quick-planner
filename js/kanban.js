@@ -195,6 +195,7 @@ function createCard(task) {
         ${esc(task.category)}
       </span>
       ${task.tradeQuote ? '<span class="trade-quote-badge" title="Trade quote required">TQ</span>' : ''}
+      ${task.cost != null ? `<span class="cost-badge" title="$${Number(task.cost).toLocaleString()}">$${task.cost >= 1000 ? Math.round(task.cost / 1000) + 'k' : task.cost}</span>` : ''}
     </div>
     <div class="card-title">${esc(task.task)}</div>
     <div class="card-footer">

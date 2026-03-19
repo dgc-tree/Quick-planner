@@ -87,6 +87,37 @@ export const TEMPLATES = [
       { task: 'Garden tidy', room: 'Exterior', category: 'Finishing', status: 'To Do', assigned: [], startDate: today(21), endDate: today(28), dependencies: '' },
     ],
   },
+  {
+    id: 'quotes',
+    label: 'Renovation Quotes',
+    icon: '📋',
+    tasks: [
+      // Exterior Maintenance — grouped quote
+      { task: 'Tidy front & rear gardens', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Part of exterior maintenance quote ($4,000)' },
+      { task: 'Supply & install mulch to garden beds', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Supply & install native plants to front', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 200, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Pressure wash entire exterior incl paving', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Prep & paint weatherboards under front window', room: 'Exterior', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Cut broken concrete step & mould concrete', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 4000, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Exterior maintenance total $4,000' },
+      // Interior Painting
+      { task: 'Prep & paint entrance walls', room: 'Entrance', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Prep & paint x2 front lounge walls', room: 'Lounge', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Prep & paint x2 dining room walls', room: 'Dining', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Touch up dark wall in master bedroom', room: 'Master Bedroom', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Prep & paint all walls in bed 3', room: 'Bedroom 3', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Touch up woodwork throughout', room: 'General', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Gap as required' },
+      { task: 'Touch up walls in garage office', room: 'Garage', category: 'Painting', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 5000, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Interior painting total $5,000' },
+      // Interior Maintenance
+      { task: 'Resilicone shower, niche & vanity in ensuite', room: 'Ensuite', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
+      { task: 'Resilicone shower, vanity & laundry in main bathroom', room: 'Bathroom', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 550, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Interior maintenance total $550' },
+      // Flooring
+      { task: 'Full sand & polish floorboards', room: 'Floors', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 5300, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Waterbased polyurethane, satin finish' },
+      // Roof
+      { task: 'Pressure wash & paint roof x3 coats', room: 'Roof', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 4200, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Colour TBD' },
+      // Cleaning options (user picks one)
+      { task: 'Ready for sale clean', room: 'Cleaning', category: 'Cleaning', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 935, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Option 1: $850+GST. Windows inside & out, cupboards, vac/mop, surfaces, oven' },
+    ],
+  },
 ];
 
 export function shouldShowOnboarding() {

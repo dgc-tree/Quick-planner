@@ -10,6 +10,7 @@ export function normaliseRows(rows) {
       ? rawAssigned.split(',').map(s => s.trim()).filter(Boolean).map(s => ASSIGNED_ALIAS[s] || s)
       : [];
 
+    const rawCost = (row['Cost'] || '').trim().replace(/[$,]/g, '');
     return {
       id: crypto.randomUUID(),
       room: currentRoom,
@@ -20,6 +21,9 @@ export function normaliseRows(rows) {
       startDate: parseDate(row['Start date']),
       endDate: parseDate(row['End date']),
       assigned: assignedArr,
+      notes: (row['Notes'] || '').trim(),
+      cost: rawCost ? parseFloat(rawCost) || null : null,
+      contact: (row['Contact'] || '').trim(),
       updatedAt: Date.now(),
     };
   }).filter(t => t.task);

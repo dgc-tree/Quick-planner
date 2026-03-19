@@ -765,6 +765,7 @@ function handleTaskDuplicate(task) {
 }
 
 function handleTaskCreate(fields) {
+  const rawCost = typeof fields.cost === 'string' ? fields.cost.replace(/[$,]/g, '') : fields.cost;
   const newTask = {
     id: crypto.randomUUID(),
     task: fields.task || 'New Task',
@@ -775,6 +776,9 @@ function handleTaskCreate(fields) {
     startDate: fields.startDate ? new Date(fields.startDate) : null,
     endDate: fields.endDate ? new Date(fields.endDate) : null,
     dependencies: fields.dependencies || '',
+    notes: fields.notes || '',
+    cost: rawCost ? parseFloat(rawCost) || null : null,
+    contact: fields.contact || '',
     updatedAt: Date.now(),
   };
   allTasks.push(newTask);
@@ -794,6 +798,12 @@ function applyLocalUpdate(task, fields) {
   task.endDate = fields.endDate ? new Date(fields.endDate) : null;
   task.dependencies = fields.dependencies || '';
   task.tradeQuote = !!fields.tradeQuote;
+  task.notes = fields.notes !== undefined ? (fields.notes || '') : (task.notes || '');
+  if (fields.cost !== undefined) {
+    const raw = typeof fields.cost === 'string' ? fields.cost.replace(/[$,]/g, '') : fields.cost;
+    task.cost = raw ? parseFloat(raw) || null : null;
+  }
+  task.contact = fields.contact !== undefined ? (fields.contact || '') : (task.contact || '');
   task.updatedAt = Date.now();
 }
 
