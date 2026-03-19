@@ -59,6 +59,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || ''),
     assigned: [...taskAssigned].sort().join(','),
     tradeQuote: !!task.tradeQuote,
+    notes: task.notes || '',
+    cost: task.cost != null ? String(task.cost) : '',
+    contact: task.contact || '',
   };
 
   modalEl.className = 'modal-overlay';
@@ -161,6 +164,20 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 <span class="toggle-track"><span class="toggle-thumb"></span></span>
               </label>
             </div>
+            <div class="modal-row">
+              <div class="modal-field" style="flex:1">
+                <span>Cost</span>
+                <input type="text" name="cost" inputmode="decimal" placeholder="$0.00" value="${task.cost != null ? task.cost : ''}">
+              </div>
+              <div class="modal-field" style="flex:2">
+                <span>Contact</span>
+                <input type="text" name="contact" placeholder="Name, phone or email" value="${esc(task.contact || '')}">
+              </div>
+            </div>
+            <div class="modal-field">
+              <span>Notes</span>
+              <textarea name="notes" rows="3" placeholder="Details, specifications, payment terms...">${esc(task.notes || '')}</textarea>
+            </div>
           </div>
           <div class="modal-layout-side">
             <div class="modal-field">
@@ -212,6 +229,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     const currentAssigned = (assignedHidden.value || '').split(',').filter(Boolean).sort().join(',');
     if (currentAssigned !== initial.assigned) return true;
     if (form.querySelector('[name="tradeQuote"]').checked !== initial.tradeQuote) return true;
+    if ((fd.get('notes') || '') !== initial.notes) return true;
+    if ((fd.get('cost') || '') !== initial.cost) return true;
+    if ((fd.get('contact') || '') !== initial.contact) return true;
     return false;
   }
 
@@ -653,7 +673,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     e.preventDefault();
     const fd = new FormData(form);
     const updatedFields = {};
-    const fieldNames = ['task', 'room', 'category', 'status', 'startDate', 'endDate', 'dependencies'];
+    const fieldNames = ['task', 'room', 'category', 'status', 'startDate', 'endDate', 'dependencies', 'notes', 'cost', 'contact'];
     for (const name of fieldNames) {
       updatedFields[name] = fd.get(name) || '';
     }
