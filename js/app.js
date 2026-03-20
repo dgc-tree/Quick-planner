@@ -420,13 +420,14 @@ async function initApp() {
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
 
-  // Initialise QP Chat assistant
+  // QP Chat assistant — disabled on live, developing locally
+  // To re-enable: uncomment the initChat block below
+  /*
   initChat({
     getTasks: () => allTasks,
     onUpdateTask: (taskId, fields) => {
       const task = allTasks.find(t => t.id === taskId);
       if (!task) return;
-      // Partial update — only set fields that were explicitly provided
       if (fields.task !== undefined) task.task = fields.task;
       if (fields.room !== undefined) task.room = fields.room;
       if (fields.category !== undefined) task.category = fields.category;
@@ -448,6 +449,7 @@ async function initApp() {
       if (task) handleTaskDelete(task);
     },
   });
+  */
 }
 
 async function init() {
