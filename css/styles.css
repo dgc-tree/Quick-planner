@@ -776,7 +776,7 @@ body {
 .desktop-filter-btn:hover { color: var(--text); background: rgba(0,0,0,0.04); }
 .desktop-filter-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 [data-theme="dark"] .desktop-filter-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
-[data-theme="dark"] .desktop-filter-btn.active { color: var(--accent); }
+[data-theme="dark"] .desktop-filter-btn.active { color: var(--accent-text); }
 .desktop-filter-badge {
   position: absolute;
   top: 8px;
