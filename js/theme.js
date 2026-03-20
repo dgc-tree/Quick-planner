@@ -12,12 +12,74 @@ export const CATEGORY_COLORS = {
   'We have these': { bg: 'var(--category-we-have-these-bg)', text: 'var(--category-we-have-these-text)' },
 };
 
-export const ASSIGNED_COLORS = {
-  'Dave': '#1A1A1A',
-  'Sim':  '#1A1A1A',
-  'DG':   '#1A1A1A',
-  'SG':   { bg: '#E2E8F0', text: '#1A1A1A' },
-};
+// Avatar palette — distinct hues, WCAG AA safe text on each
+// Owner uses their primary accent; others get assigned from this pool
+const AVATAR_PALETTE = [
+  { bg: '#6366F1', text: '#FFFFFF' }, // indigo
+  { bg: '#EC4899', text: '#FFFFFF' }, // pink
+  { bg: '#F59E0B', text: '#1A1A1A' }, // amber
+  { bg: '#10B981', text: '#FFFFFF' }, // emerald
+  { bg: '#8B5CF6', text: '#FFFFFF' }, // violet
+  { bg: '#EF4444', text: '#FFFFFF' }, // red
+  { bg: '#06B6D4', text: '#1A1A1A' }, // cyan
+  { bg: '#84CC16', text: '#1A1A1A' }, // lime
+  { bg: '#F97316', text: '#FFFFFF' }, // orange
+  { bg: '#14B8A6', text: '#FFFFFF' }, // teal
+];
+
+// Persistent colour assignments stored in localStorage
+const STORAGE_KEY = 'qp-avatar-colors';
+
+function loadAvatarMap() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveAvatarMap(map) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+
+/**
+ * Get avatar colour for a user. Owner gets primary accent, others get
+ * a stable colour from the palette (persisted across sessions).
+ * @param {string} name - display name or initials
+ * @param {object} [opts] - { isOwner: bool }
+ * @returns {{ bg: string, text: string }}
+ */
+export function getAvatarColor(name, opts = {}) {
+  if (opts.isOwner) {
+    return { bg: 'var(--accent)', text: 'var(--on-accent-primary1)' };
+  }
+
+  const map = loadAvatarMap();
+
+  // Already assigned?
+  if (map[name]) return map[name];
+
+  // Find first unused palette colour
+  const usedBgs = new Set(Object.values(map).map(v => v.bg));
+  const available = AVATAR_PALETTE.find(c => !usedBgs.has(c.bg));
+  const colour = available || AVATAR_PALETTE[Object.keys(map).length % AVATAR_PALETTE.length];
+
+  map[name] = { bg: colour.bg, text: colour.text };
+  saveAvatarMap(map);
+  return map[name];
+}
+
+/**
+ * Set a custom avatar colour for a user (from settings).
+ */
+export function setAvatarColor(name, bg, text) {
+  const map = loadAvatarMap();
+  map[name] = { bg, text };
+  saveAvatarMap(map);
+}
+
+// Legacy compat — kept for any remaining direct references
+export const ASSIGNED_COLORS = new Proxy({}, {
+  get(_, name) {
+    return getAvatarColor(String(name));
+  }
+});
 
 export const STATUS_COLORS = {
   'To Do':           { bg: 'var(--status-todo-bg)',        text: 'var(--status-todo-text)' },

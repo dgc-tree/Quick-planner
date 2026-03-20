@@ -1,4 +1,4 @@
-import { CATEGORY_COLORS, ASSIGNED_COLORS } from './theme.js';
+import { CATEGORY_COLORS, getAvatarColor } from './theme.js';
 
 export function esc(str) {
   const d = document.createElement('div');
@@ -11,11 +11,7 @@ export function getInitials(name) {
 }
 
 export function getAssignedColor(name) {
-  const raw = ASSIGNED_COLORS[name] || '#222222';
-  return {
-    bg: typeof raw === 'object' ? raw.bg : raw,
-    text: typeof raw === 'object' ? raw.text : '#fff',
-  };
+  return getAvatarColor(name);
 }
 
 export function getCategoryColor(category) {
