@@ -315,6 +315,16 @@ main {
 /* Thinking animation */
 .qp-chat-thinking .qp-chat-msg-content {
   padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qp-chat-thinking-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  white-space: nowrap;
 }
 
 .qp-chat-dots {

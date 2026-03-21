@@ -10,7 +10,7 @@ const CLAUDE_HAIKU = 'claude-haiku-4-5-20251001';
 const CLAUDE_SONNET = 'claude-sonnet-4-5-20250514';
 
 const DEFAULT_LOCAL_URL = 'http://127.0.0.1:1234/v1/chat/completions';
-const DEFAULT_LOCAL_MODEL = 'qwen3.5-35b-a3b';
+const DEFAULT_LOCAL_MODEL = 'qwen3.5-9b';
 
 /**
  * Get current provider config from localStorage.
@@ -172,9 +172,14 @@ async function callLocal({ message, context, history }) {
 export async function callLLM({ message, context, tier = 'haiku', history = [] }) {
   const { provider } = getProviderConfig();
 
-  const rawText = provider === 'local'
+  let rawText = provider === 'local'
     ? await callLocal({ message, context, history })
     : await callClaude({ message, context, tier, history });
+
+  // Strip thinking blocks (Qwen 3.5, DeepSeek, etc.)
+  rawText = rawText.replace(/<think>[\s\S]*?<\/think>\s*/g, '');
+  // Also strip loose "Thinking Process:" preamble some models emit
+  rawText = rawText.replace(/^Thinking Process:[\s\S]*?\n\n/i, '');
 
   const action = parseActionBlock(rawText);
   const cleanText = rawText.replace(/```json\n?\{[\s\S]*?\}\n?```\n?/, '').trim();

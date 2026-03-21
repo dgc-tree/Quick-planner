@@ -259,6 +259,60 @@ export function resolveIntent(message, context) {
     return { type: 'read', response };
   }
 
+  // "what's due this month"
+  if (/^what(?:'s| is)\s+due\s+this\s+month\??$/i.test(msg)) {
+    const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+    const due = tasks.filter(t => {
+      if (!t.endDate) return false;
+      const d = new Date(t.endDate);
+      return d >= startOfMonth && d <= endOfMonth;
+    });
+    const monthName = MONTH_NAMES[todayDate.getMonth()];
+    if (due.length === 0) return { type: 'read', response: `Nothing due in ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}.` };
+    const list = due.map(t => `- ${t.task || t.name} (${fmtDateHuman(new Date(t.endDate))}${t.status === 'Done' ? ', done' : ''})`).join('\n');
+    return { type: 'read', response: `Due in ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} (${due.length}):\n${list}` };
+  }
+
+  // "what's due next week"
+  if (/^what(?:'s| is)\s+due\s+next\s+week\??$/i.test(msg)) {
+    const startNext = new Date(todayDate);
+    startNext.setDate(startNext.getDate() + (7 - startNext.getDay()));
+    const endNext = new Date(startNext);
+    endNext.setDate(endNext.getDate() + 6);
+    const due = tasks.filter(t => {
+      if (!t.endDate) return false;
+      const d = new Date(t.endDate);
+      return d >= startNext && d <= endNext;
+    });
+    if (due.length === 0) return { type: 'read', response: 'Nothing due next week!' };
+    const list = due.map(t => `- ${t.task || t.name} (${fmtDateHuman(new Date(t.endDate))})`).join('\n');
+    return { type: 'read', response: `Due next week:\n${list}` };
+  }
+
+  // "what's due in [month]" / "due in [month]" / "how about [month]" / "anything in [month]"
+  {
+    const monthQuery = lower.match(/(?:what(?:'s| is)\s+due\s+in|due\s+in|how\s+about|anything\s+(?:due\s+)?in|tasks?\s+(?:due\s+)?in)\s+(\w+)\??$/);
+    if (monthQuery) {
+      const mName = monthQuery[1].toLowerCase();
+      const mi = MONTH_NAMES.indexOf(mName) !== -1 ? MONTH_NAMES.indexOf(mName) : MONTH_SHORT.indexOf(mName);
+      if (mi !== -1) {
+        const year = mi >= todayDate.getMonth() ? todayDate.getFullYear() : todayDate.getFullYear() + 1;
+        const startOfMonth = new Date(year, mi, 1);
+        const endOfMonth = new Date(year, mi + 1, 0);
+        const due = tasks.filter(t => {
+          if (!t.endDate) return false;
+          const d = new Date(t.endDate);
+          return d >= startOfMonth && d <= endOfMonth;
+        });
+        const label = MONTH_NAMES[mi].charAt(0).toUpperCase() + MONTH_NAMES[mi].slice(1);
+        if (due.length === 0) return { type: 'read', response: `Nothing due in ${label} ${year}.` };
+        const list = due.map(t => `- ${t.task || t.name} (${fmtDateHuman(new Date(t.endDate))}${t.status === 'Done' ? ', done' : ''})`).join('\n');
+        return { type: 'read', response: `Due in ${label} (${due.length}):\n${list}` };
+      }
+    }
+  }
+
   // "show me [status] tasks" / "what's [status]" / "list [status] tasks"
   const statusQuery = lower.match(/(?:show\s+(?:me\s+)?|what(?:'s| is)\s+|list\s+(?:all\s+)?)(not started|to ?do|in progress|done|completed?|blocked|stuck|overdue)\s*(?:tasks?)?\??$/);
   if (statusQuery) {
@@ -276,14 +330,189 @@ export function resolveIntent(message, context) {
     }
   }
 
-  // "show me tasks in [room]" / "show me [room] tasks"
-  const roomQuery = lower.match(/show\s+(?:me\s+)?(?:all\s+)?(?:tasks?\s+)?(?:in|for)\s+(?:the\s+)?(.+?)(?:\s+room)?$/);
+  // "show me tasks in [room]" / "show me [room] tasks" / "[room] tasks"
+  const roomQuery = lower.match(/(?:show\s+(?:me\s+)?(?:all\s+)?(?:tasks?\s+)?(?:in|for)\s+(?:the\s+)?|^(?:tasks?\s+(?:in|for)\s+(?:the\s+)?))(.+?)(?:\s+room)?$/);
   if (roomQuery) {
     const roomName = roomQuery[1].trim();
     const matching = tasks.filter(t => (t.room || '').toLowerCase().includes(roomName));
     if (matching.length > 0) {
       const list = matching.map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
       return { type: 'read', response: `Tasks in "${matching[0].room}" (${matching.length}):\n${list}` };
+    }
+  }
+
+  // ─── Summary / overview ─────────────────────────────────────────
+  if (/^(?:summary|overview|rundown|give\s+me\s+(?:a\s+)?(?:summary|rundown|overview)|project\s+(?:summary|overview|status)|how(?:'s| is)\s+(?:the\s+)?project|status)\s*\??$/i.test(msg)) {
+    const total = tasks.length;
+    const done = tasks.filter(t => t.status === 'Done').length;
+    const inProg = tasks.filter(t => t.status === 'In Progress').length;
+    const toDo = tasks.filter(t => t.status === 'To Do').length;
+    const blocked = tasks.filter(t => t.status === 'Blocked').length;
+    const overdue = tasks.filter(t => t.endDate && t.status !== 'Done' && new Date(t.endDate) < todayDate).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const totalCost = tasks.reduce((sum, t) => sum + (t.cost || 0), 0);
+
+    let resp = `${total} tasks — ${pct}% complete`;
+    const parts = [];
+    if (done) parts.push(`${done} done`);
+    if (inProg) parts.push(`${inProg} in progress`);
+    if (toDo) parts.push(`${toDo} to do`);
+    if (blocked) parts.push(`${blocked} blocked`);
+    if (parts.length) resp += ` (${parts.join(', ')})`;
+    if (overdue) resp += `\n${overdue} overdue`;
+    if (totalCost) resp += `\nEstimated cost: $${totalCost.toLocaleString()}`;
+    return { type: 'read', response: resp };
+  }
+
+  // ─── Who's doing what / assigned queries ────────────────────────
+  // "what's assigned to [person]" / "[person]'s tasks" / "tasks for [person]"
+  {
+    const assignedQuery = lower.match(/(?:what(?:'s| is)\s+assigned\s+to|tasks?\s+(?:for|assigned\s+to)|show\s+(?:me\s+)?(.+?)(?:'s)\s+tasks?|(.+?)(?:'s)\s+tasks?)\s*(.+?)?\s*\??$/);
+    if (assignedQuery) {
+      const person = (assignedQuery[3] || assignedQuery[2] || assignedQuery[1] || '').trim();
+      if (person) {
+        const matching = tasks.filter(t =>
+          (t.assigned || []).some(a => a.toLowerCase().includes(person.toLowerCase()))
+        );
+        if (matching.length === 0) return { type: 'read', response: `No tasks assigned to "${person}".` };
+        const list = matching.map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
+        return { type: 'read', response: `${person}'s tasks (${matching.length}):\n${list}` };
+      }
+    }
+  }
+
+  // "who's working on what" / "who has tasks" / "workload"
+  if (/^(?:who(?:'s| is)\s+(?:working\s+on\s+what|doing\s+what|assigned)|workload|team\s*(?:load|overview)?)\s*\??$/i.test(msg)) {
+    const byPerson = {};
+    for (const t of tasks) {
+      if (t.status === 'Done') continue;
+      for (const a of (t.assigned || [])) {
+        if (!byPerson[a]) byPerson[a] = [];
+        byPerson[a].push(t);
+      }
+    }
+    const unassigned = tasks.filter(t => t.status !== 'Done' && (!t.assigned || t.assigned.length === 0));
+    if (Object.keys(byPerson).length === 0 && unassigned.length === 0) {
+      return { type: 'read', response: 'No active tasks assigned to anyone.' };
+    }
+    let resp = '';
+    for (const [name, personTasks] of Object.entries(byPerson).sort((a, b) => b[1].length - a[1].length)) {
+      resp += `${name}: ${personTasks.length} task${personTasks.length > 1 ? 's' : ''}\n`;
+    }
+    if (unassigned.length) resp += `Unassigned: ${unassigned.length}`;
+    return { type: 'read', response: resp.trim() };
+  }
+
+  // ─── Category queries ──────────────────────────────────────────
+  // "show [category] tasks" / "what needs a trade quote" / "[category] tasks"
+  {
+    const catQuery = lower.match(/(?:show\s+(?:me\s+)?|list\s+(?:all\s+)?|what(?:'s| is|\s+needs?)\s+)?(buy\s*new|trade\s*quote|organis(?:e|ing)|to\s*do|in\s*progress)\s*(?:tasks?)?\s*\??$/);
+    if (catQuery) {
+      const catRaw = catQuery[1].trim();
+      const matching = tasks.filter(t => (t.category || '').toLowerCase().includes(catRaw));
+      if (matching.length > 0) {
+        const label = matching[0].category || catRaw;
+        const list = matching.map(t => `- ${t.task || t.name} (${t.room || 'no room'})`).join('\n');
+        return { type: 'read', response: `${label} (${matching.length}):\n${list}` };
+      }
+    }
+  }
+
+  // ─── Cost / budget ──────────────────────────────────────────────
+  if (/^(?:total\s+cost|how\s+much|budget|cost\s*(?:breakdown|summary|total)?|what(?:'s| is)\s+(?:the\s+)?(?:total\s+)?cost)\s*\??$/i.test(msg)) {
+    const costed = tasks.filter(t => t.cost);
+    const total = costed.reduce((sum, t) => sum + t.cost, 0);
+    if (costed.length === 0) return { type: 'read', response: 'No tasks have cost estimates.' };
+    const uncosted = tasks.length - costed.length;
+    let resp = `Estimated total: $${total.toLocaleString()} across ${costed.length} task${costed.length > 1 ? 's' : ''}`;
+    if (uncosted > 0) resp += ` (${uncosted} task${uncosted > 1 ? 's' : ''} have no estimate)`;
+    // Top 5 most expensive
+    const top = [...costed].sort((a, b) => b.cost - a.cost).slice(0, 5);
+    if (top.length > 1) {
+      resp += '\n\nMost expensive:';
+      for (const t of top) resp += `\n- ${t.task || t.name}: $${t.cost.toLocaleString()}`;
+    }
+    return { type: 'read', response: resp };
+  }
+
+  // ─── Unassigned / no date ───────────────────────────────────────
+  if (/^(?:unassigned|(?:tasks?\s+)?(?:with\s+)?no\s*(?:one|body)\s*assigned|what\s+needs?\s+assign)/i.test(msg)) {
+    const unassigned = tasks.filter(t => t.status !== 'Done' && (!t.assigned || t.assigned.length === 0));
+    if (unassigned.length === 0) return { type: 'read', response: 'All active tasks are assigned.' };
+    const list = unassigned.map(t => `- ${t.task || t.name}`).join('\n');
+    return { type: 'read', response: `Unassigned (${unassigned.length}):\n${list}` };
+  }
+
+  if (/^(?:(?:tasks?\s+)?(?:with\s+)?no\s+(?:due\s+)?dates?|undated|(?:tasks?\s+)?without\s+(?:due\s+)?dates?|what\s+has\s+no\s+(?:due\s+)?date)/i.test(msg)) {
+    const undated = tasks.filter(t => t.status !== 'Done' && !t.endDate);
+    if (undated.length === 0) return { type: 'read', response: 'All active tasks have due dates.' };
+    const list = undated.map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
+    return { type: 'read', response: `No due date (${undated.length}):\n${list}` };
+  }
+
+  // ─── Due before/after ──────────────────────────────────────────
+  {
+    const beforeAfter = lower.match(/(?:what(?:'s| is)\s+)?due\s+(before|after|by)\s+(.+?)\s*\??$/);
+    if (beforeAfter) {
+      const dir = beforeAfter[1]; // before/by = before, after = after
+      const dateStr = beforeAfter[2];
+      // Try month name first
+      const mi = MONTH_NAMES.indexOf(dateStr) !== -1 ? MONTH_NAMES.indexOf(dateStr) : MONTH_SHORT.indexOf(dateStr);
+      let boundary;
+      if (mi !== -1) {
+        const year = mi >= todayDate.getMonth() ? todayDate.getFullYear() : todayDate.getFullYear() + 1;
+        boundary = dir === 'after' ? new Date(year, mi + 1, 0) : new Date(year, mi, 1);
+      } else {
+        boundary = parseDate(dateStr);
+      }
+      if (boundary) {
+        const matching = tasks.filter(t => {
+          if (!t.endDate || t.status === 'Done') return false;
+          const d = new Date(t.endDate);
+          return dir === 'after' ? d > boundary : d <= boundary;
+        });
+        const label = fmtDateHuman(boundary);
+        if (matching.length === 0) return { type: 'read', response: `No active tasks due ${dir} ${label}.` };
+        const list = matching.map(t => `- ${t.task || t.name} (${fmtDateHuman(new Date(t.endDate))})`).join('\n');
+        return { type: 'read', response: `Due ${dir} ${label} (${matching.length}):\n${list}` };
+      }
+    }
+  }
+
+  // ─── What's next / priorities ───────────────────────────────────
+  if (/^(?:what(?:'s| is|\s+should\s+I\s+(?:do|work\s+on))\s+next|next\s+up|priorities?|what\s+to\s+(?:do|work\s+on)(?:\s+next)?)\s*\??$/i.test(msg)) {
+    const active = tasks.filter(t => t.status !== 'Done');
+    if (active.length === 0) return { type: 'read', response: 'All tasks are done!' };
+    // Priority: overdue first, then soonest due, then in-progress, then blocked
+    const overdue = active.filter(t => t.endDate && new Date(t.endDate) < todayDate)
+      .sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+    const inProg = active.filter(t => t.status === 'In Progress' && !(t.endDate && new Date(t.endDate) < todayDate));
+    const upcoming = active.filter(t => t.endDate && new Date(t.endDate) >= todayDate && t.status !== 'In Progress')
+      .sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+
+    let resp = '';
+    if (overdue.length) {
+      resp += 'Overdue:\n' + overdue.slice(0, 3).map(t => `- ${t.task || t.name} (was due ${fmtDateHuman(new Date(t.endDate))})`).join('\n');
+    }
+    if (inProg.length) {
+      if (resp) resp += '\n\n';
+      resp += 'In progress:\n' + inProg.slice(0, 3).map(t => `- ${t.task || t.name}`).join('\n');
+    }
+    if (upcoming.length && !overdue.length) {
+      if (resp) resp += '\n\n';
+      resp += 'Up next:\n' + upcoming.slice(0, 3).map(t => `- ${t.task || t.name} (due ${fmtDateHuman(new Date(t.endDate))})`).join('\n');
+    }
+    if (!resp) resp = `${active.length} active tasks but none have due dates set.`;
+    return { type: 'read', response: resp };
+  }
+
+  // ─── Bare month name as query ───────────────────────────────────
+  // Catches single-word "march", "april" etc. as "what's due in [month]"
+  {
+    const bareMonth = lower.replace(/[?\s]+$/, '');
+    const mi = MONTH_NAMES.indexOf(bareMonth) !== -1 ? MONTH_NAMES.indexOf(bareMonth) : MONTH_SHORT.indexOf(bareMonth);
+    if (mi !== -1) {
+      return resolveIntent(`what's due in ${MONTH_NAMES[mi]}`, context);
     }
   }
 

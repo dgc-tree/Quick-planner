@@ -4,6 +4,7 @@ import { renderPlanner, setViewSize } from './planner.js';
 import { renderTodoList } from './todolist.js';
 import { openEditModal } from './modal.js';
 import { initCustomColors, applyCustomColors } from './theme-customizer.js';
+import { getAvatarColor } from './theme.js';
 import { shouldShowOnboarding, showOnboarding, TEMPLATES } from './onboarding.js';
 import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
@@ -420,9 +421,7 @@ async function initApp() {
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
 
-  // QP Chat assistant — disabled on live, developing locally
-  // To re-enable: uncomment the initChat block below
-  /*
+  // QP Chat assistant — LOCAL DEV ONLY (comment out before pushing to live)
   initChat({
     getTasks: () => allTasks,
     onUpdateTask: (taskId, fields) => {
@@ -449,7 +448,6 @@ async function initApp() {
       if (task) handleTaskDelete(task);
     },
   });
-  */
 }
 
 async function init() {
@@ -507,8 +505,13 @@ function updateAccountUI() {
       const initials = isSandbox() ? '🏗️' : getInitials(user);
       sidebarAvatar.textContent = initials;
       sidebarAvatar.classList.add('has-initials');
-      if (isSandbox()) sidebarAvatar.classList.add('sandbox');
-      else sidebarAvatar.classList.remove('sandbox');
+      if (isSandbox()) { sidebarAvatar.classList.add('sandbox'); }
+      else {
+        sidebarAvatar.classList.remove('sandbox');
+        const ac = getAvatarColor(initials, { isOwner: true });
+        sidebarAvatar.style.background = ac.bg;
+        sidebarAvatar.style.color = ac.text;
+      }
       if (sidebarLabel) sidebarLabel.textContent = isSandbox() ? 'Sandbox' : (user.name || user.email.split('@')[0]);
     } else {
       sidebarAvatar.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>';
