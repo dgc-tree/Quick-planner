@@ -25,6 +25,7 @@ let _briefingMode = 'daily';  // 'off' | 'daily' | 'weekly' | 'monthly'
 let _chatBubble = null;
 let _hasPendingBriefing = false;
 let _voiceRoundTrip = false;  // True when current message came from mic input
+let _abortController = null;  // AbortController for in-flight LLM requests
 
 // Callbacks to app.js
 let _onUpdateTask = null;
@@ -262,11 +263,13 @@ async function processMessage(text) {
   }
 
   // Step 3: Call LLM
+  _abortController = new AbortController();
   const thinkingEl = showThinking();
   try {
     const ctxData = buildContext({ keywords: text.split(/\s+/) });
     if (!ctxData) {
       removeThinking(thinkingEl);
+      _abortController = null;
       appendBubble('assistant', "I couldn't load the project data.");
       return;
     }
@@ -278,9 +281,10 @@ async function processMessage(text) {
       .map(m => ({ role: m.role, content: m.content }));
 
     const tier = chooseTier(text, history.length > 2);
-    const response = await callLLM({ message: text, context: ctxData, tier, history });
+    const response = await callLLM({ message: text, context: ctxData, tier, history, signal: _abortController.signal });
 
     removeThinking(thinkingEl);
+    _abortController = null;
 
     if (response.action) {
       const result = executeMutation(response.action);
@@ -291,7 +295,10 @@ async function processMessage(text) {
     }
   } catch (err) {
     removeThinking(thinkingEl);
-    if (err.message === 'NO_API_KEY') {
+    _abortController = null;
+    if (err.name === 'AbortError') {
+      appendBubble('assistant', 'Stopped. What would you like to do instead?');
+    } else if (err.message === 'NO_API_KEY') {
       appendBubble('assistant', 'Add a Claude API key in Settings to use AI features.');
     } else if (err.message === 'INVALID_API_KEY') {
       appendBubble('assistant', 'Your API key is invalid. Check it in Settings.');
@@ -416,8 +423,13 @@ function showThinking() {
   const el = document.createElement('div');
   el.className = 'qp-chat-bubble qp-chat-bubble-assistant qp-chat-thinking';
   const phrase = THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
-  el.innerHTML = `<span class="qp-chat-msg-avatar">Qp</span><div class="qp-chat-msg-content"><span class="qp-chat-thinking-text">${phrase}</span><span class="qp-chat-dots"><span></span><span></span><span></span></span></div>`;
+  el.innerHTML = `<span class="qp-chat-msg-avatar">Qp</span><div class="qp-chat-msg-content"><span class="qp-chat-thinking-text">${phrase}</span><span class="qp-chat-dots"><span></span><span></span><span></span></span></div><button class="qp-chat-stop" title="Stop" aria-label="Stop request"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>`;
   _messageList.appendChild(el);
+
+  // Stop button handler
+  el.querySelector('.qp-chat-stop').addEventListener('click', () => {
+    if (_abortController) _abortController.abort();
+  });
   scrollToBottom();
 
   // Rotate phrase every 5 seconds if still thinking

@@ -89,7 +89,7 @@ ${JSON.stringify(contextJson.tasks)}`;
 
 // ─── Claude API ──────────────────────────────────────────────────────────────
 
-async function callClaude({ message, context, tier, history }) {
+async function callClaude({ message, context, tier, history, signal }) {
   const { apiKey } = getProviderConfig();
   if (!apiKey) throw new Error('NO_API_KEY');
 
@@ -111,6 +111,7 @@ async function callClaude({ message, context, tier, history }) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({ model, max_tokens: 1024, system: systemPrompt, messages }),
+    signal,
   });
 
   if (!response.ok) {
@@ -126,7 +127,7 @@ async function callClaude({ message, context, tier, history }) {
 
 // ─── Local LLM (OpenAI-compatible) ──────────────────────────────────────────
 
-async function callLocal({ message, context, history }) {
+async function callLocal({ message, context, history, signal }) {
   const { endpoint, model, localKey } = getProviderConfig();
   if (!endpoint) throw new Error('NO_ENDPOINT');
 
@@ -145,6 +146,7 @@ async function callLocal({ message, context, history }) {
     method: 'POST',
     headers,
     body: JSON.stringify({ model, messages, max_tokens: 1024, temperature: 0.7 }),
+    signal,
   });
 
   if (!response.ok) {
@@ -169,12 +171,12 @@ async function callLocal({ message, context, history }) {
  * @param {object[]} [opts.history]
  * @returns {Promise<{ text: string, action: object|null }>}
  */
-export async function callLLM({ message, context, tier = 'haiku', history = [] }) {
+export async function callLLM({ message, context, tier = 'haiku', history = [], signal }) {
   const { provider } = getProviderConfig();
 
   let rawText = provider === 'local'
-    ? await callLocal({ message, context, history })
-    : await callClaude({ message, context, tier, history });
+    ? await callLocal({ message, context, history, signal })
+    : await callClaude({ message, context, tier, history, signal });
 
   // Strip thinking blocks (Qwen 3.5, DeepSeek, etc.)
   rawText = rawText.replace(/<think>[\s\S]*?<\/think>\s*/g, '');
