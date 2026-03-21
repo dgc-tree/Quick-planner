@@ -399,18 +399,44 @@ function appendBubble(role, content, opts = {}) {
   }
 }
 
+const THINKING_PHRASES = [
+  'Thinking about this one...',
+  'Crunching the data...',
+  'Working on it...',
+  'Let me figure this out...',
+  'Give me a moment...',
+  'Asking the brains trust...',
+  'On it...',
+  'Processing...',
+  'Digging into this...',
+  'Bear with me...',
+];
+
 function showThinking() {
   const el = document.createElement('div');
   el.className = 'qp-chat-bubble qp-chat-bubble-assistant qp-chat-thinking';
-  el.innerHTML = `<span class="qp-chat-msg-avatar">Qp</span><div class="qp-chat-msg-content"><span class="qp-chat-dots"><span></span><span></span><span></span></span></div>`;
+  const phrase = THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
+  el.innerHTML = `<span class="qp-chat-msg-avatar">Qp</span><div class="qp-chat-msg-content"><span class="qp-chat-thinking-text">${phrase}</span><span class="qp-chat-dots"><span></span><span></span><span></span></span></div>`;
   _messageList.appendChild(el);
   scrollToBottom();
+
+  // Rotate phrase every 5 seconds if still thinking
+  let idx = THINKING_PHRASES.indexOf(phrase);
+  el._phraseInterval = setInterval(() => {
+    idx = (idx + 1) % THINKING_PHRASES.length;
+    const textEl = el.querySelector('.qp-chat-thinking-text');
+    if (textEl) textEl.textContent = THINKING_PHRASES[idx];
+  }, 5000);
+
   return el;
 }
 
 function removeThinking(el) {
-  if (el && el.parentNode) el.remove();
+  if (!el) return;
+  if (el._phraseInterval) clearInterval(el._phraseInterval);
+  if (el.parentNode) el.remove();
 }
+
 
 function scrollToBottom() {
   if (_messageList) {

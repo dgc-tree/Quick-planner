@@ -5583,7 +5583,7 @@ dialog.import-modal::backdrop {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--accent-dark, #1a8a78);
+  background: var(--accent);
   color: #fff;
   font-size: 0.55rem;
   font-weight: 700;
