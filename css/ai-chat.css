@@ -327,6 +327,34 @@ main {
   white-space: nowrap;
 }
 
+.qp-chat-thinking {
+  position: relative;
+}
+
+.qp-chat-stop {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.qp-chat-stop:hover {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-text);
+}
+
 .qp-chat-dots {
   display: flex;
   gap: 5px;

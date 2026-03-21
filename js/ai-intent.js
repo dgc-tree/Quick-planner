@@ -242,8 +242,31 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: `Overdue:\n${list}` };
   }
 
-  // "how many tasks" / "how many tasks in [project]"
-  if (/^how\s+many\s+tasks/i.test(msg)) {
+  // "how many tasks in/for [month]" — month-qualified count (must come before generic "how many tasks")
+  {
+    const howManyMonth = lower.match(/^how\s+many\s+\w+\s+(?:in|for|due\s+in|due\s+for)\s+(\w+)\s*\??$/);
+    if (howManyMonth) {
+      const mName = howManyMonth[1];
+      const mi = MONTH_NAMES.indexOf(mName) !== -1 ? MONTH_NAMES.indexOf(mName) : MONTH_SHORT.indexOf(mName);
+      if (mi !== -1) {
+        const year = mi >= todayDate.getMonth() ? todayDate.getFullYear() : todayDate.getFullYear() + 1;
+        const startOfMonth = new Date(year, mi, 1);
+        const endOfMonth = new Date(year, mi + 1, 0);
+        const due = tasks.filter(t => {
+          if (!t.endDate) return false;
+          const d = new Date(t.endDate);
+          return d >= startOfMonth && d <= endOfMonth;
+        });
+        const label = MONTH_NAMES[mi].charAt(0).toUpperCase() + MONTH_NAMES[mi].slice(1);
+        if (due.length === 0) return { type: 'read', response: `No tasks due in ${label} ${year}.` };
+        const list = due.map(t => `- ${t.task || t.name} (${fmtDateHuman(new Date(t.endDate))}${t.status === 'Done' ? ', done' : ''})`).join('\n');
+        return { type: 'read', response: `${due.length} task${due.length > 1 ? 's' : ''} in ${label}:\n${list}` };
+      }
+    }
+  }
+
+  // "how many tasks" (generic, no month qualifier)
+  if (/^how\s+many\s+\w*\s*tasks?\w*\s*\??$/i.test(msg) || /^how\s+many\s+tasks/i.test(msg)) {
     const total = tasks.length;
     const done = tasks.filter(t => t.status === 'Done').length;
     const inProgress = tasks.filter(t => t.status === 'In Progress').length;
@@ -290,9 +313,9 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: `Due next week:\n${list}` };
   }
 
-  // "what's due in [month]" / "due in [month]" / "how about [month]" / "anything in [month]"
+  // "what's due in [month]" / "how about [month]" / "what about [month]" / "but what about just in [month]" etc.
   {
-    const monthQuery = lower.match(/(?:what(?:'s| is)\s+due\s+in|due\s+in|how\s+about|anything\s+(?:due\s+)?in|tasks?\s+(?:due\s+)?in)\s+(\w+)\??$/);
+    const monthQuery = lower.match(/(?:what(?:'s| is)\s+due\s+in|due\s+in|how\s+about|what\s+about(?:\s+just)?(?:\s+in)?|anything\s+(?:due\s+)?in|tasks?\s+(?:due\s+)?in|but\s+what\s+about(?:\s+just)?(?:\s+in)?)\s+(\w+)\s*\??$/);
     if (monthQuery) {
       const mName = monthQuery[1].toLowerCase();
       const mi = MONTH_NAMES.indexOf(mName) !== -1 ? MONTH_NAMES.indexOf(mName) : MONTH_SHORT.indexOf(mName);
@@ -506,13 +529,16 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: resp };
   }
 
-  // ─── Bare month name as query ───────────────────────────────────
-  // Catches single-word "march", "april" etc. as "what's due in [month]"
+  // ─── Last-resort month extraction ────────────────────────────────
+  // If ANY recognised month name appears in the message, treat it as a month query.
+  // Catches typos ("takss in may"), conversational ("but just in may"), bare months ("march").
   {
-    const bareMonth = lower.replace(/[?\s]+$/, '');
-    const mi = MONTH_NAMES.indexOf(bareMonth) !== -1 ? MONTH_NAMES.indexOf(bareMonth) : MONTH_SHORT.indexOf(bareMonth);
-    if (mi !== -1) {
-      return resolveIntent(`what's due in ${MONTH_NAMES[mi]}`, context);
+    const words = lower.replace(/[?.!,]+/g, '').split(/\s+/);
+    for (const w of words) {
+      const mi = MONTH_NAMES.indexOf(w) !== -1 ? MONTH_NAMES.indexOf(w) : MONTH_SHORT.indexOf(w);
+      if (mi !== -1) {
+        return resolveIntent(`what's due in ${MONTH_NAMES[mi]}`, context);
+      }
     }
   }
 
