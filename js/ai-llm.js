@@ -1,9 +1,15 @@
 /**
- * ai-llm.js — Multi-provider LLM client (Claude API + OpenAI-compatible local)
- * Supports Anthropic direct API and any OpenAI-compatible endpoint (Ollama, LM Studio, llama.cpp, vLLM).
+ * ai-llm.js — Multi-provider LLM client (Hosted / Claude API / OpenAI-compatible local)
+ * Hosted = proxied through qp-api Worker (default for logged-in users).
+ * Claude = user's own API key, direct to Anthropic.
+ * Local = any OpenAI-compatible endpoint (Ollama, LM Studio, llama.cpp, vLLM).
  */
 
+import { getToken } from './auth.js';
+
 // ─── Provider config ─────────────────────────────────────────────────────────
+
+const QP_API_BASE = 'https://qp-api.davegregurke.workers.dev';
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_HAIKU = 'claude-haiku-4-5-20251001';
@@ -14,11 +20,11 @@ const DEFAULT_LOCAL_MODEL = 'qwen3.5-9b';
 
 /**
  * Get current provider config from localStorage.
- * @returns {{ provider: 'claude'|'local', apiKey: string, endpoint: string, model: string, localKey: string }}
+ * @returns {{ provider: 'hosted'|'claude'|'local', apiKey: string, endpoint: string, model: string, localKey: string }}
  */
 export function getProviderConfig() {
   return {
-    provider: localStorage.getItem('qp-ai-provider') || 'claude',
+    provider: localStorage.getItem('qp-ai-provider') || 'hosted',
     apiKey: localStorage.getItem('qp-ai-key') || '',
     endpoint: localStorage.getItem('qp-ai-endpoint') || DEFAULT_LOCAL_URL,
     model: localStorage.getItem('qp-ai-model') || DEFAULT_LOCAL_MODEL,
@@ -85,6 +91,38 @@ Keep responses short and direct.
 Current project: ${contextJson.project}
 Tasks (${contextJson.shownTasks} of ${contextJson.totalTasks}):
 ${JSON.stringify(contextJson.tasks)}`;
+}
+
+// ─── Hosted (proxied through qp-api Worker) ─────────────────────────────────
+
+async function callHosted({ message, context, history, signal }) {
+  const token = getToken();
+  if (!token) throw new Error('NOT_LOGGED_IN');
+
+  const systemPrompt = buildSystemPrompt(context);
+  const response = await fetch(`${QP_API_BASE}/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      message,
+      systemPrompt,
+      history: history.slice(-6),
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({}));
+    if (response.status === 401) throw new Error('NOT_LOGGED_IN');
+    if (response.status === 429) throw new Error('RATE_LIMITED');
+    throw new Error(errBody.error || `Server error (${response.status})`);
+  }
+
+  const data = await response.json();
+  return data.text || '';
 }
 
 // ─── Claude API ──────────────────────────────────────────────────────────────
@@ -174,9 +212,14 @@ async function callLocal({ message, context, history, signal }) {
 export async function callLLM({ message, context, tier = 'haiku', history = [], signal }) {
   const { provider } = getProviderConfig();
 
-  let rawText = provider === 'local'
-    ? await callLocal({ message, context, history, signal })
-    : await callClaude({ message, context, tier, history, signal });
+  let rawText;
+  if (provider === 'hosted') {
+    rawText = await callHosted({ message, context, history, signal });
+  } else if (provider === 'local') {
+    rawText = await callLocal({ message, context, history, signal });
+  } else {
+    rawText = await callClaude({ message, context, tier, history, signal });
+  }
 
   // Strip thinking blocks (Qwen 3.5, DeepSeek, etc.)
   rawText = rawText.replace(/<think>[\s\S]*?<\/think>\s*/g, '');
@@ -210,9 +253,9 @@ function parseActionBlock(text) {
  * Determine which tier to use based on message complexity.
  */
 export function chooseTier(message, hasHistory = false) {
-  // Local LLM has no tiering — always returns the configured model
+  // Hosted + Local have no tiering
   const { provider } = getProviderConfig();
-  if (provider === 'local') return 'haiku'; // tier is ignored for local
+  if (provider === 'hosted' || provider === 'local') return 'haiku';
 
   const lower = message.toLowerCase();
   if (hasHistory) return 'sonnet';
@@ -227,6 +270,7 @@ export function chooseTier(message, hasHistory = false) {
  */
 export function hasApiKey() {
   const cfg = getProviderConfig();
+  if (cfg.provider === 'hosted') return !!getToken();
   if (cfg.provider === 'local') return !!cfg.endpoint;
   return !!cfg.apiKey;
 }

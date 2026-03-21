@@ -751,6 +751,81 @@ async function handleResendInvite(user, env, projectId, inviteId) {
   return json({ ok: true });
 }
 
+// ── Chat (proxied Claude) ────────────────────────────────────────────────────
+
+const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+const CLAUDE_HAIKU = 'claude-haiku-4-5-20251001';
+const CHAT_RATE_LIMIT = 50; // max queries per day per user
+
+// Simple daily rate limit using D1 (survives isolate restarts)
+async function checkChatRateLimit(userId, env) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const row = await env.DB.prepare(
+    'SELECT count FROM chat_usage WHERE user_id = ? AND date = ?'
+  ).bind(userId, todayStr).first();
+  const count = row?.count || 0;
+  if (count >= CHAT_RATE_LIMIT) return { allowed: false, remaining: 0 };
+  // Upsert usage
+  await env.DB.prepare(
+    `INSERT INTO chat_usage (user_id, date, count) VALUES (?, ?, 1)
+     ON CONFLICT (user_id, date) DO UPDATE SET count = count + 1`
+  ).bind(userId, todayStr).run();
+  return { allowed: true, remaining: CHAT_RATE_LIMIT - count - 1 };
+}
+
+async function handleChat(request, user, env) {
+  if (!user) return err('Unauthorised', 401);
+  if (!env.ANTHROPIC_API_KEY) return err('AI not configured on server', 503);
+
+  const body = await request.json().catch(() => null);
+  if (!body?.message) return err('Missing message');
+  if (body.message.length > 2000) return err('Message too long (max 2000 chars)');
+
+  // Rate limit
+  const limit = await checkChatRateLimit(user.sub, env);
+  if (!limit.allowed) return err('Daily AI limit reached (50/day). Try again tomorrow.', 429);
+
+  // Build messages array from history
+  const messages = [];
+  if (Array.isArray(body.history)) {
+    for (const h of body.history.slice(-6)) {
+      if (h.role === 'user' || h.role === 'assistant') {
+        messages.push({ role: h.role, content: String(h.content).slice(0, 2000) });
+      }
+    }
+  }
+  messages.push({ role: 'user', content: body.message });
+
+  try {
+    const response = await fetch(CLAUDE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: CLAUDE_HAIKU,
+        max_tokens: 1024,
+        system: body.systemPrompt || '',
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      if (response.status === 429) return err('AI rate limited - try again shortly', 429);
+      return err(errBody.error?.message || `AI error (${response.status})`, 502);
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+    return json({ text, remaining: limit.remaining });
+  } catch (e) {
+    return err('Failed to reach AI service', 502);
+  }
+}
+
 // ── Router ──────────────────────────────────────────────────────────────────
 
 export default {
@@ -855,6 +930,9 @@ export default {
       const [, pid, iid] = inviteResendMatch;
       if (method === 'POST') return respond(await handleResendInvite(user, env, pid, iid));
     }
+
+    // Chat (proxied Claude)
+    if (path === '/chat' && method === 'POST') return respond(await handleChat(request, user, env));
 
     return respond(err('Not found', 404));
   },

@@ -418,8 +418,12 @@
               <label>Provider</label>
               <div class="settings-ai-provider-group">
                 <label class="settings-ai-provider-option">
-                  <input type="radio" name="ai-provider" value="claude" id="settings-ai-provider-claude" checked>
-                  <span>Claude API</span>
+                  <input type="radio" name="ai-provider" value="hosted" id="settings-ai-provider-hosted" checked>
+                  <span>QP AI</span>
+                </label>
+                <label class="settings-ai-provider-option">
+                  <input type="radio" name="ai-provider" value="claude" id="settings-ai-provider-claude">
+                  <span>Own API key</span>
                 </label>
                 <label class="settings-ai-provider-option">
                   <input type="radio" name="ai-provider" value="local" id="settings-ai-provider-local">
@@ -428,8 +432,14 @@
               </div>
             </div>
 
+            <!-- QP AI (hosted) fields -->
+            <div id="settings-ai-hosted-fields">
+              <p class="settings-field-hint" style="margin: 12px 0">Included with your account. AI queries are processed securely through our servers using Claude. No API key needed.</p>
+              <div id="settings-ai-hosted-status" class="settings-ai-status"></div>
+            </div>
+
             <!-- Claude API fields -->
-            <div id="settings-ai-claude-fields">
+            <div id="settings-ai-claude-fields" class="hidden">
               <div class="modal-field" style="margin:12px 0">
                 <label for="settings-ai-key">Claude API key</label>
                 <p class="settings-field-hint">Paste your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Your key is saved in this browser only - never copy it into emails, messages or shared documents.</p>
