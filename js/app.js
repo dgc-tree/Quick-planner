@@ -1602,7 +1602,7 @@ function setupSettingsPanel() {
     digestFreqSelect.value = getDigestFrequency();
     digestFreqSelect.addEventListener('change', () => {
       setDigestFrequency(digestFreqSelect.value);
-      const labels = { off: 'Off', hourly: 'Hourly', daily: 'Daily', workweek: 'Weekly (work week)', monday: 'Weekly (Monday)', monthly: 'Monthly' };
+      const labels = { off: 'Off', hourly: 'Hourly', daily: 'Daily', friday5pm: 'Friday 5pm', monday9am: 'Monday 9am', monthly: 'Monthly' };
       showToast(`Notifications set to ${labels[digestFreqSelect.value] || digestFreqSelect.value}`, 'success');
     });
   }

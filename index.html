@@ -310,6 +310,32 @@
           </section>
 
           <section class="settings-card">
+            <h3 class="settings-card-title">Preferences</h3>
+            <div class="modal-field" style="margin:0 0 16px">
+              <label for="settings-digest-freq">Notifications</label>
+              <p class="settings-field-hint">How often to show changes made by other users in shared projects.</p>
+              <select id="settings-digest-freq" class="mobile-filter-select" style="width:100%">
+                <option value="off">Off</option>
+                <option value="hourly">Hourly</option>
+                <option value="daily" selected>Daily</option>
+                <option value="friday5pm">Friday 5pm</option>
+                <option value="monday9am">Monday 9am</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div class="modal-field" style="margin:0">
+              <label for="settings-ai-briefing">Task summary</label>
+              <p class="settings-field-hint">Get a quick overview of upcoming and overdue tasks when you open the app.</p>
+              <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
+                <option value="off">Off</option>
+                <option value="daily" selected>Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="settings-card">
             <h3 class="settings-card-title">Quick Start</h3>
             <p class="settings-card-desc">Re-run the setup wizard to pick a theme or load a project.</p>
             <div class="settings-card-actions">
@@ -489,34 +515,6 @@
                 <input type="checkbox" id="settings-ai-tts" class="toggle-input">
                 <span class="toggle-track"><span class="toggle-thumb"></span></span>
               </label>
-            </div>
-
-            <hr class="settings-card-divider">
-
-            <div class="modal-field" style="margin:0">
-              <label for="settings-digest-freq">Notifications</label>
-              <p class="settings-field-hint">How often to show changes made by other users in shared projects.</p>
-              <select id="settings-digest-freq" class="mobile-filter-select" style="width:100%">
-                <option value="off">Off</option>
-                <option value="hourly">Hourly</option>
-                <option value="daily" selected>Daily</option>
-                <option value="workweek">Weekly (work week)</option>
-                <option value="monday">Weekly (Monday morning)</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-
-            <hr class="settings-card-divider">
-
-            <div class="modal-field" style="margin:0">
-              <label for="settings-ai-briefing">Task summary</label>
-              <p class="settings-field-hint">Get a quick overview of upcoming and overdue tasks when you open the app.</p>
-              <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
-                <option value="off">Off</option>
-                <option value="daily" selected>Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
             </div>
 
             <hr class="settings-card-divider">
