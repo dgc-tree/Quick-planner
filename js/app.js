@@ -1454,10 +1454,12 @@ function setupSettingsPanel() {
     if (aiClaudeFields) aiClaudeFields.classList.toggle('hidden', provider !== 'claude');
     if (aiLocalFields) aiLocalFields.classList.toggle('hidden', provider !== 'local');
   }
-  if (providerCfg.provider === 'local' && aiLocalRadio) aiLocalRadio.checked = true;
-  else if (providerCfg.provider === 'claude' && aiClaudeRadio) aiClaudeRadio.checked = true;
-  else if (aiHostedRadio) aiHostedRadio.checked = true;
-  showProviderFields(providerCfg.provider);
+  // Migrate users stuck on 'hosted' (parked) to 'local'
+  const activeProvider = providerCfg.provider === 'hosted' ? 'local' : providerCfg.provider;
+  if (providerCfg.provider === 'hosted') setProvider('local');
+  if (activeProvider === 'local' && aiLocalRadio) aiLocalRadio.checked = true;
+  else if (activeProvider === 'claude' && aiClaudeRadio) aiClaudeRadio.checked = true;
+  showProviderFields(activeProvider);
 
   // Provider radio change
   document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {

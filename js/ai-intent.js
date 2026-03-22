@@ -638,6 +638,62 @@ export function resolveIntent(message, context) {
     }
   }
 
+  // ─── Flexible bulk date mutation (token extraction) ──────────────
+  // Catches natural phrasings like:
+  //   "task that mention word patch need to update start date to 21 March 2026 and end date 30 April 2026"
+  //   "change any task with patch start date to be 21 March and end date 30 April"
+  //   "update patch tasks dates to start 21 march end 30 april"
+  {
+    const hasMutationWord = /\b(change|update|set|move|need\s+to\s+update|need\s+to\s+change)\b/i.test(lower);
+    const hasDateWord = /\b(start\s+date|end\s+date|finish\s+date|due\s+date|date)\b/i.test(lower);
+    if (hasMutationWord && hasDateWord) {
+      // Extract start date
+      const startMatch = lower.match(/start\s+date\s+(?:to\s+(?:be\s+)?|of\s+|:\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?\w+(?:\s+\d{4})?)/);
+      const startDate = startMatch ? parseDate(startMatch[1].replace(/(?:st|nd|rd|th)\s+of\s+/g, ' ').replace(/(?:st|nd|rd|th)\s+/g, ' ')) : null;
+
+      // Extract end/finish/due date
+      const endMatch = lower.match(/(?:end|finish|due)\s+date\s+(?:to\s+(?:be\s+)?|of\s+|:\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?\w+(?:\s+\d{4})?)/);
+      const endDate = endMatch ? parseDate(endMatch[1].replace(/(?:st|nd|rd|th)\s+of\s+/g, ' ').replace(/(?:st|nd|rd|th)\s+/g, ' ')) : null;
+
+      if (startDate || endDate) {
+        // Extract filter - look for keywords between mutation verb and date references
+        let filterStr = lower
+          .replace(/\b(?:change|update|set|move|need\s+to\s+update|need\s+to\s+change)\b/g, '')
+          .replace(/start\s+date\s+(?:to\s+(?:be\s+)?|of\s+)?.*$/g, '')
+          .replace(/(?:end|finish|due)\s+date\s+(?:to\s+(?:be\s+)?|of\s+)?.*$/g, '')
+          .replace(/\b(?:any|all|every|tasks?|that|which|with|the|word|mention(?:s|ing)?|contain(?:s|ing)?|have|has|need)\b/g, '')
+          .replace(/[",'.]/g, '')
+          .trim();
+
+        // Clean up multiple spaces
+        filterStr = filterStr.replace(/\s+/g, ' ').trim();
+
+        if (filterStr) {
+          const result = filterTasks(filterStr, tasks);
+          if (result && result.matched.length > 0) {
+            const fields = {};
+            const parts = [];
+            if (startDate) { fields.startDate = fmtDate(startDate); parts.push(`start ${fmtDateHuman(startDate)}`); }
+            if (endDate) { fields.endDate = fmtDate(endDate); parts.push(`end ${fmtDateHuman(endDate)}`); }
+            return {
+              type: 'clarify',
+              response: `This will set ${parts.join(' and ')} on ${result.matched.length} ${result.label}. Proceed?`,
+              pendingAction: {
+                action: 'bulk_update',
+                taskIds: result.matched.map(t => t.id),
+                fields,
+                label: result.label,
+              },
+            };
+          }
+          if (result && result.matched.length === 0) {
+            return { type: 'read', response: `No ${result.label} found.` };
+          }
+        }
+      }
+    }
+  }
+
   // ─── Bulk mutations (confirm before executing) ───────────────────
 
   // Compound: "change dates of [filter] with a start date of [date] and/with end/finish date of [date]"

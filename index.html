@@ -424,23 +424,24 @@
             <div class="modal-field" style="margin:12px 0">
               <label>Provider</label>
               <div class="settings-ai-provider-group">
+                <!-- QP AI hidden until hosted proxy is funded
                 <label class="settings-ai-provider-option">
-                  <input type="radio" name="ai-provider" value="hosted" id="settings-ai-provider-hosted" checked>
+                  <input type="radio" name="ai-provider" value="hosted" id="settings-ai-provider-hosted">
                   <span>QP AI</span>
-                </label>
+                </label> -->
                 <label class="settings-ai-provider-option">
                   <input type="radio" name="ai-provider" value="claude" id="settings-ai-provider-claude">
                   <span>Own API key</span>
                 </label>
                 <label class="settings-ai-provider-option">
-                  <input type="radio" name="ai-provider" value="local" id="settings-ai-provider-local">
+                  <input type="radio" name="ai-provider" value="local" id="settings-ai-provider-local" checked>
                   <span>Local LLM</span>
                 </label>
               </div>
             </div>
 
-            <!-- QP AI (hosted) fields -->
-            <div id="settings-ai-hosted-fields">
+            <!-- QP AI (hosted) fields — hidden until funded -->
+            <div id="settings-ai-hosted-fields" class="hidden">
               <p class="settings-field-hint" style="margin: 12px 0">Included with your account. AI queries are processed securely through our servers using Claude. No API key needed.</p>
               <div id="settings-ai-hosted-status" class="settings-ai-status"></div>
             </div>
