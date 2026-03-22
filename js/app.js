@@ -1632,7 +1632,7 @@ function setupSettingsPanel() {
     $('#kanban-view').classList.add('hidden');
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
-    trashView.classList.add('hidden');
+    $('#trash-view')?.classList.add('hidden');
     settingsView.classList.remove('hidden');
     $active.checked = _bgFx.getConfig().active;
     document.querySelector('main').classList.add('settings-open');
