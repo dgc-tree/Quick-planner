@@ -107,6 +107,26 @@ export function parseDate(str) {
     }
   }
 
+  // "21st of March 2026" / "21st of March" / "30th of April 2026"
+  const dayOfMonth = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(\w+)(?:\s+(\d{4}))?$/);
+  if (dayOfMonth) {
+    const mi = MONTH_NAMES.indexOf(dayOfMonth[2]) !== -1 ? MONTH_NAMES.indexOf(dayOfMonth[2]) : MONTH_SHORT.indexOf(dayOfMonth[2]);
+    if (mi !== -1) {
+      const year = dayOfMonth[3] ? parseInt(dayOfMonth[3]) : (mi >= today().getMonth() ? today().getFullYear() : today().getFullYear() + 1);
+      return new Date(year, mi, parseInt(dayOfMonth[1]));
+    }
+  }
+
+  // "March 21st 2026" / "April 30th 2026"
+  const monthDayYear = s.match(/^(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?$/);
+  if (monthDayYear && !monthDay) {
+    const mi = MONTH_NAMES.indexOf(monthDayYear[1]) !== -1 ? MONTH_NAMES.indexOf(monthDayYear[1]) : MONTH_SHORT.indexOf(monthDayYear[1]);
+    if (mi !== -1) {
+      const year = monthDayYear[3] ? parseInt(monthDayYear[3]) : (mi >= today().getMonth() ? today().getFullYear() : today().getFullYear() + 1);
+      return new Date(year, mi, parseInt(monthDayYear[2]));
+    }
+  }
+
   return null;
 }
 
@@ -601,9 +621,41 @@ export function resolveIntent(message, context) {
 
   // ─── Bulk mutations (confirm before executing) ───────────────────
 
+  // Compound: "change dates of [filter] with a start date of [date] and/with end/finish date of [date]"
+  {
+    const compound = lower.match(/^(?:change|set|update)\s+(?:the\s+)?dates?\s+(?:of|on|for)\s+(?:all\s+|any\s+)?(.+?)\s+(?:with|to\s+have)\s+(?:a\s+)?start\s+date\s+(?:of|to(?:\s+become)?)\s+(.+?)\s+(?:and\s+|with\s+)(?:a\s+)?(?:end|finish|due)\s+date\s+(?:of|to(?:\s+become)?)\s+(.+)$/);
+    if (compound) {
+      const filterStr = compound[1].replace(/\s*tasks?\s*$/i, '').trim();
+      const startDate = parseDate(compound[2].replace(/(?:st|nd|rd|th)\s+of\s+/g, ' '));
+      const endDate = parseDate(compound[3].replace(/(?:st|nd|rd|th)\s+of\s+/g, ' '));
+      if (startDate || endDate) {
+        const result = filterTasks(filterStr, tasks);
+        if (result && result.matched.length > 0) {
+          const fields = {};
+          const parts = [];
+          if (startDate) { fields.startDate = fmtDate(startDate); parts.push(`start ${fmtDateHuman(startDate)}`); }
+          if (endDate) { fields.endDate = fmtDate(endDate); parts.push(`end ${fmtDateHuman(endDate)}`); }
+          return {
+            type: 'clarify',
+            response: `This will set ${parts.join(' and ')} on ${result.matched.length} ${result.label}. Proceed?`,
+            pendingAction: {
+              action: 'bulk_update',
+              taskIds: result.matched.map(t => t.id),
+              fields,
+              label: result.label,
+            },
+          };
+        }
+        if (result && result.matched.length === 0) {
+          return { type: 'read', response: `No ${result.label} found.` };
+        }
+      }
+    }
+  }
+
   // "change/set/move date of all [filter] to [date]"
   {
-    const bulkDate = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?(?:(?:end|due)\s+)?date\s+(?:of|on|for)\s+(?:all\s+)?(.+?)\s+to\s+(.+)$/);
+    const bulkDate = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?(?:(?:end|due|finish)\s+)?dates?\s+(?:of|on|for)\s+(?:all\s+|any\s+)?(.+?)\s+to(?:\s+become)?\s+(.+)$/);
     if (bulkDate) {
       const filterStr = bulkDate[1];
       const dateStr = bulkDate[2];
@@ -631,7 +683,7 @@ export function resolveIntent(message, context) {
 
   // "change start date of all [filter] to [date]"
   {
-    const bulkStart = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?start\s+date\s+(?:of|on|for)\s+(?:all\s+)?(.+?)\s+to\s+(.+)$/);
+    const bulkStart = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?start\s+date\s+(?:of|on|for)\s+(?:all\s+|any\s+)?(.+?)\s+to(?:\s+become)?\s+(.+)$/);
     if (bulkStart) {
       const date = parseDate(bulkStart[2]);
       if (date) {
