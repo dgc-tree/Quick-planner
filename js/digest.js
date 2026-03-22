@@ -41,20 +41,24 @@ function getSinceDate() {
   switch (freq) {
     case 'hourly': return new Date(now - 3600000).toISOString();
     case 'daily': return new Date(now.setHours(0, 0, 0, 0)).toISOString();
-    case 'workweek': {
+    case 'friday5pm': {
+      // Since last Friday 5pm (local time)
       const d = new Date();
       const day = d.getDay();
-      const diff = day === 0 ? 6 : day - 1; // Monday
+      const diff = day === 0 ? 2 : day === 6 ? 1 : day + 2; // days since Friday
       d.setDate(d.getDate() - diff);
-      d.setHours(0, 0, 0, 0);
+      d.setHours(17, 0, 0, 0);
+      if (d > now) d.setDate(d.getDate() - 7); // if this Friday hasn't passed yet
       return d.toISOString();
     }
-    case 'monday': {
+    case 'monday9am': {
+      // Since last Monday 9am (local time)
       const d = new Date();
       const day = d.getDay();
       const diff = day === 0 ? 6 : day - 1;
       d.setDate(d.getDate() - diff);
-      d.setHours(0, 0, 0, 0);
+      d.setHours(9, 0, 0, 0);
+      if (d > now) d.setDate(d.getDate() - 7);
       return d.toISOString();
     }
     case 'monthly': return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
