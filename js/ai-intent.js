@@ -602,6 +602,25 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: resp };
   }
 
+  // ─── Recent changes / activity ───────────────────────────────────
+  if (/^(?:(?:show\s+)?recent\s+(?:changes|updates|activity|edits)|what(?:'s|\s+has)\s+changed|activity|changelog|history|what\s+(?:was|got)\s+(?:updated|changed|edited)(?:\s+recently)?)\s*\??$/i.test(msg)) {
+    const withUpdates = tasks.filter(t => t.updatedAt).sort((a, b) => b.updatedAt - a.updatedAt);
+    if (withUpdates.length === 0) return { type: 'read', response: 'No recent changes tracked.' };
+    const now = Date.now();
+    const recent = withUpdates.slice(0, 10);
+    const list = recent.map(t => {
+      const ago = now - t.updatedAt;
+      let timeLabel;
+      if (ago < 60000) timeLabel = 'just now';
+      else if (ago < 3600000) timeLabel = `${Math.floor(ago / 60000)}m ago`;
+      else if (ago < 86400000) timeLabel = `${Math.floor(ago / 3600000)}h ago`;
+      else if (ago < 604800000) timeLabel = `${Math.floor(ago / 86400000)}d ago`;
+      else timeLabel = fmtDateHuman(new Date(t.updatedAt));
+      return `- ${t.task || t.name} (${t.status}) — ${timeLabel}`;
+    }).join('\n');
+    return { type: 'read', response: `Recent changes:\n${list}` };
+  }
+
   // ─── Last-resort month extraction ────────────────────────────────
   // If ANY recognised month name appears in the message, treat it as a month query.
   // Catches typos ("takss in may"), conversational ("but just in may"), bare months ("march").
