@@ -178,6 +178,59 @@ export function findTask(query, tasks) {
   return null;
 }
 
+// ─── Bulk task filtering ──────────────────────────────────────────────────
+
+/**
+ * Filter tasks by a natural-language descriptor.
+ * Returns { matched: Task[], label: string } or null if no filter understood.
+ */
+function filterTasks(filterStr, tasks) {
+  const f = filterStr.toLowerCase().trim()
+    .replace(/^all\s+/, '').replace(/\s+tasks?$/, '').trim();
+
+  if (!f || f === 'everything' || f === 'all') {
+    return { matched: tasks, label: 'all tasks' };
+  }
+
+  // By status
+  const status = STATUS_MAP[f];
+  if (status) {
+    const matched = tasks.filter(t => t.status === status);
+    return { matched, label: `${status.toLowerCase()} tasks` };
+  }
+
+  // By room (fuzzy)
+  const byRoom = tasks.filter(t => (t.room || '').toLowerCase().includes(f));
+  if (byRoom.length > 0) {
+    return { matched: byRoom, label: `tasks in "${byRoom[0].room}"` };
+  }
+
+  // By category (fuzzy)
+  const byCat = tasks.filter(t => (t.category || '').toLowerCase().includes(f));
+  if (byCat.length > 0) {
+    return { matched: byCat, label: `"${byCat[0].category}" tasks` };
+  }
+
+  // By assigned person (fuzzy)
+  const byPerson = tasks.filter(t =>
+    (t.assigned || []).some(a => a.toLowerCase().includes(f))
+  );
+  if (byPerson.length > 0) {
+    return { matched: byPerson, label: `tasks assigned to "${f}"` };
+  }
+
+  // By task name keyword ("tasks with/mentioning/containing X")
+  const keyword = f.replace(/^(?:with|mentioning|containing|about|named)\s+/, '').trim();
+  if (keyword) {
+    const byName = tasks.filter(t => (t.task || t.name || '').toLowerCase().includes(keyword));
+    if (byName.length > 0) {
+      return { matched: byName, label: `tasks matching "${keyword}"` };
+    }
+  }
+
+  return null;
+}
+
 // ─── Status normalisation ─────────────────────────────────────────────────────
 
 const STATUS_MAP = {
@@ -546,7 +599,128 @@ export function resolveIntent(message, context) {
     }
   }
 
-  // ─── Mutations ────────────────────────────────────────────────────
+  // ─── Bulk mutations (confirm before executing) ───────────────────
+
+  // "change/set/move date of all [filter] to [date]"
+  {
+    const bulkDate = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?(?:(?:end|due)\s+)?date\s+(?:of|on|for)\s+(?:all\s+)?(.+?)\s+to\s+(.+)$/);
+    if (bulkDate) {
+      const filterStr = bulkDate[1];
+      const dateStr = bulkDate[2];
+      const date = parseDate(dateStr);
+      if (date) {
+        const result = filterTasks(filterStr, tasks);
+        if (result && result.matched.length > 0) {
+          return {
+            type: 'clarify',
+            response: `This will change the end date to ${fmtDateHuman(date)} on ${result.matched.length} ${result.label}. Proceed?`,
+            pendingAction: {
+              action: 'bulk_update',
+              taskIds: result.matched.map(t => t.id),
+              fields: { endDate: fmtDate(date) },
+              label: result.label,
+            },
+          };
+        }
+        if (result && result.matched.length === 0) {
+          return { type: 'read', response: `No ${result.label} found.` };
+        }
+      }
+    }
+  }
+
+  // "change start date of all [filter] to [date]"
+  {
+    const bulkStart = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?start\s+date\s+(?:of|on|for)\s+(?:all\s+)?(.+?)\s+to\s+(.+)$/);
+    if (bulkStart) {
+      const date = parseDate(bulkStart[2]);
+      if (date) {
+        const result = filterTasks(bulkStart[1], tasks);
+        if (result && result.matched.length > 0) {
+          return {
+            type: 'clarify',
+            response: `This will change the start date to ${fmtDateHuman(date)} on ${result.matched.length} ${result.label}. Proceed?`,
+            pendingAction: {
+              action: 'bulk_update',
+              taskIds: result.matched.map(t => t.id),
+              fields: { startDate: fmtDate(date) },
+              label: result.label,
+            },
+          };
+        }
+      }
+    }
+  }
+
+  // "mark all [filter] as [status]"
+  {
+    const bulkMark = lower.match(/^(?:mark|set|change)\s+(?:all\s+)?(.+?)\s+(?:as|to)\s+(done|complete|completed|in progress|not started|to ?do|blocked|started|working)$/);
+    if (bulkMark) {
+      const filterStr = bulkMark[1];
+      const newStatus = normaliseStatus(bulkMark[2]);
+      if (newStatus) {
+        const result = filterTasks(filterStr, tasks);
+        if (result && result.matched.length > 1) {
+          return {
+            type: 'clarify',
+            response: `This will mark ${result.matched.length} ${result.label} as ${newStatus}. Proceed?`,
+            pendingAction: {
+              action: 'bulk_update',
+              taskIds: result.matched.map(t => t.id),
+              fields: { status: newStatus },
+              label: result.label,
+            },
+          };
+        }
+        // Single match falls through to single-task handler below
+      }
+    }
+  }
+
+  // "assign all [filter] to [person]"
+  {
+    const bulkAssign = lower.match(/^assign\s+(?:all\s+)?(.+?)\s+to\s+(.+)$/);
+    if (bulkAssign) {
+      const filterStr = bulkAssign[1];
+      const person = bulkAssign[2].trim();
+      const result = filterTasks(filterStr, tasks);
+      if (result && result.matched.length > 1) {
+        return {
+          type: 'clarify',
+          response: `This will assign ${result.matched.length} ${result.label} to ${person}. Proceed?`,
+          pendingAction: {
+            action: 'bulk_update',
+            taskIds: result.matched.map(t => t.id),
+            fields: { assigned: [person] },
+            label: result.label,
+          },
+        };
+      }
+      // Single match falls through to single-task handler
+    }
+  }
+
+  // "delete/remove all [filter]"
+  {
+    const bulkDelete = lower.match(/^(?:delete|remove|trash)\s+(?:all\s+)?(.+)$/);
+    if (bulkDelete) {
+      const result = filterTasks(bulkDelete[1], tasks);
+      if (result && result.matched.length > 1) {
+        return {
+          type: 'clarify',
+          response: `This will delete ${result.matched.length} ${result.label} (moved to bin). Proceed?`,
+          pendingAction: {
+            action: 'bulk_delete',
+            taskIds: result.matched.map(t => t.id),
+            label: result.label,
+          },
+        };
+      }
+      // Single match falls through to single-task handler
+    }
+  }
+
+  // ─── Single-task mutations ──────────────────────────────────────
 
   // "mark [task] as [status]" / "complete [task]"
   const markAs = lower.match(/^(?:mark|set|change)\s+(.+?)\s+(?:as|to)\s+(done|complete|completed|in progress|not started|to ?do|blocked|started|working)$/);

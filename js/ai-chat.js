@@ -374,7 +374,44 @@ function executeMutation(action) {
     if (_onDeleteTask) _onDeleteTask(action.taskId);
     return {
       confirmation: action.confirmation || 'Task deleted (moved to bin).',
-      undoData: null, // Task is in bin, can be restored manually
+      undoData: null,
+    };
+  }
+
+  // Bulk update
+  if (action.action === 'bulk_update' && Array.isArray(action.taskIds)) {
+    const tasks = _onGetTasks ? _onGetTasks() : [];
+    const prevStates = [];
+    let updated = 0;
+    for (const id of action.taskIds) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) continue;
+      const prev = {};
+      for (const key of Object.keys(action.fields)) {
+        prev[key] = key === 'assigned' ? [...(task.assigned || [])]
+          : key === 'startDate' || key === 'endDate' ? (task[key] ? task[key].toISOString().split('T')[0] : null)
+          : task[key];
+      }
+      prevStates.push({ taskId: id, fields: prev });
+      if (_onUpdateTask) _onUpdateTask(id, action.fields);
+      updated++;
+    }
+    return {
+      confirmation: `Updated ${updated} ${action.label || 'tasks'}.`,
+      undoData: { action: 'bulk_update', items: prevStates },
+    };
+  }
+
+  // Bulk delete
+  if (action.action === 'bulk_delete' && Array.isArray(action.taskIds)) {
+    let deleted = 0;
+    for (const id of action.taskIds) {
+      if (_onDeleteTask) _onDeleteTask(id);
+      deleted++;
+    }
+    return {
+      confirmation: `Deleted ${deleted} ${action.label || 'tasks'} (moved to bin).`,
+      undoData: null,
     };
   }
 
@@ -401,7 +438,13 @@ function appendBubble(role, content, opts = {}) {
       chip.className = 'qp-chat-undo';
       chip.textContent = 'Undo';
       chip.addEventListener('click', () => {
-        executeMutation({ action: undoData.action, taskId: undoData.taskId, fields: undoData.fields });
+        if (undoData.action === 'bulk_update' && undoData.items) {
+          for (const item of undoData.items) {
+            executeMutation({ action: 'update', taskId: item.taskId, fields: item.fields });
+          }
+        } else {
+          executeMutation({ action: undoData.action, taskId: undoData.taskId, fields: undoData.fields });
+        }
         chip.textContent = 'Undone';
         chip.disabled = true;
         chip.classList.add('qp-chat-undo-done');
