@@ -1596,6 +1596,17 @@ function setupSettingsPanel() {
     showToast(`Voice responses ${aiTtsToggle.checked ? 'enabled' : 'disabled'}`, 'success');
   });
 
+  // Digest frequency
+  const digestFreqSelect = $('#settings-digest-freq');
+  if (digestFreqSelect) {
+    digestFreqSelect.value = getDigestFrequency();
+    digestFreqSelect.addEventListener('change', () => {
+      setDigestFrequency(digestFreqSelect.value);
+      const labels = { off: 'Off', hourly: 'Hourly', daily: 'Daily', workweek: 'Weekly (work week)', monday: 'Weekly (Monday)', monthly: 'Monthly' };
+      showToast(`Notifications set to ${labels[digestFreqSelect.value] || digestFreqSelect.value}`, 'success');
+    });
+  }
+
   if (aiBriefingSelect) aiBriefingSelect.addEventListener('change', () => {
     setBriefingMode(aiBriefingSelect.value);
     showToast(`Task summary set to ${aiBriefingSelect.value}`, 'success');
