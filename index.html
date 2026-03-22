@@ -494,6 +494,21 @@
             <hr class="settings-card-divider">
 
             <div class="modal-field" style="margin:0">
+              <label for="settings-digest-freq">Notifications</label>
+              <p class="settings-field-hint">How often to show changes made by other users in shared projects.</p>
+              <select id="settings-digest-freq" class="mobile-filter-select" style="width:100%">
+                <option value="off">Off</option>
+                <option value="hourly">Hourly</option>
+                <option value="daily" selected>Daily</option>
+                <option value="workweek">Weekly (work week)</option>
+                <option value="monday">Weekly (Monday morning)</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            <hr class="settings-card-divider">
+
+            <div class="modal-field" style="margin:0">
               <label for="settings-ai-briefing">Task summary</label>
               <p class="settings-field-hint">Get a quick overview of upcoming and overdue tasks when you open the app.</p>
               <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
