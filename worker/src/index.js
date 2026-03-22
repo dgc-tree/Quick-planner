@@ -166,6 +166,65 @@ async function hashToken(token) {
   return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// ── Invite auto-accept ──────────────────────────────────────────────────────
+
+const INVITE_EXPIRY_DAYS = 7;
+
+/**
+ * Auto-accept any pending invites for this email.
+ * Called after signup and login. Adds user to project_members, marks invite accepted.
+ * Returns array of accepted project IDs.
+ */
+async function autoAcceptInvites(userId, email, env) {
+  const { results: invites } = await env.DB.prepare(
+    `SELECT id, project_id, role, created_at FROM project_invites
+     WHERE email = ? AND accepted_at IS NULL AND revoked_at IS NULL`
+  ).bind(email).all();
+
+  const accepted = [];
+  const now = new Date();
+
+  for (const inv of invites) {
+    // Check expiry
+    const created = new Date(inv.created_at);
+    const ageMs = now - created;
+    if (ageMs > INVITE_EXPIRY_DAYS * 24 * 3600 * 1000) {
+      // Mark expired invites as revoked so they don't show in the UI
+      await env.DB.prepare(
+        "UPDATE project_invites SET revoked_at = datetime('now') WHERE id = ?"
+      ).bind(inv.id).run();
+      continue;
+    }
+
+    // Check not already a member
+    const existing = await env.DB.prepare(
+      'SELECT id FROM project_members WHERE project_id = ? AND user_id = ?'
+    ).bind(inv.project_id, userId).first();
+    if (existing) {
+      // Already a member, just mark invite accepted
+      await env.DB.prepare(
+        "UPDATE project_invites SET accepted_at = datetime('now') WHERE id = ?"
+      ).bind(inv.id).run();
+      continue;
+    }
+
+    // Add to project_members
+    const memberId = crypto.randomUUID();
+    await env.DB.prepare(
+      'INSERT INTO project_members (id, project_id, user_id, role) VALUES (?, ?, ?, ?)'
+    ).bind(memberId, inv.project_id, userId, inv.role).run();
+
+    // Mark invite accepted
+    await env.DB.prepare(
+      "UPDATE project_invites SET accepted_at = datetime('now') WHERE id = ?"
+    ).bind(inv.id).run();
+
+    accepted.push(inv.project_id);
+  }
+
+  return accepted;
+}
+
 // ── Email sending (Resend) ──────────────────────────────────────────────────
 
 async function sendEmail(env, to, subject, html) {
@@ -233,8 +292,11 @@ async function handleSignup(request, env) {
     .bind(id, normalEmail, passwordHash, (name || '').slice(0, 100))
     .run();
 
+  // Auto-accept any pending invites for this email
+  const acceptedProjects = await autoAcceptInvites(id, normalEmail, env);
+
   const token = await signJWT({ sub: id, email: normalEmail, exp: Math.floor(Date.now() / 1000) + JWT_EXPIRY_SECONDS }, env.JWT_SECRET);
-  return json({ token, user: { id, email: normalEmail, name: name || '' } }, 201);
+  return json({ token, user: { id, email: normalEmail, name: name || '' }, acceptedProjects }, 201);
 }
 
 async function handleLogin(request, env) {
@@ -251,8 +313,11 @@ async function handleLogin(request, env) {
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) return err('Invalid email or password', 401);
 
+  // Auto-accept any pending invites for this email
+  const acceptedProjects = await autoAcceptInvites(user.id, user.email, env);
+
   const token = await signJWT({ sub: user.id, email: user.email, exp: Math.floor(Date.now() / 1000) + JWT_EXPIRY_SECONDS }, env.JWT_SECRET);
-  return json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  return json({ token, user: { id: user.id, email: user.email, name: user.name }, acceptedProjects });
 }
 
 // ── Projects CRUD ───────────────────────────────────────────────────────────
@@ -613,13 +678,14 @@ async function handleListMembers(user, env, projectId) {
     }
   }
 
-  // Pending invites
+  // Pending invites (exclude expired)
   const { results: invites } = await env.DB.prepare(`
     SELECT pi.id, pi.email, pi.role, pi.created_at, pi.invited_by,
            u.email AS invited_by_email
     FROM project_invites pi
     LEFT JOIN users u ON u.id = pi.invited_by
     WHERE pi.project_id = ? AND pi.accepted_at IS NULL AND pi.revoked_at IS NULL
+      AND pi.created_at > datetime('now', '-${INVITE_EXPIRY_DAYS} days')
     ORDER BY pi.created_at
   `).bind(projectId).all();
 
@@ -662,16 +728,20 @@ async function handleInviteMember(request, user, env, projectId) {
     'INSERT INTO project_invites (id, project_id, email, role, invited_by) VALUES (?, ?, ?, ?, ?)'
   ).bind(id, projectId, normalEmail, assignRole, user.sub).run();
 
-  // Send invite email
+  // Send invite email — link includes invite context for UX copy
   const project = await env.DB.prepare('SELECT name FROM projects WHERE id = ?').bind(projectId).first();
   const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
+  const inviteUrl = `${appUrl}?invite=${id}&project=${encodeURIComponent(project?.name || '')}`;
+  // Check if user already has an account (for UX copy)
+  const knownUser = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(normalEmail).first();
+  const ctaLabel = knownUser ? 'Log in to join' : 'Create your account';
   await sendEmail(
     env, normalEmail,
     `You've been invited to "${project?.name || 'a project'}" on Quick Planner`,
     verifyEmailHtml(
       'You\'re invited!',
-      `You've been invited to collaborate on <strong>${project?.name || 'a project'}</strong> as a <strong>${assignRole}</strong>. Sign in or create an account to get started.`,
-      appUrl, 'Open Quick Planner'
+      `You've been invited to collaborate on <strong>${project?.name || 'a project'}</strong> as a <strong>${assignRole}</strong>. ${knownUser ? 'Log in' : 'Create an account'} to get started.`,
+      inviteUrl, ctaLabel
     )
   );
 

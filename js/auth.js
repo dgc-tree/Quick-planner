@@ -207,10 +207,14 @@ export function showAuthModal(onSuccess, { gate = false } = {}) {
   const skipBtn = document.getElementById('auth-skip');
   if (closeBtn) closeBtn.style.display = gate ? 'none' : '';
   if (skipBtn) skipBtn.style.display = gate ? 'none' : '';
-  // Don't auto-focus email — let the user see the landing page first.
-  // On mobile this pulls up the keyboard immediately, hiding the mascot and context.
-  // Default to login mode
-  setAuthMode('login');
+  // Detect invite context from URL (?invite=<id>&project=<name>)
+  const params = new URLSearchParams(window.location.search);
+  _inviteContext = params.get('invite') ? {
+    inviteId: params.get('invite'),
+    projectName: params.get('project') || '',
+  } : null;
+  // Default to signup mode for invited users, login for returning
+  setAuthMode(_inviteContext ? 'signup' : 'login');
 }
 
 export function hideAuthModal() {
@@ -221,6 +225,9 @@ export function hideAuthModal() {
 }
 
 let _currentMode = 'login';
+let _inviteContext = null; // { inviteId, projectName } when arriving via invite link
+
+export function getInviteContext() { return _inviteContext; }
 
 function setAuthMode(mode) {
   _currentMode = mode;
@@ -230,16 +237,17 @@ function setAuthMode(mode) {
   const nameField = document.getElementById('auth-name-field');
   const strengthEl = document.getElementById('auth-password-strength');
   const pwInput = document.getElementById('auth-password');
+  const projName = _inviteContext?.projectName;
   if (mode === 'signup') {
-    title.textContent = 'Create account';
-    submitBtn.textContent = 'Sign up';
-    toggleBtn.textContent = 'Back to log in';
+    title.textContent = projName ? `Join "${projName}"` : 'Create account';
+    submitBtn.textContent = projName ? 'Create account & join' : 'Sign up';
+    toggleBtn.textContent = 'Already have an account? Log in';
     nameField.classList.remove('hidden');
     if (pwInput) { pwInput.placeholder = 'Min 15 characters'; pwInput.minLength = 15; }
   } else {
-    title.textContent = 'Welcome back';
-    submitBtn.textContent = 'Log in';
-    toggleBtn.textContent = 'Create account';
+    title.textContent = projName ? `Welcome back - join "${projName}"` : 'Welcome back';
+    submitBtn.textContent = projName ? 'Log in & join' : 'Log in';
+    toggleBtn.textContent = projName ? 'New here? Create account' : 'Create account';
     nameField.classList.add('hidden');
     if (strengthEl) strengthEl.classList.add('hidden');
     if (pwInput) { pwInput.placeholder = 'Password'; pwInput.minLength = 1; }
@@ -320,6 +328,12 @@ export function initAuthUI() {
         await login(email, password);
       }
       hideAuthModal();
+      // Clear invite URL params so they don't persist on refresh
+      if (_inviteContext) {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+        _inviteContext = null;
+      }
       if (_onAuthSuccess) _onAuthSuccess();
     } catch (err) {
       errEl.textContent = err.message;
