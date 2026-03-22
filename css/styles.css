@@ -5598,6 +5598,49 @@ dialog.import-modal::backdrop {
 [data-theme="dark"] .sidebar-account-btn { border-top-color: rgba(255,255,255,0.06); }
 .sidebar-account-avatar.sandbox { background: #f59e0b; font-size: 0.75rem; }
 
+/* Account popover */
+.sidebar-account-wrap { position: relative; margin-top: auto; }
+.sidebar-account-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 8px;
+  min-width: 180px;
+  background: var(--surface-raised);
+  border-radius: 10px;
+  box-shadow: var(--shadow-glass), 0 8px 24px rgba(0,0,0,0.15);
+  backdrop-filter: blur(calc(var(--blur) * 2)) saturate(1.4);
+  padding: 6px;
+  z-index: 100;
+}
+.sidebar-account-popover-email {
+  padding: 8px 10px 6px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+}
+.sidebar-account-popover-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--content-primary);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.sidebar-account-popover-item:hover { background: var(--surface-secondary); }
+.sidebar-account-popover-logout { color: var(--status-blocked-text, #dc2626); }
+.sidebar-account-popover-logout:hover { background: rgba(220,38,38,0.08); }
+
 /* Sandbox badge */
 body.sandbox-mode::after {
   content: 'SANDBOX';
