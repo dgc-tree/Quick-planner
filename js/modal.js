@@ -190,7 +190,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
             <div class="modal-invite-section modal-field hidden">
               <span>Invite</span>
               <div class="modal-member-invite-form">
-                <input type="email" class="modal-member-invite-input" placeholder="Invite by email..." required>
+                <input type="email" class="modal-member-invite-input" placeholder="Invite by email...">
                 <button type="button" class="modal-member-invite-send" title="Send invite">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
