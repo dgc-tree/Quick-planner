@@ -458,8 +458,8 @@ main {
 
 @media (max-width: 768px) {
   .qp-chat-fab {
-    bottom: 88px;
-    right: 16px;
+    bottom: 100px;
+    right: 24px;
     width: 48px;
     height: 48px;
   }
