@@ -1629,8 +1629,9 @@ function setupSettingsPanel() {
     });
   });
 
-  // Expose for mobile menu
+  // Expose for mobile menu and chat links
   window._showSettings = showSettings;
+  window._showSettingsTab = (tab) => { showSettings(); switchSettingsTab(tab); };
 
   // --- Trash view ---
   const trashView = $('#trash-view');

@@ -279,6 +279,12 @@ main {
   box-shadow: var(--shadow-glass);
 }
 
+.qp-chat-bubble-assistant .qp-chat-msg-content a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .qp-chat-bubble-user .qp-chat-msg-content {
   background: var(--accent);
   color: var(--on-accent-primary1, #000);
