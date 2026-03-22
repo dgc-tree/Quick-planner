@@ -5,8 +5,8 @@
   position: fixed;
   bottom: 100px;
   right: 24px;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent-primary1, #000);
@@ -18,7 +18,6 @@
   justify-content: center;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  font-family: 'DM Sans', sans-serif;
 }
 
 .qp-chat-fab:hover {
@@ -460,8 +459,6 @@ main {
   .qp-chat-fab {
     bottom: 100px;
     right: 24px;
-    width: 48px;
-    height: 48px;
   }
 
   .qp-chat-fab-text {

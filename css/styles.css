@@ -1801,6 +1801,8 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 .planner-bar:hover { opacity: 0.85; }
 .planner-bar:active { cursor: grabbing; }
+.planner-bar--done { opacity: 0.5; }
+.planner-bar--done .bar-label { text-decoration: line-through; }
 
 /* Drag resize handles on left/right edges */
 .planner-bar-handle {
