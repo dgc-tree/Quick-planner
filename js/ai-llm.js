@@ -24,7 +24,7 @@ const DEFAULT_LOCAL_MODEL = 'qwen3.5-9b';
  */
 export function getProviderConfig() {
   return {
-    provider: localStorage.getItem('qp-ai-provider') || 'hosted',
+    provider: localStorage.getItem('qp-ai-provider') || 'local',
     apiKey: localStorage.getItem('qp-ai-key') || '',
     endpoint: localStorage.getItem('qp-ai-endpoint') || DEFAULT_LOCAL_URL,
     model: localStorage.getItem('qp-ai-model') || DEFAULT_LOCAL_MODEL,
