@@ -323,8 +323,13 @@ async function handleLogin(request, env) {
 // ── Projects CRUD ───────────────────────────────────────────────────────────
 
 async function handleGetProjects(user, env) {
-  const { results } = await env.DB.prepare('SELECT * FROM projects WHERE user_id = ? ORDER BY created_at')
-    .bind(user.sub).all();
+  // Return owned projects + projects where user is a member
+  const { results } = await env.DB.prepare(`
+    SELECT DISTINCT p.* FROM projects p
+    LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
+    WHERE p.user_id = ? OR pm.user_id = ?
+    ORDER BY p.created_at
+  `).bind(user.sub, user.sub, user.sub).all();
   return json(results);
 }
 
@@ -476,10 +481,24 @@ async function handleFullSync(request, user, env) {
 }
 
 async function handleFullPull(user, env) {
-  const { results: projects } = await env.DB.prepare('SELECT * FROM projects WHERE user_id = ? ORDER BY created_at')
-    .bind(user.sub).all();
-  const { results: tasks } = await env.DB.prepare('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at')
-    .bind(user.sub).all();
+  // Include owned projects + projects where user is a member
+  const { results: projects } = await env.DB.prepare(`
+    SELECT DISTINCT p.* FROM projects p
+    LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
+    WHERE p.user_id = ? OR pm.user_id = ?
+    ORDER BY p.created_at
+  `).bind(user.sub, user.sub, user.sub).all();
+
+  // Get tasks for all accessible projects
+  const projectIds = projects.map(p => p.id);
+  let tasks = [];
+  if (projectIds.length) {
+    const placeholders = projectIds.map(() => '?').join(',');
+    const { results } = await env.DB.prepare(
+      `SELECT * FROM tasks WHERE project_id IN (${placeholders}) ORDER BY created_at`
+    ).bind(...projectIds).all();
+    tasks = results;
+  }
 
   const tasksByProject = {};
   for (const t of tasks) {
