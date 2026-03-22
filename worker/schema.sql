@@ -77,6 +77,19 @@ CREATE INDEX IF NOT EXISTS idx_members_user ON project_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_invites_project ON project_invites(project_id);
 CREATE INDEX IF NOT EXISTS idx_invites_email ON project_invites(email);
 
+CREATE TABLE IF NOT EXISTS task_changes (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  task_name TEXT NOT NULL DEFAULT '',
+  change_type TEXT NOT NULL DEFAULT 'update',
+  fields_changed TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_changes_project_date ON task_changes(project_id, created_at);
+
 CREATE TABLE IF NOT EXISTS chat_usage (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   date TEXT NOT NULL,
