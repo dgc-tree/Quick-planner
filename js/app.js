@@ -505,6 +505,10 @@ function updateAccountUI() {
   // Sandbox body class for badge
   document.body.classList.toggle('sandbox-mode', isSandbox());
 
+  // Mobile logout button visibility
+  const mobileLogout = $('#mobile-logout-btn');
+  if (mobileLogout) mobileLogout.classList.toggle('hidden', !loggedInNow || isSandbox());
+
   // Sidebar avatar
   const sidebarAvatar = $('#sidebar-account-avatar');
   const sidebarLabel = $('#sidebar-account-label');
@@ -2332,6 +2336,17 @@ document.addEventListener('DOMContentLoaded', () => {
     closeMenu();
     if (window._showSettings) window._showSettings();
   });
+  const mobileLogoutBtn = $('#mobile-logout-btn');
+  if (mobileLogoutBtn) {
+    if (isLoggedIn() && !isSandbox()) mobileLogoutBtn.classList.remove('hidden');
+    mobileLogoutBtn.addEventListener('click', () => {
+      closeMenu();
+      logout();
+      updateAccountUI();
+      document.body.classList.add('auth-gate');
+      showAuthModal(async () => { await initApp(); }, { gate: true });
+    });
+  }
   const mobileCb = document.getElementById('mobile-theme-checkbox');
   if (mobileCb) mobileCb.addEventListener('change', () => {
     // Capture theme before toggling so Cancel can revert

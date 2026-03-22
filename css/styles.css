@@ -3639,6 +3639,8 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     border-color: rgba(255,255,255,0.12);
     box-shadow: 0 2px 12px rgba(0,0,0,0.3);
   }
+  .mobile-logout-item { color: var(--status-blocked-text, #dc2626); }
+  .mobile-logout-item svg { stroke: var(--status-blocked-text, #dc2626); }
   .mobile-menu-projects {
     background: rgba(255,255,255,0.72);
     backdrop-filter: blur(var(--blur)) saturate(1.4);
