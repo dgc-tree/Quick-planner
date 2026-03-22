@@ -180,7 +180,7 @@ function taskRowHTML(task, minDate, totalDays) {
   return `
     <div class="planner-row">
       <div class="planner-bar-container">
-        <div class="planner-bar" data-task-id="${task.id}" data-start-pct="${leftPct}" data-width-pct="${widthPct}" data-duration="${duration}" style="left:${leftPct}%;width:${widthPct}%;background:${cat.bg};color:${cat.text};border-left:3px solid ${cat.text}"
+        <div class="planner-bar${task.status === 'Done' ? ' planner-bar--done' : ''}" data-task-id="${task.id}" data-start-pct="${leftPct}" data-width-pct="${widthPct}" data-duration="${duration}" style="left:${leftPct}%;width:${widthPct}%;background:${cat.bg};color:${cat.text};border-left:3px solid ${cat.text}"
              title="${esc(task.task)} (${esc(task.category)}) - ${esc(assignedTitle)}">
           <div class="planner-bar-handle planner-bar-handle--left" data-handle="left"></div>
           <span class="bar-label">${esc(task.task)}</span>
