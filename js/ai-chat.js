@@ -139,7 +139,8 @@ function injectUI() {
   const chatForm = _panel.querySelector('#qp-chat-form');
   chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    sendMessage();
+    // Brief delay lets iOS commit in-progress dictation text to .value
+    setTimeout(() => sendMessage(), 60);
   });
 
   if (_micBtn) {

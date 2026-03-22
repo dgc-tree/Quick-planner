@@ -532,12 +532,16 @@ export function resolveIntent(message, context) {
   // ─── Last-resort month extraction ────────────────────────────────
   // If ANY recognised month name appears in the message, treat it as a month query.
   // Catches typos ("takss in may"), conversational ("but just in may"), bare months ("march").
+  // Skip if message contains mutation verbs — those should go to the LLM.
   {
-    const words = lower.replace(/[?.!,]+/g, '').split(/\s+/);
-    for (const w of words) {
-      const mi = MONTH_NAMES.indexOf(w) !== -1 ? MONTH_NAMES.indexOf(w) : MONTH_SHORT.indexOf(w);
-      if (mi !== -1) {
-        return resolveIntent(`what's due in ${MONTH_NAMES[mi]}`, context);
+    const hasMutationVerb = /\b(change|update|set|move|reschedule|assign|mark|rename|delete|remove|add|create|push|shift|delay|complete|finish)\b/i.test(lower);
+    if (!hasMutationVerb) {
+      const words = lower.replace(/[?.!,]+/g, '').split(/\s+/);
+      for (const w of words) {
+        const mi = MONTH_NAMES.indexOf(w) !== -1 ? MONTH_NAMES.indexOf(w) : MONTH_SHORT.indexOf(w);
+        if (mi !== -1) {
+          return resolveIntent(`what's due in ${MONTH_NAMES[mi]}`, context);
+        }
       }
     }
   }
