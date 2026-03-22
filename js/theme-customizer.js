@@ -21,6 +21,24 @@ function contrastTextColor(hex) {
   return contrastBlack > contrastWhite ? '#000000' : '#ffffff';
 }
 
+/**
+ * Darken a hex colour until it meets WCAG AA (4.5:1) contrast on white.
+ * Used for accent text on light backgrounds (links, interactive elements).
+ */
+function wcaaTextColor(hex) {
+  let [r, g, b] = hexToRgb(hex);
+  // Darken iteratively until contrast ratio >= 4.5 on white
+  for (let i = 0; i < 20; i++) {
+    const L = 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+    const contrast = (1 + 0.05) / (L + 0.05);
+    if (contrast >= 4.5) break;
+    r = Math.max(0, r * 0.85);
+    g = Math.max(0, g * 0.85);
+    b = Math.max(0, b * 0.85);
+  }
+  return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+}
+
 const STYLE_ID = 'user-theme';
 
 /**
@@ -53,7 +71,10 @@ export function applyCustomColors(colors) {
   css += `  --accent-secondary2: ${colors.secondary2 || 'var(--color-secondary2-600)'};\n`;
 
   // WCAG-adaptive text color for each accent
-  if (colors.primary1) css += `  --on-accent-primary1: ${contrastTextColor(colors.primary1)};\n`;
+  if (colors.primary1) {
+    css += `  --on-accent-primary1: ${contrastTextColor(colors.primary1)};\n`;
+    css += `  --accent-primary1-text: ${wcaaTextColor(colors.primary1)};\n`;
+  }
   if (colors.secondary1) css += `  --on-accent-secondary1: ${contrastTextColor(colors.secondary1)};\n`;
   if (colors.secondary2) css += `  --on-accent-secondary2: ${contrastTextColor(colors.secondary2)};\n`;
   css += `  --surface-canvas: var(--color-primary1-100);\n`;
@@ -64,7 +85,11 @@ export function applyCustomColors(colors) {
   css += `  --accent-primary1: ${colors.primary1 || 'var(--color-primary1-400)'};\n`;
   css += `  --accent-secondary1: ${colors.secondary1 || 'var(--color-secondary1-500)'};\n`;
   css += `  --accent-secondary2: ${colors.secondary2 || 'var(--color-secondary2-500)'};\n`;
-  if (colors.primary1) css += `  --on-accent-primary1: ${contrastTextColor(colors.primary1)};\n`;
+  if (colors.primary1) {
+    css += `  --on-accent-primary1: ${contrastTextColor(colors.primary1)};\n`;
+    // Dark mode: use the accent directly (light text on dark bg)
+    css += `  --accent-primary1-text: ${colors.primary1};\n`;
+  }
   if (colors.secondary1) css += `  --on-accent-secondary1: ${contrastTextColor(colors.secondary1)};\n`;
   if (colors.secondary2) css += `  --on-accent-secondary2: ${contrastTextColor(colors.secondary2)};\n`;
   css += `  --surface-canvas: var(--color-primary1-800);\n`;
