@@ -473,6 +473,54 @@ async function handleFullSync(request, user, env) {
     }
   }
 
+  // Record changes to changelog (compare incoming vs existing)
+  for (const p of projects) {
+    if (!Array.isArray(p.tasks)) continue;
+    const projectId = p.id;
+    const taskIds = p.tasks.map(t => t.id).filter(Boolean);
+    if (!taskIds.length) continue;
+
+    // Fetch existing tasks in one query
+    const ph = taskIds.map(() => '?').join(',');
+    const { results: existing } = await env.DB.prepare(
+      `SELECT id, task, status, category, room, assigned, start_date, end_date, notes FROM tasks WHERE project_id = ? AND id IN (${ph})`
+    ).bind(projectId, ...taskIds).all();
+    const existingMap = Object.fromEntries(existing.map(t => [t.id, t]));
+
+    for (const t of p.tasks) {
+      const old = existingMap[t.id];
+      const taskName = (t.task || '').slice(0, 500);
+      if (!old) {
+        // New task
+        stmts.push(env.DB.prepare(
+          `INSERT INTO task_changes (id, project_id, user_id, task_id, task_name, change_type, fields_changed) VALUES (?, ?, ?, ?, ?, 'add', '{}')`
+        ).bind(crypto.randomUUID(), projectId, user.sub, t.id || '', taskName));
+        continue;
+      }
+      // Compare fields
+      const changes = {};
+      const incoming = {
+        task: taskName, status: t.status || 'Not Started',
+        category: (t.category || '').slice(0, 100), room: (t.room || '').slice(0, 100),
+        assigned: JSON.stringify(t.assigned || []),
+        start_date: t.start_date || t.startDate || null,
+        end_date: t.end_date || t.endDate || null,
+        notes: (t.notes || '').slice(0, 2000),
+      };
+      for (const [key, val] of Object.entries(incoming)) {
+        const oldVal = old[key] ?? null;
+        if (String(val || '') !== String(oldVal || '')) {
+          changes[key] = { from: oldVal, to: val };
+        }
+      }
+      if (Object.keys(changes).length > 0) {
+        stmts.push(env.DB.prepare(
+          `INSERT INTO task_changes (id, project_id, user_id, task_id, task_name, change_type, fields_changed) VALUES (?, ?, ?, ?, ?, 'update', ?)`
+        ).bind(crypto.randomUUID(), projectId, user.sub, t.id, taskName, JSON.stringify(changes)));
+      }
+    }
+  }
+
   for (let i = 0; i < stmts.length; i += 100) {
     await env.DB.batch(stmts.slice(i, i + 100));
   }
@@ -840,6 +888,33 @@ async function handleResendInvite(user, env, projectId, inviteId) {
   return json({ ok: true });
 }
 
+// ── Changelog / digest ──────────────────────────────────────────────────────
+
+async function handleGetChangelog(request, user, env, projectId) {
+  // Verify access
+  const project = await env.DB.prepare(
+    `SELECT p.id FROM projects p
+     LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
+     WHERE p.id = ? AND (p.user_id = ? OR pm.user_id = ?)`
+  ).bind(user.sub, projectId, user.sub, user.sub).first();
+  if (!project) return err('Project not found', 404);
+
+  const url = new URL(request.url);
+  const since = url.searchParams.get('since') || new Date(Date.now() - 7 * 86400000).toISOString();
+
+  const { results } = await env.DB.prepare(`
+    SELECT tc.id, tc.task_id, tc.task_name, tc.change_type, tc.fields_changed,
+           tc.created_at, tc.user_id, u.name AS user_name, u.email AS user_email
+    FROM task_changes tc
+    LEFT JOIN users u ON u.id = tc.user_id
+    WHERE tc.project_id = ? AND tc.created_at > ?
+    ORDER BY tc.created_at DESC
+    LIMIT 100
+  `).bind(projectId, since).all();
+
+  return json(results);
+}
+
 // ── Chat (proxied Claude) ────────────────────────────────────────────────────
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -990,6 +1065,12 @@ export default {
       const pid = tasksMatch[1];
       if (method === 'GET') return respond(await handleGetTasks(user, env, pid));
       if (method === 'POST') return respond(await handleSyncTasks(request, user, env, pid));
+    }
+
+    // Changelog
+    const changelogMatch = path.match(/^\/projects\/([^/]+)\/changelog$/);
+    if (changelogMatch && method === 'GET') {
+      return respond(await handleGetChangelog(request, user, env, changelogMatch[1]));
     }
 
     // Members
