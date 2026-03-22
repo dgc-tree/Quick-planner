@@ -162,7 +162,15 @@ export function initPeopleSection(container, { getActiveProjectId }) {
           <div class="people-avatar-card" data-member-id="${m.id}" data-user-id="${m.user_id}" title="${esc(escHtml(m.email))}">
             <div class="people-avatar">${initial}</div>
             <span class="people-avatar-name">${esc(highlightMatch(displayName, q))}</span>
-            ${!isOwner ? `<button class="people-remove-btn" data-member-id="${m.id}" aria-label="Remove ${esc(escHtml(m.email))}">Remove</button>` : ''}
+            ${!isOwner ? `<button class="people-edit-access-btn" data-member-id="${m.id}">Edit access</button>
+            <div class="people-access-panel hidden" data-member-id="${m.id}">
+              <select class="people-role-select" data-member-id="${m.id}">
+                <option value="admin"${m.role === 'admin' ? ' selected' : ''}>Admin</option>
+                <option value="member"${m.role === 'member' ? ' selected' : ''}>Member</option>
+                <option value="viewer"${m.role === 'viewer' ? ' selected' : ''}>Viewer</option>
+              </select>
+              <button class="people-remove-btn" data-member-id="${m.id}">Remove</button>
+            </div>` : ''}
           </div>
         `;
       }
@@ -245,6 +253,42 @@ export function initPeopleSection(container, { getActiveProjectId }) {
         if (newInput) { newInput.focus(); newInput.selectionStart = newInput.selectionEnd = newInput.value.length; }
       });
     }
+
+    // Edit Access toggle
+    body.querySelectorAll('.people-edit-access-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mid = btn.dataset.memberId;
+        const panel = body.querySelector(`.people-access-panel[data-member-id="${mid}"]`);
+        if (panel) {
+          const showing = panel.classList.contains('hidden');
+          // Close all other panels first
+          body.querySelectorAll('.people-access-panel').forEach(p => p.classList.add('hidden'));
+          body.querySelectorAll('.people-edit-access-btn').forEach(b => b.classList.remove('active'));
+          if (showing) {
+            panel.classList.remove('hidden');
+            btn.classList.add('active');
+          }
+        }
+      });
+    });
+
+    // Role change
+    body.querySelectorAll('.people-role-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const mid = sel.dataset.memberId;
+        try {
+          await apiCall(`/projects/${currentProjectId}/members/${mid}`, {
+            method: 'PUT',
+            body: JSON.stringify({ role: sel.value }),
+          });
+          const m = members.find(m => m.id === mid);
+          if (m) m.role = sel.value;
+          render();
+        } catch (e) {
+          sel.nextElementSibling?.insertAdjacentHTML('afterend', `<span class="people-error">${e.message}</span>`);
+        }
+      });
+    });
 
     // Remove member — inline confirmation
     body.querySelectorAll('.people-remove-btn').forEach(btn => {
