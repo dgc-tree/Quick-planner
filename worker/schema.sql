@@ -76,3 +76,10 @@ CREATE INDEX IF NOT EXISTS idx_members_project ON project_members(project_id);
 CREATE INDEX IF NOT EXISTS idx_members_user ON project_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_invites_project ON project_invites(project_id);
 CREATE INDEX IF NOT EXISTS idx_invites_email ON project_invites(email);
+
+CREATE TABLE IF NOT EXISTS chat_usage (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, date)
+);

@@ -1387,8 +1387,10 @@ function setupSettingsPanel() {
   const aiTtsToggle = $('#settings-ai-tts');
   const aiBriefingSelect = $('#settings-ai-briefing');
   const aiClearBtn = $('#settings-ai-clear');
+  const aiHostedRadio = $('#settings-ai-provider-hosted');
   const aiClaudeRadio = $('#settings-ai-provider-claude');
   const aiLocalRadio = $('#settings-ai-provider-local');
+  const aiHostedFields = $('#settings-ai-hosted-fields');
   const aiClaudeFields = $('#settings-ai-claude-fields');
   const aiLocalFields = $('#settings-ai-local-fields');
   const aiTestBtn = $('#settings-ai-test');
@@ -1410,10 +1412,13 @@ function setupSettingsPanel() {
 
   // Show correct provider fields
   function showProviderFields(provider) {
+    if (aiHostedFields) aiHostedFields.classList.toggle('hidden', provider !== 'hosted');
     if (aiClaudeFields) aiClaudeFields.classList.toggle('hidden', provider !== 'claude');
     if (aiLocalFields) aiLocalFields.classList.toggle('hidden', provider !== 'local');
   }
   if (providerCfg.provider === 'local' && aiLocalRadio) aiLocalRadio.checked = true;
+  else if (providerCfg.provider === 'claude' && aiClaudeRadio) aiClaudeRadio.checked = true;
+  else if (aiHostedRadio) aiHostedRadio.checked = true;
   showProviderFields(providerCfg.provider);
 
   // Provider radio change
@@ -1421,7 +1426,8 @@ function setupSettingsPanel() {
     radio.addEventListener('change', () => {
       setProvider(radio.value);
       showProviderFields(radio.value);
-      showToast(`Provider set to ${radio.value === 'claude' ? 'Claude API' : 'Local LLM'}`, 'success');
+      const labels = { hosted: 'QP AI', claude: 'Own API key', local: 'Local LLM' };
+      showToast(`Provider set to ${labels[radio.value] || radio.value}`, 'success');
     });
   });
 

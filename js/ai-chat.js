@@ -258,7 +258,7 @@ async function processMessage(text) {
 
   // Step 2: Need LLM — check for API key
   if (!hasApiKey()) {
-    appendBubble('assistant', "I can't figure that one out locally. Add a Claude API key in Settings to unlock AI-powered replies.");
+    appendBubble('assistant', "I can't figure that one out locally. Log in or add an API key in Settings to unlock AI-powered replies.");
     return;
   }
 
@@ -298,8 +298,8 @@ async function processMessage(text) {
     _abortController = null;
     if (err.name === 'AbortError') {
       appendBubble('assistant', 'Stopped. What would you like to do instead?');
-    } else if (err.message === 'NO_API_KEY') {
-      appendBubble('assistant', 'Add a Claude API key in Settings to use AI features.');
+    } else if (err.message === 'NO_API_KEY' || err.message === 'NOT_LOGGED_IN') {
+      appendBubble('assistant', 'Log in or add an API key in Settings to use AI features.');
     } else if (err.message === 'INVALID_API_KEY') {
       appendBubble('assistant', 'Your API key is invalid. Check it in Settings.');
     } else if (err.message === 'RATE_LIMITED') {
