@@ -24,6 +24,7 @@ let _ttsEnabled = false;
 let _briefingMode = 'daily';  // 'off' | 'daily' | 'weekly' | 'monthly'
 let _chatBubble = null;
 let _hasPendingBriefing = false;
+let _pendingBriefingRundown = false;  // True when briefing offered a rundown
 let _voiceRoundTrip = false;  // True when current message came from mic input
 let _abortController = null;  // AbortController for in-flight LLM requests
 
@@ -220,14 +221,38 @@ async function sendMessage(fromVoice = false) {
 async function processMessage(text) {
   const lower = text.toLowerCase().trim();
 
+  const YES_WORDS = ['yes', 'y', 'yeah', 'yep', 'sure', 'go ahead', 'please', 'ok', 'okay', 'yea', 'go for it'];
+  const NO_WORDS = ['no', 'n', 'nah', 'nope', 'cancel', 'never mind', 'skip'];
+
+  // Handle briefing "Want a rundown?" follow-up
+  if (_pendingBriefingRundown && YES_WORDS.includes(lower)) {
+    _pendingBriefingRundown = false;
+    const tasks = _onGetTasks ? _onGetTasks() : [];
+    const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
+    const overdue = tasks.filter(t => t.endDate && t.status !== 'Done' && new Date(t.endDate) < todayDate);
+    if (overdue.length === 0) {
+      appendBubble('assistant', 'Nothing overdue right now!');
+    } else {
+      const list = overdue.map(t => `- ${t.task || t.name} (was due ${new Date(t.endDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })})`).join('\n');
+      appendBubble('assistant', `Overdue (${overdue.length}):\n${list}`);
+    }
+    return;
+  }
+  if (_pendingBriefingRundown && NO_WORDS.includes(lower)) {
+    _pendingBriefingRundown = false;
+    appendBubble('assistant', 'No worries. Ask me anything when you need me.');
+    return;
+  }
+  if (_pendingBriefingRundown) _pendingBriefingRundown = false;
+
   // Handle pending clarification ("yes" confirms)
-  if (_pendingAction && (lower === 'yes' || lower === 'y' || lower === 'yeah' || lower === 'yep')) {
+  if (_pendingAction && YES_WORDS.includes(lower)) {
     const result = executeMutation(_pendingAction);
     _pendingAction = null;
     appendBubble('assistant', result.confirmation, { undoData: result.undoData });
     return;
   }
-  if (_pendingAction && (lower === 'no' || lower === 'n' || lower === 'nah' || lower === 'nope' || lower === 'cancel')) {
+  if (_pendingAction && NO_WORDS.includes(lower)) {
     _pendingAction = null;
     appendBubble('assistant', 'Cancelled.');
     return;
@@ -258,7 +283,7 @@ async function processMessage(text) {
 
   // Step 2: Need LLM — check for API key
   if (!hasApiKey()) {
-    appendBubble('assistant', "I can't figure that one out locally. Log in or add an API key in Settings to unlock AI-powered replies.");
+    appendBubble('assistant', 'I can\'t figure that one out locally. <a href="#" onclick="window._showSettingsTab(\'assistant\'); return false;">Set up AI in Settings</a> to unlock smarter replies.', { html: true });
     return;
   }
 
@@ -299,7 +324,7 @@ async function processMessage(text) {
     if (err.name === 'AbortError') {
       appendBubble('assistant', 'Stopped. What would you like to do instead?');
     } else if (err.message === 'NO_API_KEY' || err.message === 'NOT_LOGGED_IN') {
-      appendBubble('assistant', 'Log in or add an API key in Settings to use AI features.');
+      appendBubble('assistant', 'Log in or <a href="#" onclick="window._showSettingsTab(\'assistant\'); return false;">set up AI in Settings</a> to use this feature.', { html: true });
     } else if (err.message === 'INVALID_API_KEY') {
       appendBubble('assistant', 'Your API key is invalid. Check it in Settings.');
     } else if (err.message === 'RATE_LIMITED') {
@@ -360,7 +385,7 @@ function executeMutation(action) {
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
 function appendBubble(role, content, opts = {}) {
-  const { skipSave = false, undoData = null } = opts;
+  const { skipSave = false, undoData = null, html = false } = opts;
 
   const bubble = document.createElement('div');
   bubble.className = `qp-chat-bubble qp-chat-bubble-${role}`;
@@ -368,7 +393,8 @@ function appendBubble(role, content, opts = {}) {
   if (role === 'assistant') {
     bubble.innerHTML = `<span class="qp-chat-msg-avatar">Qp</span><div class="qp-chat-msg-content"></div>`;
     const contentEl = bubble.querySelector('.qp-chat-msg-content');
-    contentEl.textContent = content;
+    if (html) contentEl.innerHTML = content;
+    else contentEl.textContent = content;
 
     // Add undo chip if we have undo data
     if (undoData) {
@@ -500,6 +526,8 @@ function triggerBriefing() {
   const briefing = generateBriefing(tasks, userName, _briefingMode);
 
   if (briefing) {
+    // Set flag so "yes/yep" gives the rundown locally
+    _pendingBriefingRundown = true;
     if (_isOpen) {
       // Remove empty state and show briefing immediately
       const empty = _messageList?.querySelector('.qp-chat-empty');
