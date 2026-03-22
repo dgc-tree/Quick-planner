@@ -138,10 +138,10 @@ export function initDigest() {
   _bellBtn = document.createElement('button');
   _bellBtn.id = 'sidebar-digest-btn';
   _bellBtn.className = 'sidebar-item sidebar-digest-btn';
-  _bellBtn.title = 'Recent changes';
+  _bellBtn.title = 'Notifications';
   _bellBtn.innerHTML = `
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
-    <span class="sidebar-label">Changes</span>
+    <span class="sidebar-label">Notifications</span>
     <span class="digest-badge hidden" id="digest-badge">0</span>
   `;
   settingsBtn.parentNode.insertBefore(_bellBtn, settingsBtn);
@@ -155,7 +155,7 @@ export function initDigest() {
   _panel.className = 'digest-panel hidden';
   _panel.innerHTML = `
     <div class="digest-header">
-      <h3>Recent changes</h3>
+      <h3>Notifications</h3>
       <button class="digest-close" title="Close">&times;</button>
     </div>
     <div class="digest-list" id="digest-list"></div>
