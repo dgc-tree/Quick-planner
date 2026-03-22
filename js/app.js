@@ -376,7 +376,15 @@ async function initApp() {
         showAuthModal(async () => { await initApp(); }, { gate: true });
         return;
       }
-      await syncFromServer();
+      const synced = await syncFromServer();
+      // After sync, validate active project still exists (may have gained shared projects)
+      if (synced) {
+        const projects = loadProjects();
+        if (projects.length && !projects.find(p => p.id === currentProjectId)) {
+          currentProjectId = projects[0].id;
+          saveActiveProjectId(currentProjectId);
+        }
+      }
     }
 
     // Seed demo data on first sandbox entry
@@ -569,16 +577,42 @@ function setupAccountButtons() {
       setTimeout(() => showToast('Your password doesn\u2019t meet current security standards. Update it in Settings \u203A Account.', 'warning'), 1500);
     }
   };
-  const accountHandler = () => {
-    if (isLoggedIn()) {
-      // Navigate to settings (reuse existing settings button)
-      $('#sidebar-settings-btn')?.click();
-    } else {
-      showAuthModal(authCallback);
-    }
-  };
+  // Account popover (quick logout)
   const sidebarAccountBtn = $('#sidebar-account-btn');
-  if (sidebarAccountBtn) sidebarAccountBtn.addEventListener('click', accountHandler);
+  const accountPopover = $('#sidebar-account-popover');
+  const popoverEmail = $('#sidebar-popover-email');
+  const popoverSettings = $('#sidebar-popover-settings');
+  const popoverLogout = $('#sidebar-popover-logout');
+
+  function toggleAccountPopover() {
+    if (!isLoggedIn()) {
+      showAuthModal(authCallback);
+      return;
+    }
+    const showing = !accountPopover.classList.contains('hidden');
+    accountPopover.classList.toggle('hidden', showing);
+    if (!showing && popoverEmail) {
+      const u = getUser();
+      popoverEmail.textContent = u?.email || '';
+    }
+  }
+
+  if (sidebarAccountBtn) sidebarAccountBtn.addEventListener('click', toggleAccountPopover);
+  if (popoverSettings) popoverSettings.addEventListener('click', () => {
+    accountPopover.classList.add('hidden');
+    $('#sidebar-settings-btn')?.click();
+  });
+  if (popoverLogout) popoverLogout.addEventListener('click', () => {
+    accountPopover.classList.add('hidden');
+    logoutBtn?.click();
+  });
+  // Close popover on outside click
+  document.addEventListener('click', (e) => {
+    if (accountPopover && !accountPopover.classList.contains('hidden') &&
+        !e.target.closest('.sidebar-account-wrap')) {
+      accountPopover.classList.add('hidden');
+    }
+  });
   const mobileAccountBtn = $('#mobile-account-btn');
   if (mobileAccountBtn) mobileAccountBtn.addEventListener('click', () => {
     // Close mobile menu by clicking overlay backdrop, then open auth/settings

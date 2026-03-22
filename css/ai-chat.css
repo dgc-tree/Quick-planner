@@ -136,13 +136,14 @@ main {
 }
 
 .qp-chat-close {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 20px;
-  color: var(--content-tertiary);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--content-primary);
   border-radius: 8px;
   display: flex;
   align-items: center;
