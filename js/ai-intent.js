@@ -131,7 +131,11 @@ export function parseDate(str) {
 }
 
 function fmtDate(d) {
-  return d ? d.toISOString().split('T')[0] : null;
+  if (!d) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function fmtDateHuman(d) {
@@ -158,44 +162,135 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
+function wordOverlapScore(query, taskName) {
+  const qWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const tWords = taskName.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  if (!qWords.length) return 0;
+  const hits = qWords.filter(w => tWords.some(tw => tw.includes(w) || w.includes(tw)));
+  return hits.length / qWords.length;
+}
+
+function scoreTask(query, task) {
+  const q = query.toLowerCase().trim();
+  const name = (task.task || task.name || '').toLowerCase();
+
+  // Exact
+  if (name === q) return 1.0;
+  // Substring
+  if (name.includes(q) || q.includes(name)) return 0.95;
+  // Word overlap
+  const overlap = wordOverlapScore(q, name);
+  if (overlap >= 0.6) return 0.5 + overlap * 0.35; // 0.71–0.85
+  // Levenshtein
+  const dist = levenshtein(q, name);
+  const maxLen = Math.max(q.length, name.length);
+  const lev = 1 - dist / maxLen;
+  return lev >= 0.4 ? lev : 0;
+}
+
+/**
+ * Find all matching tasks above threshold, sorted by confidence then nearest due date.
+ * Returns array of { task, confidence }.
+ */
+export function findTasks(query, tasks) {
+  if (!query || !tasks.length) return [];
+  return tasks
+    .map(t => ({ task: t, confidence: scoreTask(query, t) }))
+    .filter(m => m.confidence >= 0.4)
+    .sort((a, b) => {
+      if (Math.abs(a.confidence - b.confidence) > 0.05) return b.confidence - a.confidence;
+      // Tie-break by nearest due date (null last)
+      const aDate = a.task.endDate ? new Date(a.task.endDate).getTime() : Infinity;
+      const bDate = b.task.endDate ? new Date(b.task.endDate).getTime() : Infinity;
+      return aDate - bDate;
+    });
+}
+
 /**
  * Find the best matching task by name. Returns { task, confidence } or null.
  */
 export function findTask(query, tasks) {
-  if (!query || !tasks.length) return null;
-  const q = query.toLowerCase().trim();
+  const matches = findTasks(query, tasks);
+  return matches.length ? matches[0] : null;
+}
 
-  // Exact match first
-  const exact = tasks.find(t => t.task.toLowerCase() === q || t.name?.toLowerCase() === q);
-  if (exact) return { task: exact, confidence: 1.0 };
+// ─── Field extraction (natural language → task fields) ───────────────────────
 
-  // Substring match
-  const substringMatches = tasks.filter(t => {
-    const name = (t.task || t.name || '').toLowerCase();
-    return name.includes(q) || q.includes(name);
-  });
-  if (substringMatches.length === 1) {
-    return { task: substringMatches[0], confidence: 0.95 };
+const FIELD_KEYWORDS = [
+  { keys: ['room', 'in room'], field: 'room', parse: v => v.trim() },
+  { keys: ['category', 'cat', 'label'], field: 'category', parse: v => v.trim() },
+  { keys: ['status'], field: 'status', parse: v => normaliseStatus(v) },
+  { keys: ['assigned to', 'assign to', 'assign', 'assigned', 'assignee'], field: 'assigned', parse: v => v.split(/,\s*|\s+and\s+/).map(s => s.trim()).filter(Boolean) },
+  { keys: ['start date', 'start', 'starting', 'begins'], field: 'startDate', parse: v => fmtDate(parseDate(v)) },
+  { keys: ['end date', 'due date', 'due', 'end', 'finish', 'deadline', 'by'], field: 'endDate', parse: v => fmtDate(parseDate(v)) },
+  { keys: ['cost', 'budget', 'price'], field: 'cost', parse: v => { const n = parseFloat(v.replace(/[$,]/g, '')); return isNaN(n) ? null : n; } },
+  { keys: ['contact'], field: 'contact', parse: v => v.trim() },
+  { keys: ['notes', 'note'], field: 'notes', parse: v => v.trim() },
+];
+
+// Build a single regex that matches any field keyword
+const _fieldKeywordPattern = new RegExp(
+  '\\b(' + FIELD_KEYWORDS.flatMap(f => f.keys).sort((a, b) => b.length - a.length).map(k => k.replace(/\s+/g, '\\s+')).join('|') + ')\\s*[:=]?\\s*',
+  'gi'
+);
+
+/**
+ * Extract task name and structured fields from a natural-language string.
+ * @param {string} text - Everything after the trigger verb (e.g. "buy tiles, room Kitchen, due June 15")
+ * @returns {{ taskName: string, fields: object }}
+ */
+export function extractFields(text) {
+  const fields = {};
+  let remaining = text.trim();
+
+  // Extract quoted task name first
+  const quoted = remaining.match(/^["'](.+?)["']\s*,?\s*/);
+  let taskName = '';
+  if (quoted) {
+    taskName = quoted[1];
+    remaining = remaining.slice(quoted[0].length);
   }
 
-  // Fuzzy match via Levenshtein
-  let best = null, bestScore = Infinity;
-  for (const t of tasks) {
-    const name = (t.task || t.name || '').toLowerCase();
-    const dist = levenshtein(q, name);
-    const maxLen = Math.max(q.length, name.length);
-    if (dist < bestScore) {
-      bestScore = dist;
-      best = t;
+  // Find all field keyword positions
+  _fieldKeywordPattern.lastIndex = 0;
+  const splits = [];
+  let m;
+  while ((m = _fieldKeywordPattern.exec(remaining)) !== null) {
+    splits.push({ index: m.index, length: m[0].length, keyword: m[1].toLowerCase().replace(/\s+/g, ' ') });
+  }
+
+  if (splits.length === 0) {
+    // No field keywords found — entire text is the task name
+    if (!taskName) taskName = remaining.replace(/,\s*$/, '').trim();
+    return { taskName: capitaliseName(taskName), fields };
+  }
+
+  // Text before the first keyword is the task name (if not already set from quotes)
+  if (!taskName) {
+    taskName = remaining.slice(0, splits[0].index).replace(/,\s*$/, '').trim();
+  }
+
+  // Extract each field value (text between this keyword and the next)
+  for (let i = 0; i < splits.length; i++) {
+    const valueStart = splits[i].index + splits[i].length;
+    const valueEnd = i + 1 < splits.length ? splits[i + 1].index : remaining.length;
+    const rawValue = remaining.slice(valueStart, valueEnd).replace(/,\s*$/, '').trim();
+    if (!rawValue) continue;
+
+    const kw = splits[i].keyword;
+    const def = FIELD_KEYWORDS.find(f => f.keys.some(k => k === kw));
+    if (def) {
+      const parsed = def.parse(rawValue);
+      if (parsed !== null && parsed !== undefined) fields[def.field] = parsed;
     }
   }
-  if (best) {
-    const maxLen = Math.max(q.length, (best.task || best.name || '').length);
-    const confidence = 1 - bestScore / maxLen;
-    if (confidence >= 0.4) return { task: best, confidence };
-  }
 
-  return null;
+  return { taskName: capitaliseName(taskName), fields };
+}
+
+function capitaliseName(name) {
+  if (!name) return '';
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 // ─── Bulk task filtering ──────────────────────────────────────────────────
@@ -884,24 +979,16 @@ export function resolveIntent(message, context) {
     };
   }
 
-  // "delete [task]" / "remove [task]"
+  // "delete [task]" / "remove [task]" — always confirm via flow
   const deleteMatch = lower.match(/^(?:delete|remove|trash)\s+(.+)$/);
   if (deleteMatch) {
-    const taskName = deleteMatch[1];
-    const match = findTask(taskName, tasks);
-    if (!match) return { type: 'clarify', response: `I couldn't find a task matching "${taskName}".` };
-    if (match.confidence < 0.8) {
-      return {
-        type: 'clarify',
-        response: `Did you mean "${match.task.task || match.task.name}"? Say "yes" to delete it.`,
-        pendingAction: { action: 'delete', taskId: match.task.id, taskName: match.task.task || match.task.name },
-      };
-    }
+    const taskQuery = deleteMatch[1].replace(/\b(?:the|task)\b/gi, '').trim();
+    const matches = findTasks(taskQuery, tasks);
+    if (!matches.length) return { type: 'clarify', response: `I couldn't find a task matching "${deleteMatch[1]}". Can you be more specific?` };
     return {
-      type: 'mutation',
-      action: 'delete',
-      taskId: match.task.id,
-      confirmation: `Deleted "${match.task.task || match.task.name}" (moved to bin).`,
+      type: 'flow',
+      flow: 'delete',
+      candidates: matches,
     };
   }
 
@@ -934,21 +1021,28 @@ export function resolveIntent(message, context) {
     };
   }
 
-  // "add task [name] due [date]"
-  const addTask = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s+(.+?)(?:\s+due\s+(.+))?$/);
-  if (addTask) {
-    const name = addTask[1].replace(/^["']|["']$/g, '');
-    const dueDateStr = addTask[2] || null;
-    const dueDate = dueDateStr ? parseDate(dueDateStr) : null;
-
+  // "add/create/new task [name] [field details]" — enter conversational add flow
+  const addMatch = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s*[:\-–]?\s*(.+)/i)
+    || lower.match(/^(?:add|create|new)\s+(?:a\s+)?(?:task\s+)?(?:for|called|named)\s+(.+)/i);
+  if (addMatch) {
+    const { taskName, fields } = extractFields(addMatch[1]);
     return {
-      type: 'mutation',
-      action: 'add',
-      fields: {
-        task: name,
-        endDate: fmtDate(dueDate),
-      },
-      confirmation: `Created "${name}"${dueDate ? ` due ${fmtDateHuman(dueDate)}` : ''}.`,
+      type: 'flow',
+      flow: 'add',
+      draft: { task: taskName || '', status: 'To Do', ...fields },
+    };
+  }
+
+  // "edit/update/change [task]" — enter conversational edit flow
+  const editMatch = lower.match(/^(?:edit|update|change|modify)\s+(?:the\s+)?(.+?)(?:\s+task)?$/);
+  if (editMatch) {
+    const taskQuery = editMatch[1].replace(/\b(?:the|task)\b/gi, '').trim();
+    const matches = findTasks(taskQuery, tasks);
+    if (!matches.length) return { type: 'clarify', response: `I couldn't find a task matching "${editMatch[1]}". Can you be more specific?` };
+    return {
+      type: 'flow',
+      flow: 'edit',
+      candidates: matches,
     };
   }
 
