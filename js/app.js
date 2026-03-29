@@ -446,6 +446,13 @@ async function initApp() {
       if (fields.startDate !== undefined) task.startDate = fields.startDate ? new Date(fields.startDate) : null;
       if (fields.endDate !== undefined) task.endDate = fields.endDate ? new Date(fields.endDate) : null;
       if (fields.dependencies !== undefined) task.dependencies = fields.dependencies;
+      if (fields.cost !== undefined) {
+        const raw = typeof fields.cost === 'string' ? fields.cost.replace(/[$,]/g, '') : fields.cost;
+        task.cost = raw ? parseFloat(raw) || null : null;
+      }
+      if (fields.notes !== undefined) task.notes = fields.notes || '';
+      if (fields.contact !== undefined) task.contact = fields.contact || '';
+      if (fields.tradeQuote !== undefined) task.tradeQuote = !!fields.tradeQuote;
       task.updatedAt = Date.now();
       setupFilters();
       render();

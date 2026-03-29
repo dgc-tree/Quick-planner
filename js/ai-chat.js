@@ -4,7 +4,7 @@
  * Decision tree: local intent → Haiku → Sonnet
  */
 
-import { resolveIntent, findTask, generateBriefing, parseDate } from './ai-intent.js';
+import { resolveIntent, findTask, findTasks, extractFields, generateBriefing, parseDate } from './ai-intent.js';
 import { buildContext, invalidateContextCache } from './ai-context.js';
 import { callLLM, chooseTier, hasApiKey } from './ai-llm.js';
 import { createRecogniser, speak, stopSpeaking, isSTTSupported, isTTSSupported } from './ai-voice.js';
@@ -27,6 +27,7 @@ let _hasPendingBriefing = false;
 let _pendingBriefingRundown = false;  // True when briefing offered a rundown
 let _voiceRoundTrip = false;  // True when current message came from mic input
 let _abortController = null;  // AbortController for in-flight LLM requests
+let _conversationFlow = null; // Multi-turn add/edit/delete flow state
 
 // Callbacks to app.js
 let _onUpdateTask = null;
@@ -73,6 +74,7 @@ export function initChat(callbacks) {
 export function onProjectSwitch() {
   invalidateContextCache();
   _messages = [];
+  _conversationFlow = null;
   saveConversation();
   if (_messageList) _messageList.innerHTML = '';
   triggerBriefing();
@@ -84,6 +86,7 @@ export function onProjectSwitch() {
 export function clearConversation() {
   _messages = [];
   _pendingAction = null;
+  _conversationFlow = null;
   saveConversation();
   if (_messageList) {
     _messageList.innerHTML = '';
@@ -244,6 +247,12 @@ async function processMessage(text) {
   }
   if (_pendingBriefingRundown) _pendingBriefingRundown = false;
 
+  // Handle active conversation flow (add/edit/delete multi-turn)
+  if (_conversationFlow) {
+    handleFlowStep(text, lower, YES_WORDS, NO_WORDS);
+    return;
+  }
+
   // Handle pending clarification ("yes" confirms)
   if (_pendingAction && YES_WORDS.includes(lower)) {
     const result = executeMutation(_pendingAction);
@@ -276,6 +285,10 @@ async function processMessage(text) {
     if (intent.type === 'mutation') {
       const result = executeMutation(intent);
       appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+      return;
+    }
+    if (intent.type === 'flow') {
+      startFlow(intent);
       return;
     }
   }
@@ -332,6 +345,283 @@ async function processMessage(text) {
       appendBubble('assistant', `Something went wrong: ${err.message}`);
     }
   }
+}
+
+// ─── Conversation flow state machine ─────────────────────────────────────────
+
+const CANCEL_WORDS = ['cancel', 'never mind', 'forget it', 'stop', 'nevermind'];
+const CONFIRM_ADD_WORDS = ['just add it', 'add it', 'add it now', 'that\'s it', 'thats it', 'create it', 'go ahead', 'done', 'looks good'];
+
+function fmtDateShort(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function draftSummary(draft) {
+  const parts = [];
+  if (draft.room) parts.push(`room: ${draft.room}`);
+  if (draft.category) parts.push(`category: ${draft.category}`);
+  if (draft.startDate) parts.push(`start: ${fmtDateShort(draft.startDate)}`);
+  if (draft.endDate) parts.push(`due: ${fmtDateShort(draft.endDate)}`);
+  if (draft.assigned && draft.assigned.length) parts.push(`assigned: ${draft.assigned.join(', ')}`);
+  if (draft.cost != null) parts.push(`cost: $${draft.cost}`);
+  if (draft.contact) parts.push(`contact: ${draft.contact}`);
+  if (draft.notes) parts.push(`notes: ${draft.notes}`);
+  return parts.length ? ' — ' + parts.join(', ') : '';
+}
+
+function candidateList(candidates) {
+  return candidates.slice(0, 8).map((m, i) => {
+    const name = m.task.task || m.task.name;
+    const due = m.task.endDate ? ` (due ${fmtDateShort(typeof m.task.endDate === 'string' ? m.task.endDate : m.task.endDate.toISOString().split('T')[0])})` : ' (no date)';
+    return `${i + 1}. ${name}${due}`;
+  }).join('\n');
+}
+
+function startFlow(intent) {
+  const { flow, draft, candidates } = intent;
+
+  if (flow === 'add') {
+    if (!draft.task) {
+      _conversationFlow = { type: 'add', stage: 'need-name', draft: draft || {} };
+      appendBubble('assistant', 'What should the task be called?');
+      return;
+    }
+    _conversationFlow = { type: 'add', stage: 'confirm-details', draft };
+    appendBubble('assistant', `Got it — "${draft.task}".\nWant to add dates, room, or other details? Or just add it?`);
+    return;
+  }
+
+  if (flow === 'edit' || flow === 'delete') {
+    if (candidates.length === 1 && candidates[0].confidence >= 0.8) {
+      const task = candidates[0].task;
+      const name = task.task || task.name;
+      if (flow === 'delete') {
+        _conversationFlow = { type: 'delete', stage: 'confirm-delete', taskId: task.id, taskName: name };
+        appendBubble('assistant', `Delete "${name}"?\nIt'll be moved to trash for 30 days.`);
+      } else {
+        _conversationFlow = { type: 'edit', stage: 'pick-field', taskId: task.id, taskName: name };
+        appendBubble('assistant', `What would you like to change on "${name}"?`);
+      }
+      return;
+    }
+
+    if (candidates.length === 1) {
+      // Low confidence — confirm the match
+      const task = candidates[0].task;
+      const name = task.task || task.name;
+      _conversationFlow = { type: flow, stage: 'confirm-match', taskId: task.id, taskName: name, candidates };
+      appendBubble('assistant', `Did you mean "${name}"?`);
+      return;
+    }
+
+    // Multiple matches — show numbered list
+    _conversationFlow = { type: flow, stage: 'pick-task', candidates };
+    appendBubble('assistant', `I found ${candidates.length} matching tasks (nearest due first):\n${candidateList(candidates)}\nWhich one?`);
+    return;
+  }
+}
+
+function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
+  // Cancel from any stage
+  if (CANCEL_WORDS.includes(lower)) {
+    _conversationFlow = null;
+    appendBubble('assistant', 'No worries.');
+    return;
+  }
+
+  // Check if this is an unrelated new intent — if so, break out of flow
+  const tasks = _onGetTasks ? _onGetTasks() : [];
+  const context = { tasks, project: '', user: loadUserName(), today: new Date() };
+  const newIntent = resolveIntent(text, context);
+  if (newIntent && newIntent.type === 'read') {
+    _conversationFlow = null;
+    appendBubble('assistant', newIntent.response);
+    return;
+  }
+
+  const flow = _conversationFlow;
+
+  // ── ADD flow ──
+  if (flow.type === 'add') {
+    if (flow.stage === 'need-name') {
+      flow.draft.task = text.trim().replace(/^["']|["']$/g, '');
+      if (!flow.draft.task) {
+        appendBubble('assistant', 'I need a name for the task. What should it be called?');
+        return;
+      }
+      flow.draft.task = flow.draft.task.charAt(0).toUpperCase() + flow.draft.task.slice(1);
+      flow.stage = 'confirm-details';
+      appendBubble('assistant', `Got it — "${flow.draft.task}".\nWant to add dates, room, or other details? Or just add it?`);
+      return;
+    }
+
+    if (flow.stage === 'confirm-details') {
+      // Fast-track: user says "just add it" / "no" / "add it"
+      if (CONFIRM_ADD_WORDS.includes(lower) || NO_WORDS.includes(lower)) {
+        const result = executeMutation({ action: 'add', fields: flow.draft, confirmation: `Added "${flow.draft.task}" to your planner${draftSummary(flow.draft)}.` });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+
+      // User is adding more details — extract fields from their message
+      const { fields } = extractFields(text);
+      if (Object.keys(fields).length > 0) {
+        Object.assign(flow.draft, fields);
+        const summary = draftSummary(flow.draft);
+        appendBubble('assistant', `Updated — "${flow.draft.task}"${summary}.\nAnything else, or add it now?`);
+        return;
+      }
+
+      // Couldn't parse fields — maybe they said "yes" (meaning add it)
+      if (YES_WORDS.includes(lower)) {
+        const result = executeMutation({ action: 'add', fields: flow.draft, confirmation: `Added "${flow.draft.task}" to your planner${draftSummary(flow.draft)}.` });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+
+      // Unrecognised — prompt again
+      appendBubble('assistant', 'I didn\'t catch that. You can say things like "room Kitchen, due June 15" or "just add it".');
+      return;
+    }
+  }
+
+  // ── EDIT flow ──
+  if (flow.type === 'edit') {
+    if (flow.stage === 'confirm-match') {
+      if (YES_WORDS.includes(lower)) {
+        flow.stage = 'pick-field';
+        appendBubble('assistant', `What would you like to change on "${flow.taskName}"?`);
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'No worries. Can you describe the task differently?');
+        return;
+      }
+    }
+
+    if (flow.stage === 'pick-task') {
+      // Numbered pick
+      const num = parseInt(lower);
+      if (!isNaN(num) && num >= 1 && num <= flow.candidates.length) {
+        const picked = flow.candidates[num - 1].task;
+        flow.taskId = picked.id;
+        flow.taskName = picked.task || picked.name;
+        flow.stage = 'pick-field';
+        flow.candidates = null;
+        appendBubble('assistant', `What would you like to change on "${flow.taskName}"?`);
+        return;
+      }
+      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}).`);
+      return;
+    }
+
+    if (flow.stage === 'pick-field') {
+      // Extract field changes from the user's message
+      const { fields } = extractFields(text);
+
+      // Also check for "mark as [status]" / "done" / "in progress" shorthand
+      const STATUS_MAP = {
+        'done': 'Done', 'complete': 'Done', 'completed': 'Done', 'finished': 'Done',
+        'in progress': 'In Progress', 'started': 'In Progress', 'working': 'In Progress',
+        'to do': 'To Do', 'todo': 'To Do', 'not started': 'To Do',
+        'blocked': 'Blocked', 'stuck': 'Blocked', 'on hold': 'Blocked',
+      };
+      const statusShort = lower.replace(/^(?:mark(?:\s+it)?|set(?:\s+it)?)\s+(?:as\s+|to\s+)?/, '').trim();
+      if (STATUS_MAP[statusShort]) {
+        fields.status = STATUS_MAP[statusShort];
+      }
+      // "done" as standalone
+      if (STATUS_MAP[lower]) {
+        fields.status = STATUS_MAP[lower];
+      }
+
+      if (Object.keys(fields).length > 0) {
+        const parts = [];
+        for (const [k, v] of Object.entries(fields)) {
+          if (k === 'status') parts.push(`status: ${v}`);
+          else if (k === 'startDate') parts.push(`start: ${fmtDateShort(v)}`);
+          else if (k === 'endDate') parts.push(`due: ${fmtDateShort(v)}`);
+          else if (k === 'cost') parts.push(`cost: $${v}`);
+          else if (k === 'assigned') parts.push(`assigned: ${Array.isArray(v) ? v.join(', ') : v}`);
+          else parts.push(`${k}: ${v}`);
+        }
+        const result = executeMutation({
+          action: 'update',
+          taskId: flow.taskId,
+          fields,
+          taskName: flow.taskName,
+          confirmation: `Updated "${flow.taskName}" — ${parts.join(', ')}.`,
+        });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+
+      appendBubble('assistant', 'I didn\'t catch that. Try "mark it done", "set cost to $500", or "due next Friday".');
+      return;
+    }
+  }
+
+  // ── DELETE flow ──
+  if (flow.type === 'delete') {
+    if (flow.stage === 'confirm-match') {
+      if (YES_WORDS.includes(lower)) {
+        flow.stage = 'confirm-delete';
+        appendBubble('assistant', `Delete "${flow.taskName}"?\nIt'll be moved to trash for 30 days.`);
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'No worries. Can you describe the task differently?');
+        return;
+      }
+    }
+
+    if (flow.stage === 'pick-task') {
+      const num = parseInt(lower);
+      if (!isNaN(num) && num >= 1 && num <= flow.candidates.length) {
+        const picked = flow.candidates[num - 1].task;
+        flow.taskId = picked.id;
+        flow.taskName = picked.task || picked.name;
+        flow.stage = 'confirm-delete';
+        flow.candidates = null;
+        appendBubble('assistant', `Delete "${flow.taskName}"?\nIt'll be moved to trash for 30 days.`);
+        return;
+      }
+      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}).`);
+      return;
+    }
+
+    if (flow.stage === 'confirm-delete') {
+      if (YES_WORDS.includes(lower)) {
+        const result = executeMutation({
+          action: 'delete',
+          taskId: flow.taskId,
+          confirmation: `Done — moved to bin.`,
+        });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'Cancelled.');
+        return;
+      }
+      appendBubble('assistant', 'Say "yes" to delete or "cancel" to keep it.');
+      return;
+    }
+  }
+
+  // Fallback — shouldn't reach here
+  _conversationFlow = null;
 }
 
 // ─── Mutation execution ───────────────────────────────────────────────────────
