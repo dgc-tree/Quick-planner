@@ -1,0 +1,56 @@
+{
+  "$type": "color",
+  "$description": "Semantic role tokens — map to base ramp steps",
+  "surface": {
+    "canvas":   { "$value": "{neutral.200}" },
+    "base":     { "$value": "{neutral.100}", "$alpha": 0.45 },
+    "raised":   { "$value": "{neutral.100}", "$alpha": 0.6 },
+    "sunken":   { "$value": "{neutral.300}" },
+    "highlight": { "$value": "{neutral.100}", "$alpha": 0.7 },
+    "header":   { "$value": "{neutral.100}", "$alpha": 0.55 }
+  },
+  "content": {
+    "primary":   { "$value": "{neutral.1200}" },
+    "secondary": { "$value": "{neutral.800}" },
+    "tertiary":  { "$value": "{neutral.600}" },
+    "inverse":   { "$value": "{neutral.100}" }
+  },
+  "accent": {
+    "primary1":   { "$value": "{primary1.600}" },
+    "secondary1": { "$value": "{secondary1.600}" },
+    "secondary2": { "$value": "{secondary2.600}" }
+  },
+  "on-accent": {
+    "primary1":   { "$value": "{neutral.1300}" },
+    "secondary1": { "$value": "#FFFFFF" },
+    "secondary2": { "$value": "#FFFFFF" }
+  },
+  "outline": {
+    "default": { "$value": "{neutral.100}", "$alpha": 0.5 },
+    "muted":   { "$value": "{neutral.500}", "$alpha": 0.35 }
+  },
+  "category": {
+    "cleaning":      { "bg": { "$value": "{primary1.200}" },   "text": { "$value": "{primary1.900}" } },
+    "packing":       { "bg": { "$value": "#E8D5F5" },          "text": { "$value": "#7B2CBF" } },
+    "organising":    { "bg": { "$value": "#C7F9E5" },          "text": { "$value": "#0A8754" } },
+    "painting":      { "bg": { "$value": "#FFE0C2" },          "text": { "$value": "#B54708" } },
+    "basic-repairs": { "bg": { "$value": "#FFF3C4" },          "text": { "$value": "#92400E" } },
+    "trade-quote":   { "bg": { "$value": "#FFD6D6" },          "text": { "$value": "#C53030" } },
+    "buy-new":       { "bg": { "$value": "#D4EDDA" },          "text": { "$value": "#276749" } },
+    "selling":       { "bg": { "$value": "#FDE2FF" },          "text": { "$value": "#9B2C8F" } },
+    "in-progress":   { "bg": { "$value": "#D6DFFF" },          "text": { "$value": "#3730A3" } },
+    "we-have-these": { "bg": { "$value": "{neutral.200}" },    "text": { "$value": "{neutral.800}" } }
+  },
+  "feedback": {
+    "danger":  { "text": { "$value": "#dc2626" }, "text-dark": { "$value": "#f87171" }, "bg": { "$value": "#dc2626", "$alpha": 0.08 }, "bg-dark": { "$value": "#ef4444", "$alpha": 0.12 }, "border": { "$value": "#dc2626", "$alpha": 0.15 }, "border-dark": { "$value": "#ef4444", "$alpha": 0.25 }, "solid": { "$value": "#dc2626" }, "hover": { "$value": "#b91c1c" }, "hover-dark": { "$value": "#ef4444" } },
+    "success": { "text": { "$value": "#15803d" }, "text-dark": { "$value": "#86efac" }, "bg": { "$value": "#f0fdf4" }, "bg-dark": { "$value": "#15803d", "$alpha": 0.12 }, "solid": { "$value": "#276749" }, "solid-dark": { "$value": "#276749" } },
+    "warning": { "text": { "$value": "#b45309" }, "text-dark": { "$value": "#fcd34d" }, "bg": { "$value": "#fffbeb" }, "bg-dark": { "$value": "#b45309", "$alpha": 0.12 }, "solid": { "$value": "#d97706" }, "solid-dark": { "$value": "#f59e0b" } },
+    "info":    { "text": { "$value": "#1d4ed8" }, "text-dark": { "$value": "#93c5fd" }, "bg": { "$value": "#eff6ff" }, "bg-dark": { "$value": "#1d4ed8", "$alpha": 0.12 } }
+  },
+  "status": {
+    "todo":        { "bg": { "$value": "#2B6CB0" }, "text": { "$value": "#FFFFFF" } },
+    "in-progress": { "bg": { "$value": "rgb(170, 51, 208)" }, "text": { "$value": "#FFFFFF" } },
+    "blocked":     { "bg": { "$value": "#C53030" }, "text": { "$value": "#FFFFFF" } },
+    "done":        { "bg": { "$value": "#276749" }, "text": { "$value": "#FFFFFF" } }
+  }
+}
