@@ -1,0 +1,26 @@
+{
+  "$description": "Dark theme — maps roles to base ramp steps",
+  "surface": {
+    "canvas":    { "$value": "{neutral.1200}" },
+    "base":      { "$value": "{neutral.100}", "$alpha": 0.06 },
+    "raised":    { "$value": "{neutral.100}", "$alpha": 0.09 },
+    "sunken":    { "$value": "{neutral.1100}" },
+    "highlight": { "$value": "{neutral.100}", "$alpha": 0.12 },
+    "header":    { "$value": "{neutral.1200}", "$alpha": 0.7 }
+  },
+  "content": {
+    "primary":   { "$value": "{neutral.200}" },
+    "secondary": { "$value": "{neutral.500}" },
+    "tertiary":  { "$value": "{neutral.700}" },
+    "inverse":   { "$value": "{neutral.1200}" }
+  },
+  "accent": {
+    "primary1":   { "$value": "{primary1.400}" },
+    "secondary1": { "$value": "{secondary1.500}" },
+    "secondary2": { "$value": "{secondary2.500}" }
+  },
+  "outline": {
+    "default": { "$value": "{neutral.100}", "$alpha": 0.1 },
+    "muted":   { "$value": "{neutral.100}", "$alpha": 0.06 }
+  }
+}

@@ -1,3 +1,4 @@
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner, setViewSize } from './planner.js';
@@ -401,11 +402,6 @@ async function initApp() {
     updateSummary();
     setupFilters();
     render();
-    // Reset scroll position on mobile after login/init
-    if (window.innerWidth <= 768) {
-      window.scrollTo(0, 0);
-      document.querySelector('main').scrollTop = 0;
-    }
   } catch (err) {
     showError(err.message);
   }
@@ -418,6 +414,11 @@ async function initApp() {
   }
   document.body.classList.remove('auth-gate');
   hideAuthModal();
+  // Reset scroll after auth-gate removal (main is now visible)
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+    document.querySelector('main').scrollTop = 0;
+  });
 
   // Onboarding for first-time visitors — only if no projects exist yet
   if (shouldShowOnboarding() && !loadProjects().length) {
@@ -1872,13 +1873,6 @@ function setupSettingsPanel() {
   $('#trash-back').addEventListener('click', hideTrashView);
   $('#sidebar-trash-btn').addEventListener('click', () => { previousView = currentView; showTrashView(); });
 
-  const mobileTrashBtn = $('#mobile-trash-btn');
-  if (mobileTrashBtn) mobileTrashBtn.addEventListener('click', () => {
-    closeMenu();
-    previousView = currentView;
-    showTrashView();
-  });
-
   window._showTrash = showTrashView;
 
   // Logo / home tap — return to last main view from any overlay
@@ -2346,6 +2340,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Wire mobile menu items
+  const mobileTrashBtn = $('#mobile-trash-btn');
+  if (mobileTrashBtn) mobileTrashBtn.addEventListener('click', () => {
+    closeMenu();
+    if (window._showTrash) window._showTrash();
+  });
   const mobileSettingsBtn = $('#mobile-settings-btn');
   if (mobileSettingsBtn) mobileSettingsBtn.addEventListener('click', () => {
     closeMenu();
