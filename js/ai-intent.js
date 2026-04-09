@@ -81,6 +81,16 @@ export function parseDate(str) {
     }
   }
 
+  // Bare day name — "friday" → this or next occurrence
+  const bareDay = DAY_NAMES.indexOf(s);
+  if (bareDay !== -1) {
+    const d = today();
+    const diff = (bareDay - d.getDay() + 7) % 7;
+    if (diff === 0) return d; // today is that day
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
   // "next week" / "next month"
   if (s === 'next week') { const d = today(); d.setDate(d.getDate() + 7); return d; }
   if (s === 'next month') { const d = today(); d.setMonth(d.getMonth() + 1); return d; }
@@ -350,9 +360,14 @@ function filterTasks(filterStr, tasks) {
 
 const STATUS_MAP = {
   'done': 'Done', 'complete': 'Done', 'completed': 'Done', 'finished': 'Done', 'finish': 'Done',
+  'closed': 'Done', 'close': 'Done',
   'in progress': 'In Progress', 'started': 'In Progress', 'working': 'In Progress', 'start': 'In Progress',
+  'wip': 'In Progress', 'active': 'In Progress', 'begin': 'In Progress', 'resume': 'In Progress',
+  'continue': 'In Progress', 'ongoing': 'In Progress',
   'not started': 'To Do', 'todo': 'To Do', 'to do': 'To Do', 'pending': 'To Do', 'new': 'To Do',
+  'open': 'To Do', 'unblock': 'To Do', 'unblocked': 'To Do',
   'blocked': 'Blocked', 'stuck': 'Blocked', 'waiting': 'Blocked', 'on hold': 'Blocked',
+  'paused': 'Blocked', 'hold': 'Blocked',
 };
 
 function normaliseStatus(raw) {
@@ -374,6 +389,27 @@ export function resolveIntent(message, context) {
   const { tasks } = context;
   const todayDate = today();
   const todayStr = fmtDate(todayDate);
+
+  // ─── Greetings, help, thanks ───────────────────────────────────────
+
+  if (/^(?:hi|hello|hey|g'day|howdy|yo)\s*[.!]?$/i.test(msg)) {
+    return { type: 'read', response: 'Hey! What can I help with?' };
+  }
+
+  if (/^(?:thanks?|thank\s*you|cheers|ta|thx|ty)\s*[.!]?$/i.test(msg)) {
+    return { type: 'read', response: 'No worries!' };
+  }
+
+  if (/^(?:help|what\s+can\s+you\s+do|commands?|options|how\s+do\s+(?:i|you)|what\s+do\s+you\s+(?:do|know))\s*\??$/i.test(msg)) {
+    return { type: 'read', response:
+      'Here\'s what I can do:\n\n' +
+      '**Add tasks**\n- "add task Paint the fence"\n- "I need to call the plumber"\n\n' +
+      '**Update tasks**\n- "mark Paint as done"\n- "start Kitchen reno"\n- "assign Paint to Dave"\n\n' +
+      '**Change details**\n- "set due date of Paint to Friday"\n- "reschedule Paint to next week"\n- "room Kitchen" (after any action)\n\n' +
+      '**Ask questions**\n- "what\'s due this week?"\n- "what\'s overdue?"\n- "summary"\n- "Dave\'s tasks"\n- "show me Paint the fence"\n\n' +
+      '**Other**\n- "undo that"\n- "help"'
+    };
+  }
 
   // ─── Read queries ─────────────────────────────────────────────────
 
@@ -397,6 +433,30 @@ export function resolveIntent(message, context) {
     if (due.length === 0) return { type: 'read', response: 'Nothing due this week!' };
     const list = due.map(t => `- ${t.task || t.name} (${fmtDateHuman(new Date(t.endDate))})`).join('\n');
     return { type: 'read', response: `Due this week:\n${list}` };
+  }
+
+  // "what's due Friday?" / "anything due Monday?" / "due on Wednesday?"
+  {
+    const dayMatch = lower.match(/(?:what(?:'s| is)\s+due|anything\s+due|due)\s+(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*\??$/i);
+    if (dayMatch) {
+      const targetDate = parseDate(dayMatch[1]);
+      if (targetDate) {
+        const targetStr = fmtDate(targetDate);
+        const due = tasks.filter(t => t.endDate && fmtDate(new Date(t.endDate)) === targetStr);
+        if (due.length === 0) return { type: 'read', response: `Nothing due ${fmtDateHuman(targetDate)}.` };
+        const list = due.map(t => `- ${t.task || t.name}${t.status === 'Done' ? ' (done)' : ''}`).join('\n');
+        return { type: 'read', response: `Due ${fmtDateHuman(targetDate)}:\n${list}` };
+      }
+    }
+  }
+
+  // "what's left?" / "anything remaining?"
+  if (/^(?:what(?:'s| is)\s+left|anything\s+(?:left|remaining)|what\s+(?:still\s+)?(?:needs?\s+(?:doing|to\s+be\s+done)|remains?))\s*\??$/i.test(msg)) {
+    const remaining = tasks.filter(t => t.status !== 'Done');
+    if (remaining.length === 0) return { type: 'read', response: 'Everything is done!' };
+    const list = remaining.slice(0, 15).map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
+    const more = remaining.length > 15 ? `\n...and ${remaining.length - 15} more` : '';
+    return { type: 'read', response: `${remaining.length} tasks remaining:\n${list}${more}` };
   }
 
   // "what's overdue"
@@ -716,6 +776,32 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: `Recent changes:\n${list}` };
   }
 
+  // "show me [task]" / "details for [task]" / "what is [task]?"
+  {
+    const detailMatch = lower.match(/^(?:show\s+(?:me\s+)?|details?\s+(?:for|of|on)\s+|what\s+(?:is|about)\s+|info\s+(?:on|about)\s+)(?:the\s+)?(?:task\s+)?(.+?)(?:\s+task)?\s*\??$/);
+    if (detailMatch) {
+      const query = detailMatch[1].trim();
+      // Don't match if it looks like a status/room/category filter (handled above)
+      if (!STATUS_MAP[query] && !/^(?:due|overdue|unassigned|undated|cost|budget|assigned)/.test(query)) {
+        const match = findTask(query, tasks);
+        if (match && match.confidence >= 0.5) {
+          const t = match.task;
+          const lines = [`**${t.task || t.name}**`];
+          lines.push(`Status: ${t.status}`);
+          if (t.room) lines.push(`Room: ${t.room}`);
+          if (t.category) lines.push(`Category: ${t.category}`);
+          if (t.assigned && t.assigned.length) lines.push(`Assigned: ${t.assigned.join(', ')}`);
+          if (t.startDate) lines.push(`Start: ${fmtDateHuman(new Date(t.startDate))}`);
+          if (t.endDate) lines.push(`Due: ${fmtDateHuman(new Date(t.endDate))}`);
+          if (t.cost) lines.push(`Cost: $${t.cost}`);
+          if (t.notes) lines.push(`Notes: ${t.notes}`);
+          if (t.dependencies) lines.push(`Dependencies: ${t.dependencies}`);
+          return { type: 'read', response: lines.join('\n') };
+        }
+      }
+    }
+  }
+
   // ─── Last-resort month extraction ────────────────────────────────
   // If ANY recognised month name appears in the message, treat it as a month query.
   // Catches typos ("takss in may"), conversational ("but just in may"), bare months ("march").
@@ -944,13 +1030,26 @@ export function resolveIntent(message, context) {
 
   // ─── Single-task mutations ──────────────────────────────────────
 
-  // "mark [task] as [status]" / "complete [task]"
-  const markAs = lower.match(/^(?:mark|set|change)\s+(.+?)\s+(?:as|to)\s+(done|complete|completed|in progress|not started|to ?do|blocked|started|working)$/);
-  const completeTask = !markAs && lower.match(/^(?:complete|finish)\s+(.+)$/);
+  // "mark [task] as [status]" / "complete [task]" / "start [task]" / "block [task]" / "[task] is done"
+  const markAs = lower.match(/^(?:mark|set|change)\s+(.+?)\s+(?:as|to)\s+(done|complete|completed|finished|closed|in progress|not started|to ?do|blocked|stuck|started|working|wip|active|paused|on hold|open|pending)$/);
+  const completeTask = !markAs && lower.match(/^(?:complete|finish|close|done\s+with)\s+(.+)$/);
+  const startTask = !markAs && !completeTask && lower.match(/^(?:start|begin|resume|continue)\s+(.+)$/);
+  const blockTask = !markAs && !completeTask && !startTask && lower.match(/^(?:block|pause|hold)\s+(.+)$/);
+  const unblockTask = !markAs && !completeTask && !startTask && !blockTask && lower.match(/^(?:unblock)\s+(.+)$/);
+  // "[task] is done/blocked/in progress"
+  const predicateStatus = !markAs && !completeTask && !startTask && !blockTask && !unblockTask &&
+    lower.match(/^(.+?)\s+(?:is\s+)(?:now\s+)?(done|complete|completed|finished|in progress|blocked|stuck|to do|on hold|started|closed)$/);
 
-  if (markAs || completeTask) {
-    const taskName = markAs ? markAs[1] : completeTask[1];
-    const statusRaw = markAs ? markAs[2] : 'done';
+  const statusMatch = markAs || completeTask || startTask || blockTask || unblockTask || predicateStatus;
+
+  if (statusMatch) {
+    const taskName = markAs ? markAs[1] : (completeTask || startTask || blockTask || unblockTask || predicateStatus)[1];
+    const statusRaw = markAs ? markAs[2]
+      : completeTask ? 'done'
+      : startTask ? 'in progress'
+      : blockTask ? 'blocked'
+      : unblockTask ? 'to do'
+      : predicateStatus[2];
     const newStatus = normaliseStatus(statusRaw);
     if (!newStatus) return null;
 
@@ -1087,6 +1186,82 @@ export function resolveIntent(message, context) {
       previousFields: { assigned: match.task.assigned },
       confirmation: `Assigned "${match.task.task || match.task.name}" to ${person}.`,
     };
+  }
+
+  // ─── Single-task field updates ─────────────────────────────────
+
+  // "change/set due date of/on [task] to [date]" / "reschedule [task] to [date]"
+  {
+    const dueDateMatch = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?(?:due|end|finish)\s+date\s+(?:of|on|for)\s+(.+?)\s+to\s+(.+)$/)
+      || lower.match(/^(?:reschedule|defer|postpone)\s+(.+?)\s+(?:to|for|until)\s+(.+)$/)
+      || lower.match(/^(?:make)\s+(.+?)\s+due\s+(.+)$/);
+    if (dueDateMatch) {
+      const taskQuery = dueDateMatch[1].replace(/\b(?:the|task)\b/gi, '').trim();
+      const dateStr = dueDateMatch[2].trim();
+      const d = parseDate(dateStr);
+      if (d) {
+        const match = findTask(taskQuery, tasks);
+        if (match && match.confidence >= 0.5) {
+          const tName = match.task.task || match.task.name;
+          if (match.confidence < 0.8) {
+            return { type: 'clarify', response: `Did you mean "${tName}"?`,
+              pendingAction: { action: 'update', taskId: match.task.id, fields: { endDate: fmtDate(d) }, taskName: tName } };
+          }
+          return { type: 'mutation', action: 'update', taskId: match.task.id,
+            fields: { endDate: fmtDate(d) },
+            confirmation: `Set "${tName}" due ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}.` };
+        }
+      }
+    }
+  }
+
+  // "change/set start date of [task] to [date]"
+  {
+    const startDateMatch = lower.match(/^(?:change|set|move|update)\s+(?:the\s+)?start\s+date\s+(?:of|on|for)\s+(.+?)\s+to\s+(.+)$/);
+    if (startDateMatch) {
+      const taskQuery = startDateMatch[1].replace(/\b(?:the|task)\b/gi, '').trim();
+      const d = parseDate(startDateMatch[2].trim());
+      if (d) {
+        const match = findTask(taskQuery, tasks);
+        if (match && match.confidence >= 0.5) {
+          const tName = match.task.task || match.task.name;
+          return { type: 'mutation', action: 'update', taskId: match.task.id,
+            fields: { startDate: fmtDate(d) },
+            confirmation: `Set "${tName}" start to ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}.` };
+        }
+      }
+    }
+  }
+
+  // "set cost of [task] to $X"
+  {
+    const costMatch = lower.match(/^(?:set|change|update)\s+(?:the\s+)?cost\s+(?:of|on|for)\s+(.+?)\s+to\s+\$?(\d+[\d,.]*)/);
+    if (costMatch) {
+      const match = findTask(costMatch[1].trim(), tasks);
+      if (match && match.confidence >= 0.5) {
+        const cost = parseFloat(costMatch[2].replace(/,/g, ''));
+        return { type: 'mutation', action: 'update', taskId: match.task.id,
+          fields: { cost },
+          confirmation: `Set "${match.task.task || match.task.name}" cost to $${cost}.` };
+      }
+    }
+  }
+
+  // ─── Implicit add (natural language) ──────────────────────────────
+
+  // "I need to paint the fence" / "don't forget to call John" / "remind me to X" / "we should X"
+  {
+    const implicitAdd = lower.match(/^(?:i\s+need\s+to|i\s+have\s+to|i\s+should|i\s+must|i\s+gotta|i\s+want\s+to|don'?t\s+forget\s+to|remind\s+me\s+to|put\s+.+\s+on\s+(?:the\s+)?list|let'?s|we\s+need\s+to|we\s+should|we\s+have\s+to|need\s+to)\s+(.+)$/i);
+    if (implicitAdd) {
+      let taskText = implicitAdd[1].trim().replace(/\s*[.!]+$/, '');
+      taskText = taskText.charAt(0).toUpperCase() + taskText.slice(1);
+      return {
+        type: 'mutation',
+        action: 'add',
+        fields: { task: taskText, status: 'To Do' },
+        confirmation: `Added "${taskText}".`,
+      };
+    }
   }
 
   // "add/create/new task [name] [field details]" — direct add when name given, flow when not

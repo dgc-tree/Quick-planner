@@ -25,7 +25,7 @@ import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
 import { initChat, onProjectSwitch as chatProjectSwitch, clearConversation, hideBubble as hideChatBubble, showBubble as showChatBubble, setTTSEnabled, setBriefingMode, getTTSEnabled, getBriefingMode, openPanel as openChatPanel } from './ai-chat.js';
 import { initDigest, getDigestFrequency, setDigestFrequency } from './digest.js';
-import { getProviderConfig, setProvider, setLocalConfig, testClaudeConnection, testLocalConnection } from './ai-llm.js';
+import { getProviderConfig, setProvider, setLocalConfig, testClaudeConnection, testLocalConnection, hasApiKey } from './ai-llm.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
 const bgFxReady = import('./bg-effects.js')
@@ -1471,6 +1471,10 @@ function setupSettingsPanel() {
   if (activeProvider === 'local' && aiLocalRadio) aiLocalRadio.checked = true;
   else if (activeProvider === 'claude' && aiClaudeRadio) aiClaudeRadio.checked = true;
   showProviderFields(activeProvider);
+
+  // Auto-open advanced details if user already has a provider configured
+  const aiAdvancedDetails = $('#settings-ai-advanced');
+  if (aiAdvancedDetails && hasApiKey()) aiAdvancedDetails.open = true;
 
   // Provider radio change
   document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
