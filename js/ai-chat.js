@@ -776,6 +776,14 @@ function _executeMutationInner(action) {
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
+/** Escape HTML then convert **bold** and newlines to markup */
+function formatChatText(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
 function appendBubble(role, content, opts = {}) {
   const { skipSave = false, undoData = null, html = false } = opts;
 
@@ -786,7 +794,7 @@ function appendBubble(role, content, opts = {}) {
     bubble.innerHTML = `<span class="qp-chat-msg-avatar">Qp</span><div class="qp-chat-msg-content"></div>`;
     const contentEl = bubble.querySelector('.qp-chat-msg-content');
     if (html) contentEl.innerHTML = content;
-    else contentEl.textContent = content;
+    else contentEl.innerHTML = formatChatText(content);
 
     // Add undo chip if we have undo data
     if (undoData) {
