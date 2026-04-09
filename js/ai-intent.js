@@ -776,6 +776,18 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: `Recent changes:\n${list}` };
   }
 
+  // "most recent task" / "latest task" / "newest task" / "last task added"
+  if (/^(?:(?:what\s+(?:is|was)\s+)?(?:the\s+)?(?:most\s+)?(?:recent|latest|newest|last)\s+task|last\s+(?:task\s+)?(?:added|created))\s*\??$/i.test(msg)) {
+    const sorted = [...tasks].filter(t => t.updatedAt).sort((a, b) => b.updatedAt - a.updatedAt);
+    if (sorted.length === 0) return { type: 'read', response: 'No tasks found.' };
+    const t = sorted[0];
+    const lines = [`**${t.task || t.name}**`, `Status: ${t.status}`];
+    if (t.room) lines.push(`Room: ${t.room}`);
+    if (t.assigned && t.assigned.length) lines.push(`Assigned: ${t.assigned.join(', ')}`);
+    if (t.endDate) lines.push(`Due: ${fmtDateHuman(new Date(t.endDate))}`);
+    return { type: 'read', response: lines.join('\n') };
+  }
+
   // "show me [task]" / "details for [task]" / "what is [task]?"
   {
     const detailMatch = lower.match(/^(?:show\s+(?:me\s+)?|details?\s+(?:for|of|on)\s+|what\s+(?:is|about)\s+|info\s+(?:on|about)\s+)(?:the\s+)?(?:task\s+)?(.+?)(?:\s+task)?\s*\??$/);
