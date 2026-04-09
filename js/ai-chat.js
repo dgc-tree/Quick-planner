@@ -28,6 +28,8 @@ let _pendingBriefingRundown = false;  // True when briefing offered a rundown
 let _voiceRoundTrip = false;  // True when current message came from mic input
 let _abortController = null;  // AbortController for in-flight LLM requests
 let _conversationFlow = null; // Multi-turn add/edit/delete flow state
+let _lastUndoData = null;     // Last mutation's undo data (for "undo that" text command)
+let _lastMutatedTaskId = null; // Last task touched by a mutation (for contextual follow-ups)
 
 // Callbacks to app.js
 let _onUpdateTask = null;
@@ -267,9 +269,32 @@ async function processMessage(text) {
   }
   _pendingAction = null;
 
+  // Handle "undo" / "undo that" / "undo last" text commands locally
+  if (/^undo(\s+(that|this|last|it))?\s*[.!]?$/i.test(lower)) {
+    if (_lastUndoData) {
+      const ud = _lastUndoData;
+      _lastUndoData = null; // prevent double undo
+      if (ud.action === 'bulk_update' && ud.items) {
+        for (const item of ud.items) {
+          executeMutation({ action: 'update', taskId: item.taskId, fields: item.fields });
+        }
+      } else if (ud.action === 'undo_add' && ud.taskId) {
+        if (_onDeleteTask) _onDeleteTask(ud.taskId);
+      } else if (ud.action === 'undo_delete' && ud.fields) {
+        if (_onAddTask) _onAddTask(ud.fields);
+      } else {
+        executeMutation({ action: ud.action, taskId: ud.taskId, fields: ud.fields });
+      }
+      appendBubble('assistant', 'Done, undone.');
+    } else {
+      appendBubble('assistant', 'Nothing to undo.');
+    }
+    return;
+  }
+
   // Step 1: Try local intent resolution
   const tasks = _onGetTasks ? _onGetTasks() : [];
-  const context = { tasks, project: '', user: loadUserName(), today: new Date() };
+  const context = { tasks, project: '', user: loadUserName(), today: new Date(), lastTaskId: _lastMutatedTaskId };
   const intent = resolveIntent(text, context);
 
   if (intent) {
@@ -435,7 +460,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
 
   // Check if this is an unrelated new intent — if so, break out of flow
   const tasks = _onGetTasks ? _onGetTasks() : [];
-  const context = { tasks, project: '', user: loadUserName(), today: new Date() };
+  const context = { tasks, project: '', user: loadUserName(), today: new Date(), lastTaskId: _lastMutatedTaskId };
   const newIntent = resolveIntent(text, context);
   if (newIntent && newIntent.type === 'read') {
     _conversationFlow = null;
@@ -628,6 +653,15 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
 
 function executeMutation(action) {
   invalidateContextCache();
+  const result = _executeMutationInner(action);
+  if (result.undoData) _lastUndoData = result.undoData;
+  // Track last mutated task for contextual follow-ups ("assign to X", "set due to Y")
+  if (action.taskId) _lastMutatedTaskId = action.taskId;
+  else if (result.undoData?.taskId) _lastMutatedTaskId = result.undoData.taskId;
+  return result;
+}
+
+function _executeMutationInner(action) {
   let undoData = null;
 
   if (action.action === 'update' && action.taskId) {
@@ -653,18 +687,34 @@ function executeMutation(action) {
   }
 
   if (action.action === 'add') {
-    if (_onAddTask) _onAddTask(action.fields);
+    let newId = null;
+    if (_onAddTask) newId = _onAddTask(action.fields);
+    if (newId) {
+      undoData = { action: 'undo_add', taskId: newId };
+    }
     return {
       confirmation: action.confirmation || `Created "${action.fields.task || 'New task'}".`,
-      undoData: null, // Can't easily undo an add without knowing the new ID
+      undoData,
     };
   }
 
   if (action.action === 'delete' && action.taskId) {
+    // Snapshot task fields before deletion for undo
+    const tasks = _onGetTasks ? _onGetTasks() : [];
+    const task = tasks.find(t => t.id === action.taskId);
+    if (task) {
+      const snap = {};
+      for (const key of ['id', 'task', 'room', 'category', 'status', 'assigned', 'startDate', 'endDate', 'dependencies', 'notes', 'cost', 'contact']) {
+        snap[key] = key === 'assigned' ? [...(task.assigned || [])]
+          : key === 'startDate' || key === 'endDate' ? (task[key] ? task[key].toISOString().split('T')[0] : null)
+          : task[key];
+      }
+      undoData = { action: 'undo_delete', fields: snap };
+    }
     if (_onDeleteTask) _onDeleteTask(action.taskId);
     return {
       confirmation: action.confirmation || 'Task deleted (moved to bin).',
-      undoData: null,
+      undoData,
     };
   }
 
@@ -732,9 +782,14 @@ function appendBubble(role, content, opts = {}) {
           for (const item of undoData.items) {
             executeMutation({ action: 'update', taskId: item.taskId, fields: item.fields });
           }
+        } else if (undoData.action === 'undo_add' && undoData.taskId) {
+          if (_onDeleteTask) _onDeleteTask(undoData.taskId);
+        } else if (undoData.action === 'undo_delete' && undoData.fields) {
+          if (_onAddTask) _onAddTask(undoData.fields);
         } else {
           executeMutation({ action: undoData.action, taskId: undoData.taskId, fields: undoData.fields });
         }
+        _lastUndoData = null; // chip used, clear text undo too
         chip.textContent = 'Undone';
         chip.disabled = true;
         chip.classList.add('qp-chat-undo-done');

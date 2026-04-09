@@ -24,10 +24,11 @@
   --shadow-accent-hover: var(--color-primary1-900, #004d57);
   --planner-tint: color-mix(in srgb, var(--color-primary1-100, #cef7ff) 45%, white);
   --planner-tint-dark: var(--color-primary1-900, rgba(0, 37, 44, 0.85));
-  /* Status column headers track the primary ramp */
-  --status-todo-bg: var(--color-primary1-700, #007888);
-  --status-in-progress-bg: var(--color-primary1-700, #007888);
-  --status-blocked-bg: var(--color-primary1-700, #007888);
+  /* Status column header defaults — tokens.css sets the real values;
+     these are fallbacks only if tokens fail to load */
+  --status-todo-bg: #2B6CB0;
+  --status-in-progress-bg: rgb(170, 51, 208);
+  --status-blocked-bg: #C53030;
   /* Status text — overridden by JS when user picks a custom column colour */
   --status-todo-text: #FFFFFF;
   --status-in-progress-text: #FFFFFF;
@@ -2776,7 +2777,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 
 /* === FAB === */
 .header-add-btn {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 0;
   background: transparent;
@@ -2836,10 +2837,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.16);
 }
 .fab-add:active { transform: scale(0.96); }
-/* Hide FAB on desktop — header-add-btn used instead */
-@media (min-width: 769px) {
-  .fab-add { display: none; }
-}
+/* FAB visible on all screen sizes */
 /* Hide FAB when settings is open */
 main.settings-open ~ .fab-add,
 body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
@@ -5882,18 +5880,18 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   margin: 0 auto;
   padding-left: 10vw;
   padding-right: 10vw;
+  background:
+    radial-gradient(ellipse 50% 50% at 20% 65%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 8%, transparent) 0%, transparent 100%),
+    var(--surface-landing);
 }
 
-/* Left panel — mascot + branding, soft accent wash */
+/* Left panel — mascot + branding */
 .landing-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 64px 48px;
-  background:
-    radial-gradient(ellipse 80% 60% at 30% 70%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 8%, transparent) 0%, transparent 100%),
-    var(--surface-landing);
 }
 
 .landing-mascot {
@@ -6128,9 +6126,9 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 }
 
 /* Auth dark mode — surface-landing token auto-switches; only non-token overrides here */
-[data-theme="dark"] .landing-hero {
+[data-theme="dark"] .landing-page {
   background:
-    radial-gradient(ellipse 80% 60% at 30% 70%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 6%, transparent) 0%, transparent 100%),
+    radial-gradient(ellipse 50% 50% at 20% 65%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 6%, transparent) 0%, transparent 100%),
     var(--surface-landing);
 }
 /* Auth card + input dark overrides eliminated — tokens auto-switch */

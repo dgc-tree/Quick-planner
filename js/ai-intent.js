@@ -992,6 +992,74 @@ export function resolveIntent(message, context) {
     };
   }
 
+  // ─── Contextual follow-ups (no task name → use last mutated task) ───
+  const lastTask = context.lastTaskId ? tasks.find(t => t.id === context.lastTaskId) : null;
+  if (lastTask) {
+    const ltName = lastTask.task || lastTask.name;
+
+    // "assign to [person]" / "assign it to [person]"
+    const ctxAssign = lower.match(/^assign\s+(?:it\s+|that\s+)?to\s+(.+)$/);
+    if (ctxAssign) {
+      const person = ctxAssign[1].trim();
+      return {
+        type: 'mutation', action: 'update', taskId: lastTask.id,
+        fields: { assigned: [person] },
+        confirmation: `Assigned "${ltName}" to ${person}.`,
+      };
+    }
+
+    // "move to [status]" / "set status to [status]" / "mark as [status]"
+    const ctxStatus = lower.match(/^(?:move|set|change)\s+(?:it\s+|that\s+|status\s+)?to\s+(.+)$/)
+      || lower.match(/^mark\s+(?:it\s+|that\s+)?(?:as\s+)?(.+)$/);
+    if (ctxStatus) {
+      const rawStatus = ctxStatus[1].trim();
+      const statusMap = { 'todo': 'To Do', 'to do': 'To Do', 'in progress': 'In Progress', 'blocked': 'Blocked', 'done': 'Done' };
+      const status = statusMap[rawStatus.toLowerCase()] || rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+      if (['To Do', 'In Progress', 'Blocked', 'Done'].includes(status)) {
+        return {
+          type: 'mutation', action: 'update', taskId: lastTask.id,
+          fields: { status },
+          confirmation: `Moved "${ltName}" to ${status}.`,
+        };
+      }
+    }
+
+    // "due [date]" / "set due to [date]"
+    const ctxDue = lower.match(/^(?:(?:set\s+)?due\s+(?:date\s+)?(?:to\s+)?|due\s+)(.+)$/);
+    if (ctxDue) {
+      const d = parseDate(ctxDue[1].trim());
+      if (d) {
+        return {
+          type: 'mutation', action: 'update', taskId: lastTask.id,
+          fields: { endDate: fmtDate(d) },
+          confirmation: `Set "${ltName}" due ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}.`,
+        };
+      }
+    }
+
+    // "room [name]" / "set room to [name]"
+    const ctxRoom = lower.match(/^(?:set\s+)?room\s+(?:to\s+)?(.+)$/);
+    if (ctxRoom) {
+      const room = ctxRoom[1].trim().replace(/^["']|["']$/g, '');
+      return {
+        type: 'mutation', action: 'update', taskId: lastTask.id,
+        fields: { room },
+        confirmation: `Set "${ltName}" room to ${room}.`,
+      };
+    }
+
+    // "category [name]"
+    const ctxCat = lower.match(/^(?:set\s+)?category\s+(?:to\s+)?(.+)$/);
+    if (ctxCat) {
+      const category = ctxCat[1].trim();
+      return {
+        type: 'mutation', action: 'update', taskId: lastTask.id,
+        fields: { category },
+        confirmation: `Set "${ltName}" category to ${category}.`,
+      };
+    }
+  }
+
   // "assign [task] to [person]"
   const assignMatch = lower.match(/^assign\s+(.+?)\s+to\s+(.+)$/);
   if (assignMatch) {
@@ -1021,16 +1089,30 @@ export function resolveIntent(message, context) {
     };
   }
 
-  // "add/create/new task [name] [field details]" — enter conversational add flow
+  // "add/create/new task [name] [field details]" — direct add when name given, flow when not
   const addMatch = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s*[:\-–]?\s*(.+)/i)
     || lower.match(/^(?:add|create|new)\s+(?:a\s+)?(?:task\s+)?(?:for|called|named)\s+(.+)/i);
   if (addMatch) {
     const { taskName, fields } = extractFields(addMatch[1]);
+    if (taskName) {
+      // Name provided — create immediately, no confirmation needed
+      return {
+        type: 'mutation',
+        action: 'add',
+        fields: { task: taskName, status: 'To Do', ...fields },
+        confirmation: `Added "${taskName}".`,
+      };
+    }
     return {
       type: 'flow',
       flow: 'add',
-      draft: { task: taskName || '', status: 'To Do', ...fields },
+      draft: { task: '', status: 'To Do', ...fields },
     };
+  }
+
+  // Bare "add a task" / "new task" / "create task" — enter flow (no name)
+  if (/^(?:add|create|new)\s+(?:a\s+)?task\s*$/.test(lower)) {
+    return { type: 'flow', flow: 'add', draft: { task: '', status: 'To Do' } };
   }
 
   // "edit/update/change [task]" — enter conversational edit flow

@@ -139,7 +139,7 @@ function contrastText(hex) {
 function openColumnColorPicker(columnName, header) {
   const stored = loadColumnColors()[columnName];
   const def = STATUS_COLORS[columnName];
-  const initial = stored || (def ? def.bg.startsWith('#') ? def.bg : '#007888' : '#007888');
+  const initial = stored || (def ? def.bg.startsWith('#') ? def.bg : '#2B6CB0' : '#2B6CB0');
   openColorPickerModal({
     title: `${columnName} colour`,
     initialHex: initial,
