@@ -445,62 +445,66 @@
         <div class="settings-tab-panel" data-panel="assistant">
           <section class="settings-card" id="settings-assistant">
             <h3 class="settings-card-title">Assistant</h3>
-            <p class="settings-card-desc">QP Chat answers most questions locally - no API needed. Connect a provider below to unlock advanced queries like rescheduling and multi-step commands.</p>
+            <p class="settings-card-desc">QP Chat works without any external service - add tasks, check what's due and manage your project using natural language. Optionally connect an AI provider for complex queries.</p>
 
-            <div class="modal-field" style="margin:12px 0">
-              <label>Provider</label>
-              <div class="settings-ai-provider-group">
-                <!-- QP AI hidden until hosted proxy is funded
-                <label class="settings-ai-provider-option">
-                  <input type="radio" name="ai-provider" value="hosted" id="settings-ai-provider-hosted">
-                  <span>QP AI</span>
-                </label> -->
-                <label class="settings-ai-provider-option">
-                  <input type="radio" name="ai-provider" value="claude" id="settings-ai-provider-claude">
-                  <span>Own API key</span>
-                </label>
-                <label class="settings-ai-provider-option">
-                  <input type="radio" name="ai-provider" value="local" id="settings-ai-provider-local" checked>
-                  <span>Local LLM</span>
-                </label>
-              </div>
-            </div>
+            <details id="settings-ai-advanced">
+              <summary class="settings-ai-advanced-summary">Advanced: connect an AI provider</summary>
 
-            <!-- QP AI (hosted) fields — hidden until funded -->
-            <div id="settings-ai-hosted-fields" class="hidden">
-              <p class="settings-field-hint" style="margin: 12px 0">Included with your account. AI queries are processed securely through our servers using Claude. No API key needed.</p>
-              <div id="settings-ai-hosted-status" class="settings-ai-status"></div>
-            </div>
+              <div class="modal-field" style="margin:12px 0">
+                <label>Provider</label>
+                <div class="settings-ai-provider-group">
+                  <!-- QP AI hidden until hosted proxy is funded
+                  <label class="settings-ai-provider-option">
+                    <input type="radio" name="ai-provider" value="hosted" id="settings-ai-provider-hosted">
+                    <span>QP AI</span>
+                  </label> -->
+                  <label class="settings-ai-provider-option">
+                    <input type="radio" name="ai-provider" value="claude" id="settings-ai-provider-claude">
+                    <span>Own API key</span>
+                  </label>
+                  <label class="settings-ai-provider-option">
+                    <input type="radio" name="ai-provider" value="local" id="settings-ai-provider-local" checked>
+                    <span>Local LLM</span>
+                  </label>
+                </div>
+              </div>
 
-            <!-- Claude API fields -->
-            <div id="settings-ai-claude-fields" class="hidden">
-              <div class="modal-field" style="margin:12px 0">
-                <label for="settings-ai-key">Claude API key</label>
-                <p class="settings-field-hint">Paste your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Your key is saved in this browser only - never copy it into emails, messages or shared documents.</p>
-                <input id="settings-ai-key" type="password" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false">
-                <div id="settings-ai-status" class="settings-ai-status"></div>
+              <!-- QP AI (hosted) fields — hidden until funded -->
+              <div id="settings-ai-hosted-fields" class="hidden">
+                <p class="settings-field-hint" style="margin: 12px 0">Included with your account. AI queries are processed securely through our servers using Claude. No API key needed.</p>
+                <div id="settings-ai-hosted-status" class="settings-ai-status"></div>
               </div>
-              <p class="settings-field-hint">Check that your key is valid and can reach the API. Required before advanced features will work.</p>
-              <button type="button" id="settings-ai-test" class="modal-btn modal-cancel">Test connection</button>
-            </div>
 
-            <!-- Local LLM fields -->
-            <div id="settings-ai-local-fields" class="hidden">
-              <div class="modal-field" style="margin:12px 0">
-                <label for="settings-ai-endpoint">Endpoint URL</label>
-                <input id="settings-ai-endpoint" type="url" placeholder="http://127.0.0.1:1234/v1/chat/completions" autocomplete="off" spellcheck="false">
+              <!-- Claude API fields -->
+              <div id="settings-ai-claude-fields" class="hidden">
+                <div class="modal-field" style="margin:12px 0">
+                  <label for="settings-ai-key">Claude API key</label>
+                  <p class="settings-field-hint">Paste your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Your key is saved in this browser only - never copy it into emails, messages or shared documents.</p>
+                  <input id="settings-ai-key" type="password" placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false">
+                  <div id="settings-ai-status" class="settings-ai-status"></div>
+                </div>
+                <p class="settings-field-hint">Check that your key is valid and can reach the API. Required before advanced features will work.</p>
+                <button type="button" id="settings-ai-test" class="modal-btn modal-cancel">Test connection</button>
               </div>
-              <div class="modal-field" style="margin:12px 0">
-                <label for="settings-ai-model">Model name</label>
-                <input id="settings-ai-model" type="text" placeholder="qwen3.5-35b-a3b" autocomplete="off" spellcheck="false">
+
+              <!-- Local LLM fields -->
+              <div id="settings-ai-local-fields" class="hidden">
+                <div class="modal-field" style="margin:12px 0">
+                  <label for="settings-ai-endpoint">Endpoint URL</label>
+                  <input id="settings-ai-endpoint" type="url" placeholder="http://127.0.0.1:1234/v1/chat/completions" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="modal-field" style="margin:12px 0">
+                  <label for="settings-ai-model">Model name</label>
+                  <input id="settings-ai-model" type="text" placeholder="qwen3.5-35b-a3b" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="modal-field" style="margin:12px 0">
+                  <label for="settings-ai-local-key">API key <span class="settings-ai-optional">(optional)</span></label>
+                  <input id="settings-ai-local-key" type="password" placeholder="Leave blank if not required" autocomplete="off" spellcheck="false">
+                </div>
+                <div id="settings-ai-local-status" class="settings-ai-status"></div>
+                <button type="button" id="settings-ai-local-test" class="modal-btn modal-cancel">Test connection</button>
               </div>
-              <div class="modal-field" style="margin:12px 0">
-                <label for="settings-ai-local-key">API key <span class="settings-ai-optional">(optional)</span></label>
-                <input id="settings-ai-local-key" type="password" placeholder="Leave blank if not required" autocomplete="off" spellcheck="false">
-              </div>
-              <div id="settings-ai-local-status" class="settings-ai-status"></div>
-              <button type="button" id="settings-ai-local-test" class="modal-btn modal-cancel">Test connection</button>
-            </div>
+            </details>
 
             <hr class="settings-card-divider">
 

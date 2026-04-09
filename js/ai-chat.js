@@ -165,11 +165,12 @@ function renderEmptyState() {
   const empty = document.createElement('div');
   empty.className = 'qp-chat-empty';
   empty.innerHTML = `<span class="qp-chat-empty-avatar">Qp</span>
-    <p>I'm QP, your task assistant. Ask me anything or tell me what to do.</p>
+    <p>I can search, update and organise your tasks. Try one of these:</p>
     <div class="qp-chat-suggestions">
-      <button class="qp-chat-suggestion" data-msg="What's due this week?">What's due this week?</button>
-      <button class="qp-chat-suggestion" data-msg="What's overdue?">What's overdue?</button>
-      <button class="qp-chat-suggestion" data-msg="How many tasks?">How many tasks?</button>
+      <button class="qp-chat-suggestion" data-msg="What's due this week?">Due this week?</button>
+      <button class="qp-chat-suggestion" data-msg="What's overdue?">Overdue?</button>
+      <button class="qp-chat-suggestion" data-msg="Summary">Summary</button>
+      <button class="qp-chat-suggestion" data-msg="Help">Help</button>
     </div>`;
   _messageList.appendChild(empty);
 
@@ -318,9 +319,16 @@ async function processMessage(text) {
     }
   }
 
-  // Step 2: Need LLM — check for API key
+  // Step 2: No local match — try fuzzy task match or show helpful suggestions
   if (!hasApiKey()) {
-    appendBubble('assistant', 'I can\'t figure that one out locally. <a href="#" onclick="window._showSettingsTab(\'assistant\'); return false;">Set up AI in Settings</a> to unlock smarter replies.', { html: true });
+    const fuzzy = findTask(text, tasks);
+    if (fuzzy && fuzzy.confidence > 0.5) {
+      const name = fuzzy.task.task || fuzzy.task.name;
+      _lastMutatedTaskId = fuzzy.task.id;
+      appendBubble('assistant', `I found "${name}" — try:\n- "mark it as done"\n- "assign to [name]"\n- "show me ${name}"`);
+    } else {
+      appendBubble('assistant', 'I didn\'t catch that. Try:\n- "add task [name]"\n- "what\'s due this week?"\n- "mark [task] as done"\n- "help" for all commands');
+    }
     return;
   }
 
