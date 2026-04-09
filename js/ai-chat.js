@@ -375,7 +375,15 @@ async function processMessage(text) {
     } else if (err.message === 'RATE_LIMITED') {
       appendBubble('assistant', "You've hit the API rate limit. Try again in a moment.");
     } else {
-      appendBubble('assistant', `Something went wrong: ${err.message}`);
+      // Network/connection error — fall back to helpful local response
+      const fuzzy = findTask(text, tasks);
+      if (fuzzy && fuzzy.confidence > 0.5) {
+        const name = fuzzy.task.task || fuzzy.task.name;
+        _lastMutatedTaskId = fuzzy.task.id;
+        appendBubble('assistant', `I couldn't reach the AI, but I found "${name}". Try:\n- "mark it as done"\n- "assign to [name]"\n- "show me ${name}"`);
+      } else {
+        appendBubble('assistant', 'I didn\'t catch that. Try:\n- "add task [name]"\n- "what\'s due this week?"\n- "mark [task] as done"\n- "help" for all commands');
+      }
     }
   }
 }
