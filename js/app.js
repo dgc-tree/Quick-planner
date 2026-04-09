@@ -459,7 +459,7 @@ async function initApp() {
       persistTaskChange();
     },
     onAddTask: (fields) => {
-      handleTaskCreate(fields);
+      return handleTaskCreate(fields);
     },
     onDeleteTask: (taskId) => {
       const task = allTasks.find(t => t.id === taskId);
@@ -839,6 +839,7 @@ function handleTaskCreate(fields) {
   render();
   persistTaskChange();
   showToast('Task created', 'success');
+  return newTask.id;
 }
 
 function applyLocalUpdate(task, fields) {

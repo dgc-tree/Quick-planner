@@ -102,23 +102,47 @@ function formatChange(change) {
   let fields;
   try { fields = JSON.parse(change.fields_changed); } catch { fields = {}; }
   const parts = [];
+  const startVal = fields.start_date;
+  const endVal = fields.end_date;
+  // Collapse paired date changes into one line
+  if (startVal && endVal) {
+    const s = startVal.to ? shortDate(startVal.to) : null;
+    const e = endVal.to ? shortDate(endVal.to) : null;
+    if (s && e) parts.push(`rescheduled to ${s} – ${e}`);
+    else if (s) parts.push(`starts ${s}`);
+    else if (e) parts.push(`due ${e}`);
+    else parts.push('dates cleared');
+  }
   for (const [key, val] of Object.entries(fields)) {
-    const label = FIELD_LABELS[key] || key;
-    if (key === 'status') {
-      parts.push(`${label} → ${val.to}`);
+    if (key === 'start_date' || key === 'end_date') {
+      // Already handled above if paired; handle solo changes
+      if (startVal && endVal) continue;
+      const label = FIELD_LABELS[key] || key;
+      parts.push(val.to ? `${label} → ${shortDate(val.to)}` : `${label} cleared`);
+    } else if (key === 'status') {
+      parts.push(`${FIELD_LABELS[key]} → ${val.to}`);
     } else if (key === 'assigned') {
       try {
         const names = JSON.parse(val.to);
         parts.push(`assigned to ${Array.isArray(names) ? names.join(', ') : val.to}`);
-      } catch { parts.push(`${label} changed`); }
-    } else if (key === 'start_date' || key === 'end_date') {
-      parts.push(`${label} → ${val.to || 'cleared'}`);
+      } catch { parts.push('assignee changed'); }
+    } else if (key === 'task') {
+      parts.push(`renamed to ${val.to}`);
     } else {
-      parts.push(`${label} changed`);
+      const label = FIELD_LABELS[key] || key;
+      parts.push(`${label} updated`);
     }
   }
 
   return { who, task: change.task_name, detail: parts.join(', ') || 'updated', ago };
+}
+
+function shortDate(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  } catch { return iso; }
 }
 
 function timeAgo(date) {

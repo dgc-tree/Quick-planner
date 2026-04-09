@@ -15,7 +15,7 @@
     "inverse":   { "$value": "{neutral.100}" }
   },
   "accent": {
-    "primary1":   { "$value": "{primary1.700}" },
+    "primary1":   { "$value": "#00E3FF" },
     "secondary1": { "$value": "{secondary1.600}" },
     "secondary2": { "$value": "{secondary2.600}" }
   },
