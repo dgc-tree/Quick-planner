@@ -411,7 +411,39 @@ export function resolveIntent(message, context) {
     };
   }
 
+  // ─── Conversation enders ──────────────────────────────────────────
+
+  if (/^(?:that'?s\s+all|bye|goodbye|nothing\s+else|all\s+good|see\s+ya|later|nah\s+i'?m\s+good|i'?m\s+done|no\s+thanks?)\s*[.!]?$/i.test(msg)) {
+    return { type: 'read', response: 'All good! I\'m here if you need me.' };
+  }
+
+  // ─── Bare shorthand queries ─────────────────────────────────────
+
+  // Bare "today" / "tomorrow" / "this week" → due queries
+  if (/^today\s*\??$/i.test(msg)) return resolveIntent("what's due today", context);
+  if (/^tomorrow\s*\??$/i.test(msg)) {
+    const tmrw = today(); tmrw.setDate(tmrw.getDate() + 1);
+    const tmrwStr = fmtDate(tmrw);
+    const due = tasks.filter(t => t.endDate && fmtDate(new Date(t.endDate)) === tmrwStr);
+    if (due.length === 0) return { type: 'read', response: 'Nothing due tomorrow.' };
+    const list = due.map(t => `- ${t.task || t.name}${t.status === 'Done' ? ' (done)' : ''}`).join('\n');
+    return { type: 'read', response: `Due tomorrow:\n${list}` };
+  }
+  if (/^this\s+week\s*\??$/i.test(msg)) return resolveIntent("what's due this week", context);
+
+  // Bare status word → show tasks in that status
+  if (/^(?:done|completed)\s*\??$/i.test(msg)) return resolveIntent('show done tasks', context);
+  if (/^(?:blocked|stuck)\s*\??$/i.test(msg)) return resolveIntent('show blocked tasks', context);
+  if (/^(?:in\s*progress|wip|active)\s*\??$/i.test(msg)) return resolveIntent('show in progress tasks', context);
+  if (/^(?:to\s*do|pending|open)\s*\??$/i.test(msg)) return resolveIntent('show to do tasks', context);
+
   // ─── Read queries ─────────────────────────────────────────────────
+
+  // "what's happening today?" / "what's on today?" — alias for due today
+  if (/^what(?:'s| is)\s+(?:happening|on|up)\s+today\??$/i.test(msg)) return resolveIntent("what's due today", context);
+
+  // "what's on this week?" — alias for due this week
+  if (/^what(?:'s| is)\s+(?:happening|on|up)\s+this\s+week\??$/i.test(msg)) return resolveIntent("what's due this week", context);
 
   // "what's due today"
   if (/^what(?:'s| is)\s+due\s+today\??$/i.test(msg)) {
@@ -457,6 +489,118 @@ export function resolveIntent(message, context) {
     const list = remaining.slice(0, 15).map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
     const more = remaining.length > 15 ? `\n...and ${remaining.length - 15} more` : '';
     return { type: 'read', response: `${remaining.length} tasks remaining:\n${list}${more}` };
+  }
+
+  // "anything urgent?" / "anything due soon?" — overdue + due within 3 days
+  if (/^(?:anything\s+(?:urgent|due\s+soon|pressing|critical)|what(?:'s| is)\s+urgent|urgent\s*tasks?)\s*\??$/i.test(msg)) {
+    const soonDate = new Date(todayDate); soonDate.setDate(soonDate.getDate() + 3);
+    const urgent = tasks.filter(t => {
+      if (t.status === 'Done' || !t.endDate) return false;
+      const d = new Date(t.endDate);
+      return d <= soonDate;
+    }).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+    if (urgent.length === 0) return { type: 'read', response: 'Nothing urgent - all clear!' };
+    const list = urgent.map(t => {
+      const d = new Date(t.endDate);
+      const label = d < todayDate ? 'OVERDUE' : d.toDateString() === todayDate.toDateString() ? 'today' : fmtDateHuman(d);
+      return `- ${t.task || t.name} (${label})`;
+    }).join('\n');
+    return { type: 'read', response: `Urgent (${urgent.length}):\n${list}` };
+  }
+
+  // "tasks due tomorrow" / "due tomorrow"
+  if (/^(?:tasks?\s+)?due\s+tomorrow\s*\??$/i.test(msg)) {
+    const tmrw = today(); tmrw.setDate(tmrw.getDate() + 1);
+    const tmrwStr = fmtDate(tmrw);
+    const due = tasks.filter(t => t.endDate && fmtDate(new Date(t.endDate)) === tmrwStr);
+    if (due.length === 0) return { type: 'read', response: 'Nothing due tomorrow.' };
+    const list = due.map(t => `- ${t.task || t.name}${t.status === 'Done' ? ' (done)' : ''}`).join('\n');
+    return { type: 'read', response: `Due tomorrow:\n${list}` };
+  }
+
+  // "when is X due?" / "when's X due?"
+  {
+    const whenDue = lower.match(/^when(?:'s| is)\s+(.+?)\s+due\s*\??$/);
+    if (whenDue) {
+      const match = findTask(whenDue[1], tasks);
+      if (match && match.confidence >= 0.5) {
+        const t = match.task;
+        const name = t.task || t.name;
+        if (!t.endDate) return { type: 'read', response: `"${name}" has no due date set.` };
+        return { type: 'read', response: `"${name}" is due ${fmtDateHuman(new Date(t.endDate))}.` };
+      }
+    }
+  }
+
+  // "my tasks" / "anything for me?" / "what's assigned to me?"
+  if (/^(?:my\s+tasks?|anything\s+for\s+me|what(?:'s| is)\s+(?:assigned\s+to|for)\s+me|what\s+(?:do\s+)?i\s+have)\s*\??$/i.test(msg)) {
+    const userName = (context.user || '').toLowerCase();
+    if (!userName) return { type: 'read', response: 'I don\'t know your name yet. Check Settings > Account.' };
+    const mine = tasks.filter(t => t.status !== 'Done' && t.assigned && t.assigned.some(a => a.toLowerCase().includes(userName)));
+    if (mine.length === 0) return { type: 'read', response: 'Nothing assigned to you right now.' };
+    const list = mine.map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
+    return { type: 'read', response: `Your tasks (${mine.length}):\n${list}` };
+  }
+
+  // "what got done?" / "completed tasks" / "finished tasks"
+  if (/^(?:what\s+(?:got|was|is)\s+done|completed?\s*tasks?|finished\s*tasks?|done\s+tasks?|what(?:'s| is)\s+(?:been\s+)?completed?)\s*\??$/i.test(msg)) {
+    const done = tasks.filter(t => t.status === 'Done');
+    if (done.length === 0) return { type: 'read', response: 'Nothing marked as done yet.' };
+    const list = done.slice(0, 15).map(t => `- ${t.task || t.name}`).join('\n');
+    const more = done.length > 15 ? `\n...and ${done.length - 15} more` : '';
+    return { type: 'read', response: `Done (${done.length}):\n${list}${more}` };
+  }
+
+  // "progress" / "how are we going?" / "how much is done?"
+  if (/^(?:progress|how\s+(?:are\s+we|is\s+it|am\s+i)\s+(?:going|tracking|doing)|how\s+much\s+(?:is\s+)?done|status\s+update|project\s+progress)\s*\??$/i.test(msg)) {
+    const total = tasks.length;
+    if (total === 0) return { type: 'read', response: 'No tasks in this project yet.' };
+    const done = tasks.filter(t => t.status === 'Done').length;
+    const inProg = tasks.filter(t => t.status === 'In Progress').length;
+    const blocked = tasks.filter(t => t.status === 'Blocked').length;
+    const toDo = total - done - inProg - blocked;
+    const pct = Math.round((done / total) * 100);
+    return { type: 'read', response: `Progress: ${done}/${total} done (${pct}%)\nTo Do: ${toDo} | In Progress: ${inProg} | Blocked: ${blocked}` };
+  }
+
+  // "all tasks" / "show all" / "list everything" / "everything"
+  if (/^(?:all\s+tasks?|show\s+(?:me\s+)?all|list\s+(?:all|everything)|everything|show\s+(?:me\s+)?everything)\s*\??$/i.test(msg)) {
+    if (tasks.length === 0) return { type: 'read', response: 'No tasks in this project.' };
+    const list = tasks.slice(0, 20).map(t => `- ${t.task || t.name} (${t.status})`).join('\n');
+    const more = tasks.length > 20 ? `\n...and ${tasks.length - 20} more` : '';
+    return { type: 'read', response: `All tasks (${tasks.length}):\n${list}${more}` };
+  }
+
+  // "oldest task" / "what's been sitting longest?"
+  if (/^(?:(?:what(?:'s| is)\s+(?:the\s+)?)?oldest\s+task|what(?:'s| is)\s+been\s+sitting\s+(?:the\s+)?longest|longest\s+(?:open\s+)?task)\s*\??$/i.test(msg)) {
+    const open = tasks.filter(t => t.status !== 'Done' && t.updatedAt);
+    if (open.length === 0) return { type: 'read', response: 'No open tasks.' };
+    const oldest = open.sort((a, b) => a.updatedAt - b.updatedAt)[0];
+    const ago = Date.now() - oldest.updatedAt;
+    const days = Math.floor(ago / 86400000);
+    const label = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
+    return { type: 'read', response: `Oldest open task: "${oldest.task || oldest.name}" (${oldest.status}) — last updated ${label}` };
+  }
+
+  // "how much have we spent?" / "spent so far" / "cost of done tasks"
+  if (/^(?:how\s+much\s+(?:have\s+we\s+)?spent|spent\s+(?:so\s+far|total)|cost\s+of\s+(?:done|completed?)\s*(?:tasks?)?)\s*\??$/i.test(msg)) {
+    const doneTasks = tasks.filter(t => t.status === 'Done' && t.cost);
+    const spent = doneTasks.reduce((sum, t) => sum + (t.cost || 0), 0);
+    const totalCost = tasks.filter(t => t.cost).reduce((sum, t) => sum + (t.cost || 0), 0);
+    return { type: 'read', response: `Spent so far: $${spent.toLocaleString()} (on ${doneTasks.length} completed tasks)\nTotal budget: $${totalCost.toLocaleString()}` };
+  }
+
+  // "who has the most work?" / "who's busiest?" / "workload breakdown"
+  if (/^(?:who(?:'s| is| has)\s+(?:the\s+)?(?:most\s+(?:work|tasks?)|busiest)|busiest\s+(?:person|member|worker))\s*\??$/i.test(msg)) {
+    const active = tasks.filter(t => t.status !== 'Done' && t.assigned && t.assigned.length);
+    const counts = {};
+    for (const t of active) {
+      for (const a of t.assigned) { counts[a] = (counts[a] || 0) + 1; }
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    if (sorted.length === 0) return { type: 'read', response: 'No active assigned tasks.' };
+    const list = sorted.map(([name, count]) => `- ${name}: ${count} task${count > 1 ? 's' : ''}`).join('\n');
+    return { type: 'read', response: `Workload:\n${list}` };
   }
 
   // "what's overdue"
@@ -581,8 +725,8 @@ export function resolveIntent(message, context) {
     }
   }
 
-  // "show me tasks in [room]" / "show me [room] tasks" / "[room] tasks"
-  const roomQuery = lower.match(/(?:show\s+(?:me\s+)?(?:all\s+)?(?:tasks?\s+)?(?:in|for)\s+(?:the\s+)?|^(?:tasks?\s+(?:in|for)\s+(?:the\s+)?))(.+?)(?:\s+room)?$/);
+  // "show me tasks in [room]" / "show me everything in [room]" / "[room] tasks"
+  const roomQuery = lower.match(/(?:show\s+(?:me\s+)?(?:all\s+|everything\s+)?(?:tasks?\s+)?(?:in|for)\s+(?:the\s+)?|^(?:tasks?\s+(?:in|for)\s+(?:the\s+)?))(.+?)(?:\s+room)?$/);
   if (roomQuery) {
     const roomName = roomQuery[1].trim();
     const matching = tasks.filter(t => (t.room || '').toLowerCase().includes(roomName));
@@ -778,9 +922,9 @@ export function resolveIntent(message, context) {
 
   // "most recent task" / "latest task" / "newest task" / "last task added"
   if (/^(?:(?:what\s+(?:is|was)\s+)?(?:the\s+)?(?:most\s+)?(?:recent|latest|newest|last)\s+task|last\s+(?:task\s+)?(?:added|created))\s*\??$/i.test(msg)) {
-    const sorted = [...tasks].filter(t => t.updatedAt).sort((a, b) => b.updatedAt - a.updatedAt);
-    if (sorted.length === 0) return { type: 'read', response: 'No tasks found.' };
-    const t = sorted[0];
+    if (tasks.length === 0) return { type: 'read', response: 'No tasks found.' };
+    // Last in array = most recently added (array order is creation order)
+    const t = tasks[tasks.length - 1];
     const lines = [`**${t.task || t.name}**`, `Status: ${t.status}`];
     if (t.room) lines.push(`Room: ${t.room}`);
     if (t.assigned && t.assigned.length) lines.push(`Assigned: ${t.assigned.join(', ')}`);
@@ -1255,6 +1399,25 @@ export function resolveIntent(message, context) {
         return { type: 'mutation', action: 'update', taskId: match.task.id,
           fields: { cost },
           confirmation: `Set "${match.task.task || match.task.name}" cost to $${cost}.` };
+      }
+    }
+  }
+
+  // "move [task] to [room]" (room assignment, not status)
+  {
+    const STATUSES = ['to do', 'in progress', 'blocked', 'done', 'completed'];
+    const moveRoom = lower.match(/^(?:move|put)\s+(.+?)\s+(?:to|in(?:to)?)\s+(?:the\s+)?(.+)$/);
+    if (moveRoom) {
+      const dest = moveRoom[2].trim();
+      // Only treat as room if it's NOT a status name
+      if (!STATUSES.includes(dest.toLowerCase())) {
+        const match = findTask(moveRoom[1], tasks);
+        if (match && match.confidence >= 0.5) {
+          const room = dest.charAt(0).toUpperCase() + dest.slice(1);
+          return { type: 'mutation', action: 'update', taskId: match.task.id,
+            fields: { room },
+            confirmation: `Moved "${match.task.task || match.task.name}" to ${room}.` };
+        }
       }
     }
   }
