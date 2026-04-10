@@ -138,8 +138,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
               <div class="modal-field modal-field--dates">
                 <span>Dates</span>
                 <button type="button" class="modal-date-range-btn${task.startDate || task.endDate ? '' : ' empty'}">${task.startDate || task.endDate ? `${displayDate(task.startDate)} – ${displayDate(task.endDate)}` : 'Set dates'}</button>
-                <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}" aria-label="${ariaDate('Start Date', task.startDate)}">
-                <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}" aria-label="${ariaDate('End Date', task.endDate)}">
+                <input type="hidden" name="startDate" value="${fmtDate(task.startDate)}">
+                <input type="hidden" name="endDate" value="${fmtDate(task.endDate)}">
               </div>
               <div class="modal-field modal-field--deps">
                 <span>Dependencies</span>
@@ -152,16 +152,18 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
               </div>
             </div>
             <div class="modal-row">
-              <label class="modal-toggle-row modal-toggle-row--inline">
-                <span>Trade quote</span>
-                <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <label class="modal-field modal-field--toggle">
+                <span>Trade</span>
+                <span class="modal-toggle-wrap">
+                  <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </span>
               </label>
               <div class="modal-field" style="flex:1">
                 <span>Cost</span>
                 <input type="text" name="cost" inputmode="decimal" placeholder="$0.00" value="${task.cost != null ? task.cost : ''}">
               </div>
-              <div class="modal-field" style="flex:2">
+              <div class="modal-field modal-field--contact" style="flex:2">
                 <span>Contact</span>
                 <input type="text" name="contact" placeholder="Name, phone or email" value="${esc(task.contact || '')}">
               </div>
@@ -449,8 +451,10 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
 
   // Toggle-to-assign member grid
   const membersGrid = modalEl.querySelector('.modal-members-grid');
-  let selectedMembers = [...taskAssigned];
-  const allMembers = [...new Set([...selectedMembers, ...(options.assignees || [])])].sort();
+  // Deduplicate members case-insensitively (keep first occurrence's casing)
+  let selectedMembers = [...new Map(taskAssigned.map(n => [n.toLowerCase(), n])).values()];
+  const allRaw = [...selectedMembers, ...(options.assignees || [])];
+  const allMembers = [...new Map(allRaw.map(n => [n.toLowerCase(), n])).values()].sort();
 
   function syncMembersHidden() {
     assignedHidden.value = selectedMembers.join(',');

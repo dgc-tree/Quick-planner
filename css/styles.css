@@ -2439,6 +2439,17 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
+/* Toggle field — label above, toggle below (matches column rhythm) */
+.modal-field--toggle {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.modal-toggle-wrap {
+  display: flex;
+  align-items: center;
+  height: 44px;
+}
+
 /* Single tappable date range field */
 .modal-date-range-btn {
   display: block;
@@ -3607,6 +3618,8 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     flex: 1;
     overflow-y: auto;
   }
+  .modal-title { display: none; }
+  .modal-field--contact { display: none; }
 
   /* Hamburger button — icon only, top right of primary-nav */
   .mobile-menu-btn {
