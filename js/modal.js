@@ -152,10 +152,12 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
               </div>
             </div>
             <div class="modal-row">
-              <label class="modal-toggle-row modal-toggle-row--inline">
-                <span>Trade quote</span>
-                <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <label class="modal-field modal-field--toggle">
+                <span>Trade</span>
+                <span class="modal-toggle-wrap">
+                  <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </span>
               </label>
               <div class="modal-field" style="flex:1">
                 <span>Cost</span>
@@ -449,8 +451,10 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
 
   // Toggle-to-assign member grid
   const membersGrid = modalEl.querySelector('.modal-members-grid');
-  let selectedMembers = [...taskAssigned];
-  const allMembers = [...new Set([...selectedMembers, ...(options.assignees || [])])].sort();
+  // Deduplicate members case-insensitively (keep first occurrence's casing)
+  let selectedMembers = [...new Map(taskAssigned.map(n => [n.toLowerCase(), n])).values()];
+  const allRaw = [...selectedMembers, ...(options.assignees || [])];
+  const allMembers = [...new Map(allRaw.map(n => [n.toLowerCase(), n])).values()].sort();
 
   function syncMembersHidden() {
     assignedHidden.value = selectedMembers.join(',');
