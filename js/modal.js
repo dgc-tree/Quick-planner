@@ -134,7 +134,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 </select>
               </label>
             </div>
-            <div class="modal-row">
+            <div class="modal-row modal-row--wrap">
               <div class="modal-field modal-field--dates">
                 <span>Dates</span>
                 <div class="modal-dates-pair">
@@ -151,9 +151,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="modal-row">
-              <div class="modal-field" style="flex:1">
+              <div class="modal-field modal-field--deps">
                 <span>Dependencies</span>
                 <div class="dep-search-wrap">
                   <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
