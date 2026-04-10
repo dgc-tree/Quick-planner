@@ -130,26 +130,24 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 </select>
               </label>
             </div>
-            <div class="modal-row">
-              <label class="modal-field">
-                <span>Start Date</span>
-                <div class="date-picker-wrap">
-                  <button type="button" class="date-display${task.startDate ? '' : ' empty'}" data-for="startDate">${displayDate(task.startDate)}</button>
-                  <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}"
-                         aria-label="${ariaDate('Start Date', task.startDate)}">
+            <div class="modal-row modal-row--dates">
+              <div class="modal-field modal-field--dates">
+                <span>Dates</span>
+                <div class="modal-dates-pair">
+                  <div class="date-picker-wrap">
+                    <button type="button" class="date-display${task.startDate ? '' : ' empty'}" data-for="startDate">${displayDate(task.startDate)}</button>
+                    <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}"
+                           aria-label="${ariaDate('Start Date', task.startDate)}">
+                  </div>
+                  <span class="modal-dates-sep">–</span>
+                  <div class="date-picker-wrap">
+                    <button type="button" class="date-display${task.endDate ? '' : ' empty'}" data-for="endDate">${displayDate(task.endDate)}</button>
+                    <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}"
+                           aria-label="${ariaDate('End Date', task.endDate)}">
+                  </div>
                 </div>
-              </label>
-              <label class="modal-field">
-                <span>End Date</span>
-                <div class="date-picker-wrap">
-                  <button type="button" class="date-display${task.endDate ? '' : ' empty'}" data-for="endDate">${displayDate(task.endDate)}</button>
-                  <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}"
-                         aria-label="${ariaDate('End Date', task.endDate)}">
-                </div>
-              </label>
-            </div>
-            <div class="modal-row">
-              <div class="modal-field" style="flex:1">
+              </div>
+              <div class="modal-field modal-field--deps">
                 <span>Dependencies</span>
                 <div class="dep-search-wrap">
                   <input type="text" class="dep-search-input" placeholder="Search tasks..." autocomplete="off">
@@ -158,7 +156,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                   <div class="dep-selected"></div>
                 </div>
               </div>
-              <label class="modal-toggle-row modal-toggle-row--inline">
+              <label class="modal-toggle-row modal-toggle-row--stacked">
                 <span>Trade quote</span>
                 <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
                 <span class="toggle-track"><span class="toggle-thumb"></span></span>
