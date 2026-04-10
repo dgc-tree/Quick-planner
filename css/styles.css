@@ -2439,6 +2439,17 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
+/* Toggle field — label above, toggle below (matches column rhythm) */
+.modal-field--toggle {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.modal-toggle-wrap {
+  display: flex;
+  align-items: center;
+  height: 44px;
+}
+
 /* Single tappable date range field */
 .modal-date-range-btn {
   display: block;
