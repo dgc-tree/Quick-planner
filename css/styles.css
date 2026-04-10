@@ -2439,43 +2439,39 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
-/* Task name as header — inline with ··· menu */
+/* Task name in header — standard field styling, flex to fill */
 .modal-field--task-header {
   flex: 1;
   min-width: 0;
 }
-.modal-field--task-header input {
-  font-size: 1.1rem;
-  font-weight: 700;
-  border: none;
-  background: none;
-  padding: 4px 0;
-  width: 100%;
-  color: var(--content-primary);
-  outline: none;
-  border-bottom: 2px solid transparent;
-}
-.modal-field--task-header input:focus {
-  border-bottom-color: var(--accent-text);
-}
 
-/* Invite trigger button (replaces inline form on mobile) */
-.modal-invite-trigger {
-  display: inline-flex;
+/* Assigned row — members + invite button inline */
+.modal-assigned-row {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+  justify-content: space-between;
+  gap: 8px;
+}
+.modal-assigned-row .modal-members-wrap { flex: 1; }
+
+/* Invite trigger — icon-only button, right-aligned */
+.modal-invite-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--outline-default);
-  border-radius: 8px;
+  border-radius: 50%;
   background: var(--surface-base);
   color: var(--accent-text);
-  font-size: 0.85rem;
-  font-weight: 500;
   cursor: pointer;
-  font-family: inherit;
+  flex-shrink: 0;
   transition: background 0.15s;
+  padding: 0;
 }
 .modal-invite-trigger:hover { background: var(--surface-raised); }
+.modal-invite-trigger.hidden { display: none; }
 
 /* Invite overlay — focused email input */
 .modal-invite-overlay {

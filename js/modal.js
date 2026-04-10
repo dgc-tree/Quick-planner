@@ -73,7 +73,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     <div class="modal-dialog" role="dialog" aria-label="${task.id !== null ? 'Edit task' : 'New task'}">
       <div class="modal-header">
         <div class="modal-field modal-field--task-header">
-          <input type="text" name="task" value="${esc(task.task)}" placeholder="Task name">
+          <span>Task</span>
+          <input type="text" name="task" value="${esc(task.task)}">
         </div>
         ${task.id !== null ? `
         <div class="modal-more-wrap">
@@ -174,16 +175,15 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
           <div class="modal-layout-side">
             <div class="modal-field">
               <span>Assigned</span>
-              <div class="modal-members-wrap">
-                <div class="modal-members-grid"></div>
-                <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
+              <div class="modal-assigned-row">
+                <div class="modal-members-wrap">
+                  <div class="modal-members-grid"></div>
+                  <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
+                </div>
+                <button type="button" class="modal-invite-trigger hidden" title="Invite by email">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                </button>
               </div>
-            </div>
-            <div class="modal-invite-section hidden">
-              <button type="button" class="modal-invite-trigger" title="Invite by email">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                Invite
-              </button>
             </div>
             <div class="modal-invite-overlay hidden">
               <div class="modal-invite-overlay-content">
@@ -506,14 +506,13 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   }
 
   // Invite flow
-  const inviteSection = modalEl.querySelector('.modal-invite-section');
+  const inviteTrigger = modalEl.querySelector('.modal-invite-trigger');
   const inviteOverlay = modalEl.querySelector('.modal-invite-overlay');
   const canInvite = isLoggedIn() && !isSandbox() && typeof options.getActiveProjectId === 'function';
 
   if (canInvite) {
-    inviteSection.classList.remove('hidden');
+    inviteTrigger.classList.remove('hidden');
     // Wire trigger button → open overlay
-    const inviteTrigger = inviteSection.querySelector('.modal-invite-trigger');
     const inviteClose = inviteOverlay.querySelector('.modal-invite-overlay-close');
     inviteTrigger.addEventListener('click', () => { inviteOverlay.classList.remove('hidden'); });
     inviteClose.addEventListener('click', () => { inviteOverlay.classList.add('hidden'); });
