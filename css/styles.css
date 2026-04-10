@@ -2439,6 +2439,87 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
+/* Task name as header — inline with ··· menu */
+.modal-field--task-header {
+  flex: 1;
+  min-width: 0;
+}
+.modal-field--task-header input {
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: none;
+  background: none;
+  padding: 4px 0;
+  width: 100%;
+  color: var(--content-primary);
+  outline: none;
+  border-bottom: 2px solid transparent;
+}
+.modal-field--task-header input:focus {
+  border-bottom-color: var(--accent-text);
+}
+
+/* Invite trigger button (replaces inline form on mobile) */
+.modal-invite-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--outline-default);
+  border-radius: 8px;
+  background: var(--surface-base);
+  color: var(--accent-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.modal-invite-trigger:hover { background: var(--surface-raised); }
+
+/* Invite overlay — focused email input */
+.modal-invite-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--glass-dialog, rgba(255,255,255,0.95));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border-radius: inherit;
+}
+.modal-invite-overlay.hidden { display: none; }
+.modal-invite-overlay-content {
+  width: 100%;
+  max-width: 400px;
+}
+.modal-invite-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--content-primary);
+}
+.modal-invite-overlay-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  font-size: 24px;
+  color: var(--content-primary);
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-invite-overlay-close:hover { background: var(--surface-highlight); }
+
 /* Toggle field — label above, toggle below (matches column rhythm) */
 .modal-field--toggle {
   flex: 0 0 auto;
@@ -3618,6 +3699,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     flex: 1;
     overflow-y: auto;
   }
+  .modal-field--contact { display: none; }
 
   /* Hamburger button — icon only, top right of primary-nav */
   .mobile-menu-btn {

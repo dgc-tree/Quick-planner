@@ -72,7 +72,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   modalEl.innerHTML = `
     <div class="modal-dialog" role="dialog" aria-label="${task.id !== null ? 'Edit task' : 'New task'}">
       <div class="modal-header">
-        <h2 class="modal-title">${task.id !== null ? 'Edit Task' : 'New Task'}</h2>
+        <div class="modal-field modal-field--task-header">
+          <input type="text" name="task" value="${esc(task.task)}" placeholder="Task name">
+        </div>
         ${task.id !== null ? `
         <div class="modal-more-wrap">
           <button type="button" class="modal-more-btn" id="modal-more-btn" title="More options" aria-haspopup="true" aria-expanded="false">
@@ -109,10 +111,6 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 </select>
               </div>
             </div>
-            <div class="modal-field">
-              <span>Task</span>
-              <input type="text" name="task" value="${esc(task.task)}">
-            </div>
             <div class="modal-row">
               <div class="modal-field">
                 <span>Category</span>
@@ -138,8 +136,8 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
               <div class="modal-field modal-field--dates">
                 <span>Dates</span>
                 <button type="button" class="modal-date-range-btn${task.startDate || task.endDate ? '' : ' empty'}">${task.startDate || task.endDate ? `${displayDate(task.startDate)} – ${displayDate(task.endDate)}` : 'Set dates'}</button>
-                <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}" aria-label="${ariaDate('Start Date', task.startDate)}">
-                <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}" aria-label="${ariaDate('End Date', task.endDate)}">
+                <input type="hidden" name="startDate" value="${fmtDate(task.startDate)}">
+                <input type="hidden" name="endDate" value="${fmtDate(task.endDate)}">
               </div>
               <div class="modal-field modal-field--deps">
                 <span>Dependencies</span>
@@ -163,7 +161,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 <span>Cost</span>
                 <input type="text" name="cost" inputmode="decimal" placeholder="$0.00" value="${task.cost != null ? task.cost : ''}">
               </div>
-              <div class="modal-field" style="flex:2">
+              <div class="modal-field modal-field--contact" style="flex:2">
                 <span>Contact</span>
                 <input type="text" name="contact" placeholder="Name, phone or email" value="${esc(task.contact || '')}">
               </div>
@@ -181,15 +179,26 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 <input type="hidden" name="assigned" value="${esc(taskAssigned.join(','))}">
               </div>
             </div>
-            <div class="modal-invite-section modal-field hidden">
-              <span>Invite</span>
-              <div class="modal-member-invite-form">
-                <input type="text" class="modal-member-invite-input" placeholder="Invite by email..." inputmode="email">
-                <button type="button" class="modal-member-invite-send" title="Send invite">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
+            <div class="modal-invite-section hidden">
+              <button type="button" class="modal-invite-trigger" title="Invite by email">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                Invite
+              </button>
+            </div>
+            <div class="modal-invite-overlay hidden">
+              <div class="modal-invite-overlay-content">
+                <div class="modal-invite-overlay-header">
+                  <span>Invite by email</span>
+                  <button type="button" class="modal-invite-overlay-close" title="Close">&times;</button>
+                </div>
+                <div class="modal-member-invite-form">
+                  <input type="text" class="modal-member-invite-input" placeholder="Enter email address..." inputmode="email" autocomplete="off">
+                  <button type="button" class="modal-member-invite-send" title="Send invite">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+                <div class="modal-member-invite-msg hidden"></div>
               </div>
-              <div class="modal-member-invite-msg hidden"></div>
             </div>
           </div>
         </div>
@@ -498,13 +507,20 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
 
   // Invite flow
   const inviteSection = modalEl.querySelector('.modal-invite-section');
+  const inviteOverlay = modalEl.querySelector('.modal-invite-overlay');
   const canInvite = isLoggedIn() && !isSandbox() && typeof options.getActiveProjectId === 'function';
 
   if (canInvite) {
     inviteSection.classList.remove('hidden');
-    const inviteForm = inviteSection.querySelector('.modal-member-invite-form');
-    const inviteInput = inviteSection.querySelector('.modal-member-invite-input');
-    const inviteMsg = inviteSection.querySelector('.modal-member-invite-msg');
+    // Wire trigger button → open overlay
+    const inviteTrigger = inviteSection.querySelector('.modal-invite-trigger');
+    const inviteClose = inviteOverlay.querySelector('.modal-invite-overlay-close');
+    inviteTrigger.addEventListener('click', () => { inviteOverlay.classList.remove('hidden'); });
+    inviteClose.addEventListener('click', () => { inviteOverlay.classList.add('hidden'); });
+
+    const inviteForm = inviteOverlay.querySelector('.modal-member-invite-form');
+    const inviteInput = inviteOverlay.querySelector('.modal-member-invite-input');
+    const inviteMsg = inviteOverlay.querySelector('.modal-member-invite-msg');
 
     const sendBtn = inviteForm.querySelector('.modal-member-invite-send');
     sendBtn.addEventListener('click', async () => {
