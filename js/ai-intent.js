@@ -374,7 +374,7 @@ function normaliseStatus(raw) {
   return STATUS_MAP[raw.toLowerCase().trim()] || null;
 }
 
-/** Match assignee name against existing project members (case-insensitive). */
+/** Match assignee name against existing project members (case-insensitive). Returns null if no match. */
 function normaliseAssignee(name, tasks) {
   const lower = name.toLowerCase().trim();
   for (const t of tasks) {
@@ -383,13 +383,53 @@ function normaliseAssignee(name, tasks) {
       if (a.toLowerCase() === lower) return a; // return existing casing
     }
   }
-  // No match — capitalise first letters as sensible default
-  return name.trim().replace(/\b\w/g, c => c.toUpperCase());
+  return null; // no existing member found
 }
 
-/** Normalise an array of assignee names against existing members. */
+/** Normalise an array of assignee names. Filters out unknowns, returns { resolved, unknown }. */
 function normaliseAssignees(names, tasks) {
-  return names.map(n => normaliseAssignee(n, tasks));
+  const resolved = [];
+  const unknown = [];
+  for (const n of names) {
+    const match = normaliseAssignee(n, tasks);
+    if (match) resolved.push(match);
+    else unknown.push(n.trim());
+  }
+  return { resolved, unknown };
+}
+
+/** Get all known member names from task data. */
+function getKnownMembers(tasks) {
+  const set = new Set();
+  for (const t of tasks) {
+    if (t.assigned) for (const a of t.assigned) set.add(a);
+  }
+  return [...set];
+}
+
+/** Build an assign mutation or a clarify response if the person is unknown. */
+function buildAssignIntent(person, taskId, taskName, tasks, prevAssigned) {
+  const resolved = normaliseAssignee(person, tasks);
+  if (resolved) {
+    return {
+      type: 'mutation', action: 'update', taskId,
+      fields: { assigned: [resolved] },
+      previousFields: prevAssigned ? { assigned: prevAssigned } : undefined,
+      confirmation: `Assigned "${taskName}" to ${resolved}.`,
+    };
+  }
+  // Unknown member — prompt
+  const members = getKnownMembers(tasks);
+  const hint = members.length ? ` Known members: ${members.join(', ')}.` : '';
+  return {
+    type: 'clarify',
+    response: `I don't have a member called "${person}".${hint} Would you like to assign anyway?`,
+    pendingAction: {
+      action: 'update', taskId,
+      fields: { assigned: [person.trim().replace(/\b\w/g, c => c.toUpperCase())] },
+      taskName,
+    },
+  };
 }
 
 // ─── Intent patterns ──────────────────────────────────────────────────────────
@@ -1173,7 +1213,7 @@ export function resolveIntent(message, context) {
           pendingAction: {
             action: 'bulk_update',
             taskIds: result.matched.map(t => t.id),
-            fields: { assigned: [normaliseAssignee(person, tasks)] },
+            fields: { assigned: [normaliseAssignee(person, tasks) || person.replace(/\b\w/g, c => c.toUpperCase())] },
             label: result.label,
           },
         };
@@ -1273,12 +1313,7 @@ export function resolveIntent(message, context) {
     // "assign to [person]" / "assign it to [person]"
     const ctxAssign = lower.match(/^assign\s+(?:it\s+|that\s+)?to\s+(.+)$/);
     if (ctxAssign) {
-      const person = ctxAssign[1].trim();
-      return {
-        type: 'mutation', action: 'update', taskId: lastTask.id,
-        fields: { assigned: [normaliseAssignee(person, tasks)] },
-        confirmation: `Assigned "${ltName}" to ${person}.`,
-      };
+      return buildAssignIntent(ctxAssign[1].trim(), lastTask.id, ltName, tasks, lastTask.assigned);
     }
 
     // "move to [status]" / "set status to [status]" / "mark as [status]"
@@ -1347,19 +1382,13 @@ export function resolveIntent(message, context) {
         pendingAction: {
           action: 'update',
           taskId: match.task.id,
-          fields: { assigned: [normaliseAssignee(person, tasks)] },
+          fields: { assigned: [normaliseAssignee(person, tasks) || person.replace(/\b\w/g, c => c.toUpperCase())] },
           taskName: match.task.task || match.task.name,
         },
       };
     }
-    return {
-      type: 'mutation',
-      action: 'update',
-      taskId: match.task.id,
-      fields: { assigned: [normaliseAssignee(person, tasks)] },
-      previousFields: { assigned: match.task.assigned },
-      confirmation: `Assigned "${match.task.task || match.task.name}" to ${person}.`,
-    };
+    const tName = match.task.task || match.task.name;
+    return buildAssignIntent(person, match.task.id, tName, tasks, match.task.assigned);
   }
 
   // ─── Single-task field updates ─────────────────────────────────
@@ -1462,7 +1491,10 @@ export function resolveIntent(message, context) {
     || lower.match(/^(?:add|create|new)\s+(?:a\s+)?(?:task\s+)?(?:for|called|named)\s+(.+)/i);
   if (addMatch) {
     const { taskName, fields } = extractFields(addMatch[1]);
-    if (fields.assigned) fields.assigned = normaliseAssignees(fields.assigned, tasks);
+    if (fields.assigned) {
+      const { resolved } = normaliseAssignees(fields.assigned, tasks);
+      fields.assigned = resolved.length ? resolved : fields.assigned.map(n => n.replace(/\b\w/g, c => c.toUpperCase()));
+    }
     if (taskName) {
       // Name provided — create immediately, no confirmation needed
       return {

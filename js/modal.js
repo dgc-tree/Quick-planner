@@ -134,22 +134,12 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 </select>
               </label>
             </div>
-            <div class="modal-row modal-row--wrap">
+            <div class="modal-row">
               <div class="modal-field modal-field--dates">
                 <span>Dates</span>
-                <div class="modal-dates-pair">
-                  <div class="date-picker-wrap">
-                    <button type="button" class="date-display${task.startDate ? '' : ' empty'}" data-for="startDate">${displayDate(task.startDate)}</button>
-                    <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}"
-                           aria-label="${ariaDate('Start Date', task.startDate)}">
-                  </div>
-                  <span class="modal-dates-sep">–</span>
-                  <div class="date-picker-wrap">
-                    <button type="button" class="date-display${task.endDate ? '' : ' empty'}" data-for="endDate">${displayDate(task.endDate)}</button>
-                    <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}"
-                           aria-label="${ariaDate('End Date', task.endDate)}">
-                  </div>
-                </div>
+                <button type="button" class="modal-date-range-btn${task.startDate || task.endDate ? '' : ' empty'}">${task.startDate || task.endDate ? `${displayDate(task.startDate)} – ${displayDate(task.endDate)}` : 'Set dates'}</button>
+                <input type="date" name="startDate" class="date-native" value="${fmtDate(task.startDate)}" aria-label="${ariaDate('Start Date', task.startDate)}">
+                <input type="date" name="endDate" class="date-native" value="${fmtDate(task.endDate)}" aria-label="${ariaDate('End Date', task.endDate)}">
               </div>
               <div class="modal-field modal-field--deps">
                 <span>Dependencies</span>
@@ -549,51 +539,39 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   renderMemberGrid();
   syncMembersHidden();
 
-  // Date picker wiring — opens Airbnb-style range picker
-  const startBtn = modalEl.querySelector('.date-display[data-for="startDate"]');
-  const endBtn = modalEl.querySelector('.date-display[data-for="endDate"]');
+  // Date picker wiring — single button opens Airbnb-style range picker
+  const dateRangeBtn = modalEl.querySelector('.modal-date-range-btn');
   const startNative = modalEl.querySelector('input[name="startDate"]');
   const endNative = modalEl.querySelector('input[name="endDate"]');
 
-  function updateDateBtn(btn, native, d, field) {
-    if (d) {
-      native.value = fmtDate(d);
-      btn.textContent = displayDate(d);
-      btn.classList.remove('empty');
-      native.setAttribute('aria-label', ariaDate(field, d));
+  function updateDateRangeBtn() {
+    const s = startNative.value ? new Date(startNative.value + 'T00:00:00') : null;
+    const e = endNative.value ? new Date(endNative.value + 'T00:00:00') : null;
+    if (s || e) {
+      dateRangeBtn.textContent = `${displayDate(s)} – ${displayDate(e)}`;
+      dateRangeBtn.classList.remove('empty');
     } else {
-      native.value = '';
-      btn.textContent = 'Set date';
-      btn.classList.add('empty');
-      native.setAttribute('aria-label', field);
+      dateRangeBtn.textContent = 'Set dates';
+      dateRangeBtn.classList.add('empty');
     }
   }
 
-  function openRangePickerFrom(anchor) {
-    const curStart = startNative.value ? new Date(startNative.value + 'T00:00:00') : null;
-    const curEnd = endNative.value ? new Date(endNative.value + 'T00:00:00') : null;
-    _drp.openDateRangePicker({
-      anchor,
-      startDate: curStart,
-      endDate: curEnd,
-      onSave({ start, end }) {
-        updateDateBtn(startBtn, startNative, start, 'Start Date');
-        updateDateBtn(endBtn, endNative, end, 'End Date');
-      },
-      onCancel() {},
-    });
-  }
-
-  if (startBtn) {
-    startBtn.addEventListener('click', (e) => {
+  if (dateRangeBtn) {
+    dateRangeBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      openRangePickerFrom(startBtn);
-    });
-  }
-  if (endBtn) {
-    endBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openRangePickerFrom(endBtn);
+      const curStart = startNative.value ? new Date(startNative.value + 'T00:00:00') : null;
+      const curEnd = endNative.value ? new Date(endNative.value + 'T00:00:00') : null;
+      _drp.openDateRangePicker({
+        anchor: dateRangeBtn,
+        startDate: curStart,
+        endDate: curEnd,
+        onSave({ start, end }) {
+          startNative.value = start ? fmtDate(start) : '';
+          endNative.value = end ? fmtDate(end) : '';
+          updateDateRangeBtn();
+        },
+        onCancel() {},
+      });
     });
   }
 
