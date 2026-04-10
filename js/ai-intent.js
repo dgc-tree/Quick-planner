@@ -230,7 +230,7 @@ const FIELD_KEYWORDS = [
   { keys: ['room', 'in room'], field: 'room', parse: v => v.trim() },
   { keys: ['category', 'cat', 'label'], field: 'category', parse: v => v.trim() },
   { keys: ['status'], field: 'status', parse: v => normaliseStatus(v) },
-  { keys: ['assigned to', 'assign to', 'assign', 'assigned', 'assignee'], field: 'assigned', parse: v => v.split(/,\s*|\s+and\s+/).map(s => s.trim()).filter(Boolean) },
+  { keys: ['assigned to', 'assign to', 'assign', 'assigned', 'assignee'], field: 'assigned', parse: v => v.split(/,\s*|\s+and\s+/).map(s => s.trim()).filter(s => s && s !== 'and') },
   { keys: ['start date', 'start', 'starting', 'begins'], field: 'startDate', parse: v => fmtDate(parseDate(v)) },
   { keys: ['end date', 'due date', 'due', 'end', 'finish', 'deadline', 'by'], field: 'endDate', parse: v => fmtDate(parseDate(v)) },
   { keys: ['cost', 'budget', 'price'], field: 'cost', parse: v => { const n = parseFloat(v.replace(/[$,]/g, '')); return isNaN(n) ? null : n; } },
@@ -963,7 +963,7 @@ export function resolveIntent(message, context) {
   // Catches typos ("takss in may"), conversational ("but just in may"), bare months ("march").
   // Skip if message contains mutation verbs — those should go to the LLM.
   {
-    const hasMutationVerb = /\b(change|update|set|move|reschedule|assign|mark|rename|delete|remove|add|create|push|shift|delay|complete|finish)\b/i.test(lower);
+    const hasMutationVerb = /\b(change|update|set|move|reschedule|assign|mark|rename|delete|remove|add|create|new|push|shift|delay|complete|finish|start|begin|resume|block|unblock|pause|close|done)\b/i.test(lower);
     if (!hasMutationVerb) {
       const words = lower.replace(/[?.!,]+/g, '').split(/\s+/);
       for (const w of words) {
@@ -1440,7 +1440,7 @@ export function resolveIntent(message, context) {
   }
 
   // "add/create/new task [name] [field details]" — direct add when name given, flow when not
-  const addMatch = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s*[:\-–]?\s*(.+)/i)
+  const addMatch = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s*[,:\-–]?\s*(.+)/i)
     || lower.match(/^(?:add|create|new)\s+(?:a\s+)?(?:task\s+)?(?:for|called|named)\s+(.+)/i);
   if (addMatch) {
     const { taskName, fields } = extractFields(addMatch[1]);
