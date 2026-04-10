@@ -2450,6 +2450,20 @@ main.settings-open { overflow: hidden; padding: 0; }
   font-size: 0.85rem;
   flex-shrink: 0;
 }
+.modal-row--wrap {
+  flex-wrap: wrap;
+}
+.modal-field--dates {
+  flex: 0 0 auto;
+}
+.modal-field--deps {
+  flex: 1 1 0;
+  min-width: 120px;
+}
+@media (max-width: 768px) {
+  .modal-field--dates { flex: 1 1 100%; }
+  .modal-field--deps { flex: 1 1 100%; }
+}
 
 .modal-actions {
   display: flex;
