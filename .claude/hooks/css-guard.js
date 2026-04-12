@@ -28,7 +28,7 @@ const errors = [];
 
 // Rule 1: margin-left: -4px must exist on form fields
 if (filePath.includes('styles.css')) {
-  const hasFormFieldOffset = css.includes('margin-left: -4px');
+  const hasFormFieldOffset = css.includes('margin-left: -4px') || css.includes('margin-left: calc(-1 * var(--space-4))');
   if (!hasFormFieldOffset) {
     errors.push(
       'BLOCKED: margin-left: -4px removed from form fields. This is an intentional alignment pattern — see MEMORY.md "Form Field Pattern".'

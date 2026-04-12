@@ -32,10 +32,10 @@
   "category": {
     "cleaning":      { "bg": { "$value": "{primary1.200}" },   "text": { "$value": "{primary1.900}" } },
     "packing":       { "bg": { "$value": "#E8D5F5" },          "text": { "$value": "#7B2CBF" } },
-    "organising":    { "bg": { "$value": "#C7F9E5" },          "text": { "$value": "#0A8754" } },
-    "painting":      { "bg": { "$value": "#FFE0C2" },          "text": { "$value": "#B54708" } },
+    "organising":    { "bg": { "$value": "#C7F9E5" },          "text": { "$value": "#097c4d" } },
+    "painting":      { "bg": { "$value": "#FFE0C2" },          "text": { "$value": "#a74107" } },
     "basic-repairs": { "bg": { "$value": "#FFF3C4" },          "text": { "$value": "#92400E" } },
-    "trade-quote":   { "bg": { "$value": "#FFD6D6" },          "text": { "$value": "#C53030" } },
+    "trade-quote":   { "bg": { "$value": "#FFD6D6" },          "text": { "$value": "#b52c2c" } },
     "buy-new":       { "bg": { "$value": "#D4EDDA" },          "text": { "$value": "#276749" } },
     "selling":       { "bg": { "$value": "#FDE2FF" },          "text": { "$value": "#9B2C8F" } },
     "in-progress":   { "bg": { "$value": "#D6DFFF" },          "text": { "$value": "#3730A3" } },
