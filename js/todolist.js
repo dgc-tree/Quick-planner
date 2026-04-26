@@ -1,4 +1,4 @@
-import { getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
+import { getInitials, getAssignedColor, getCategoryColor, formatDateRange, normaliseAssigned } from './utils.js';
 import { ASSIGNED_COLORS } from './theme.js';
 import { attachLongPress } from './context-menu.js';
 
@@ -97,7 +97,7 @@ export function renderTodoList(container, tasks, callbacks = {}) {
     dates.textContent = dateRange.text;
     dates.setAttribute('aria-label', dateRange.aria);
 
-    const members = Array.isArray(task.assigned) ? task.assigned : (task.assigned ? [task.assigned] : []);
+    const members = normaliseAssigned(task.assigned);
 
     const avatarStack = document.createElement('div');
     avatarStack.className = 'card-avatar-stack todo-avatar-tap';

@@ -1,9 +1,10 @@
 export function buildFilterOptions(tasks) {
-  const unique = (key) => [...new Set(tasks.map(t => t[key]).filter(Boolean))].sort();
+  const live = tasks.filter(t => !t.archived);
+  const unique = (key) => [...new Set(live.map(t => t[key]).filter(Boolean))].sort();
   return {
     rooms: unique('room'),
     categories: unique('category'),
-    assigned: [...new Set(tasks.flatMap(t => Array.isArray(t.assigned) ? t.assigned : [t.assigned]).filter(Boolean))].sort(),
+    assigned: [...new Set(live.flatMap(t => Array.isArray(t.assigned) ? t.assigned : [t.assigned]).filter(Boolean))].sort(),
   };
 }
 
@@ -15,6 +16,7 @@ export function populateDropdown(selectEl, options, label) {
 export function applyFilters(tasks, filters) {
   const q = filters.search ? filters.search.toLowerCase() : '';
   return tasks.filter(t => {
+    if (t.archived) return false;
     if (filters.room && t.room !== filters.room) return false;
     if (filters.category && t.category !== filters.category) return false;
     if (filters.assigned) {

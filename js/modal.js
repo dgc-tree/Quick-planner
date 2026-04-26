@@ -74,7 +74,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
       <div class="modal-header">
         <div class="modal-field modal-field--task-header">
           <span>Task</span>
-          <input type="text" name="task" value="${esc(task.task)}">
+          <input type="text" name="task" form="modal-task-form" value="${esc(task.task)}">
         </div>
         ${task.id !== null ? `
         <div class="modal-more-wrap">
@@ -90,6 +90,10 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               Duplicate
             </button>
+            <button type="button" class="modal-more-item" id="menu-archive-btn" role="menuitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 13h4"/></svg>
+              Archive
+            </button>
             <button type="button" class="modal-more-item danger" id="menu-delete-btn" role="menuitem">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
               Delete
@@ -98,7 +102,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
         </div>
         ` : ''}
       </div>
-      <form class="modal-form" autocomplete="off">
+      <form class="modal-form" id="modal-task-form" autocomplete="off">
         <div class="modal-layout">
           <div class="modal-layout-main">
             <div class="modal-field">
@@ -629,27 +633,23 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
       });
     }
 
+    const menuArchiveBtn = modalEl.querySelector('#menu-archive-btn');
+    if (actions.onArchive) {
+      menuArchiveBtn.addEventListener('click', () => {
+        closeMenu();
+        close();
+        actions.onArchive(task);
+      });
+    } else if (menuArchiveBtn) {
+      menuArchiveBtn.style.display = 'none';
+    }
+
     const menuDelBtn = modalEl.querySelector('#menu-delete-btn');
     if (actions.onDelete) {
       menuDelBtn.addEventListener('click', () => {
         closeMenu();
-        const dialog = modalEl.querySelector('.modal-dialog');
-        const confirmEl = document.createElement('div');
-        confirmEl.className = 'modal-delete-confirm';
-        confirmEl.innerHTML = `
-          <h1 class="modal-delete-title">Are you sure?</h1>
-          <p class="modal-delete-body">Deleting the task will place it into the trash, but you can restore it up to 30 days before it is deleted permanently.</p>
-          <div class="modal-delete-actions">
-            <button type="button" class="modal-btn modal-cancel modal-delete-cancel">Cancel</button>
-            <button type="button" class="modal-btn modal-delete-confirm-btn">Yes, delete</button>
-          </div>
-        `;
-        dialog.appendChild(confirmEl);
-        confirmEl.querySelector('.modal-delete-cancel').addEventListener('click', () => confirmEl.remove());
-        confirmEl.querySelector('.modal-delete-confirm-btn').addEventListener('click', () => {
-          close();
-          actions.onDelete(task);
-        });
+        close();
+        actions.onDelete(task);
       });
     }
   }

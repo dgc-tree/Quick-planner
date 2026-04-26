@@ -1,5 +1,6 @@
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 import { buildFilterOptions, populateDropdown, applyFilters } from './filters.js';
+import { normaliseAssigned } from './utils.js';
 import { renderKanban } from './kanban.js';
 import { renderPlanner, setViewSize } from './planner.js';
 import { renderTodoList } from './todolist.js';
@@ -223,6 +224,55 @@ function renderSidebarProjects() {
   if (exportSection) exportSection.classList.remove('hidden');
 }
 
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderPreservingScroll() {
+  const snap = captureScrollState();
+  render();
+  restoreScrollState(snap);
+}
+
+function captureScrollState() {
+  const planner = document.querySelector('.planner-scroll');
+  const todoList = document.querySelector('#todolist-view');
+  const kanbanCards = [...document.querySelectorAll('.kanban-cards')]
+    .map(el => ({ group: el.dataset.group, top: el.scrollTop }));
+  return {
+    planner: planner ? { left: planner.scrollLeft, top: planner.scrollTop } : null,
+    todoTop: todoList ? todoList.scrollTop : 0,
+    docTop: window.scrollY || document.documentElement.scrollTop || 0,
+    kanbanCards,
+  };
+}
+
+function restoreScrollState(snap) {
+  if (!snap) return;
+  requestAnimationFrame(() => {
+    const planner = document.querySelector('.planner-scroll');
+    if (planner && snap.planner) {
+      planner.scrollLeft = snap.planner.left;
+      planner.scrollTop = snap.planner.top;
+    }
+    const todoList = document.querySelector('#todolist-view');
+    if (todoList && snap.todoTop) todoList.scrollTop = snap.todoTop;
+    if (snap.docTop) window.scrollTo(0, snap.docTop);
+    if (snap.kanbanCards?.length) {
+      for (const entry of snap.kanbanCards) {
+        if (!entry.group) continue;
+        const el = document.querySelector(`.kanban-cards[data-group="${CSS.escape(entry.group)}"]`);
+        if (el) el.scrollTop = entry.top;
+      }
+    }
+  });
+}
+
 function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
@@ -243,6 +293,48 @@ function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   overlay.querySelector('.modal-cancel').addEventListener('click', remove);
   overlay.querySelector('.modal-delete-confirm-btn').addEventListener('click', () => { remove(); onConfirm(); });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+}
+
+function showReasonDialog({ title, body, placeholder, confirmLabel, destructive, onConfirm }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  const confirmClass = destructive ? 'modal-delete-confirm-btn' : 'modal-save';
+  overlay.innerHTML = `
+    <div class="modal-dialog" role="dialog" style="max-width:420px">
+      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
+        <h1 class="modal-delete-title">${title}</h1>
+        ${body ? `<p class="modal-delete-body">${body}</p>` : ''}
+        <div class="modal-field" style="margin:16px 0 24px">
+          <label for="reason-input">Reason (optional)</label>
+          <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}" style="width:100%;resize:vertical;min-height:72px"></textarea>
+        </div>
+        <div class="modal-delete-actions">
+          <button class="modal-btn modal-cancel">Cancel</button>
+          <button class="modal-btn ${confirmClass}">${confirmLabel || 'Confirm'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('.reason-input');
+  setTimeout(() => input.focus(), 50);
+
+  const remove = () => overlay.remove();
+  overlay.querySelector('.modal-cancel').addEventListener('click', remove);
+  overlay.querySelector(`.${confirmClass}`).addEventListener('click', () => {
+    const reason = input.value.trim();
+    remove();
+    onConfirm(reason);
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      const reason = input.value.trim();
+      remove();
+      onConfirm(reason);
+    }
+  });
 }
 
 function handleRenameProject(id, currentName) {
@@ -759,12 +851,13 @@ function getModalOptions() {
 function handleTaskEdit(task) {
   openEditModal(task, getModalOptions(), ({ originalTask, updatedFields }) => {
     applyLocalUpdate(task, updatedFields);
-    render();
+    renderPreservingScroll();
     persistTaskChange();
     showToast('Saved', 'success');
   }, handleRoomChange, {
     onDelete: (t) => handleTaskDelete(t),
     onDuplicate: (t) => handleTaskDuplicate(t),
+    onArchive: (t) => handleTaskArchive(t),
   });
 }
 
@@ -772,13 +865,13 @@ function handleRoomChange({ action, oldRoom, newRoom, affectedTasks }) {
   if (action === 'rename') {
     affectedTasks.forEach(t => { t.room = newRoom; t.updatedAt = Date.now(); });
     setupFilters();
-    render();
+    renderPreservingScroll();
     persistTaskChange();
     showToast(`Room renamed`, 'success');
   } else if (action === 'delete') {
     affectedTasks.forEach(t => { t.room = ''; t.updatedAt = Date.now(); });
     setupFilters();
-    render();
+    renderPreservingScroll();
     persistTaskChange();
     showToast(`Room deleted`, 'success');
   }
@@ -790,14 +883,90 @@ function handleStatusChange(task, newStatus) {
   persistTaskChange();
 }
 
-function handleTaskDelete(task) {
-  addToBin(task);
+function handleTaskDelete(task, opts = {}) {
+  if (opts.skipPrompt) {
+    _commitTaskDelete(task, opts.reason || '');
+    return;
+  }
+  showReasonDialog({
+    title: `Delete "${task.task || 'task'}"?`,
+    body: 'It will be moved to the trash for 30 days. Add an optional note for your records.',
+    placeholder: 'Why is this being deleted? (e.g. duplicate, no longer needed)',
+    confirmLabel: 'Move to trash',
+    destructive: true,
+    onConfirm: (reason) => _commitTaskDelete(task, reason),
+  });
+}
+
+function _commitTaskDelete(task, reason) {
+  addToBin(task, reason);
   const idx = allTasks.findIndex(t => t === task);
   if (idx !== -1) allTasks.splice(idx, 1);
   setupFilters();
-  render();
+  renderPreservingScroll();
   persistTaskChange();
-  showToast('Task moved to bin (30 days to restore)', 'success');
+  const taskName = task.task || 'task';
+  showActionToast(`Deleted "${taskName}"`, {
+    actionLabel: 'Undo',
+    onAction: () => {
+      const restored = restoreFromBin(taskName);
+      if (!restored) return;
+      ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
+      allTasks.push(restored);
+      setupFilters();
+      renderPreservingScroll();
+      persistTaskChange();
+      showToast('Delete undone', 'success');
+    },
+  });
+}
+
+function handleTaskArchive(task, opts = {}) {
+  if (opts.skipPrompt) {
+    _commitTaskArchive(task, opts.reason || '');
+    return;
+  }
+  showReasonDialog({
+    title: `Archive "${task.task || 'task'}"?`,
+    body: 'Archived tasks are hidden from your views but kept indefinitely. Add an optional note for later review.',
+    placeholder: 'Why is this being archived? (e.g. cancelled, deferred, completed via other means)',
+    confirmLabel: 'Archive',
+    onConfirm: (reason) => _commitTaskArchive(task, reason),
+  });
+}
+
+function _commitTaskArchive(task, reason) {
+  task.archived = true;
+  task.archivedAt = Date.now();
+  if (reason) task.archiveReason = reason;
+  else delete task.archiveReason;
+  task.updatedAt = Date.now();
+  setupFilters();
+  renderPreservingScroll();
+  persistTaskChange();
+  const taskName = task.task || 'task';
+  showActionToast(`Archived "${taskName}"`, {
+    actionLabel: 'Undo',
+    onAction: () => {
+      task.archived = false;
+      delete task.archivedAt;
+      delete task.archiveReason;
+      task.updatedAt = Date.now();
+      setupFilters();
+      renderPreservingScroll();
+      persistTaskChange();
+      showToast('Archive undone', 'success');
+    },
+  });
+}
+
+function handleTaskUnarchive(task) {
+  task.archived = false;
+  delete task.archivedAt;
+  task.updatedAt = Date.now();
+  setupFilters();
+  renderPreservingScroll();
+  persistTaskChange();
 }
 
 function handleTaskDuplicate(task) {
@@ -812,7 +981,7 @@ function handleTaskDuplicate(task) {
   };
   allTasks.push(copy);
   setupFilters();
-  render();
+  renderPreservingScroll();
   persistTaskChange();
   showToast('Task duplicated', 'success');
 }
@@ -825,7 +994,7 @@ function handleTaskCreate(fields) {
     room: fields.room || '',
     category: fields.category || '',
     status: fields.status || 'To Do',
-    assigned: fields.assigned ? (Array.isArray(fields.assigned) ? fields.assigned : fields.assigned.split(',').filter(Boolean)) : [],
+    assigned: normaliseAssigned(fields.assigned ? (Array.isArray(fields.assigned) ? fields.assigned : fields.assigned.split(',')) : []),
     startDate: fields.startDate ? new Date(fields.startDate) : null,
     endDate: fields.endDate ? new Date(fields.endDate) : null,
     dependencies: fields.dependencies || '',
@@ -846,7 +1015,7 @@ function applyLocalUpdate(task, fields) {
   if (fields.task) task.task = fields.task;
   if (fields.room !== undefined) task.room = fields.room;
   if (fields.category) task.category = fields.category;
-  task.assigned = Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',').filter(Boolean) : []);
+  task.assigned = normaliseAssigned(Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',') : []));
   if (fields.status) task.status = fields.status;
   task.startDate = fields.startDate ? new Date(fields.startDate) : null;
   task.endDate = fields.endDate ? new Date(fields.endDate) : null;
@@ -873,9 +1042,11 @@ function render() {
   // Ensure overlay views are dismissed when rendering a task view
   const settingsEl = $('#settings-view');
   const trashEl = $('#trash-view');
-  if (!settingsEl.classList.contains('hidden') || !trashEl.classList.contains('hidden')) {
+  const archiveEl = $('#archive-view');
+  if (!settingsEl.classList.contains('hidden') || !trashEl.classList.contains('hidden') || (archiveEl && !archiveEl.classList.contains('hidden'))) {
     settingsEl.classList.add('hidden');
     trashEl.classList.add('hidden');
+    archiveEl?.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
   }
@@ -891,6 +1062,7 @@ function render() {
           onEdit: () => handleTaskEdit(task),
           onDelete: () => handleTaskDelete(task),
           onDuplicate: () => handleTaskDuplicate(task),
+          onArchive: () => handleTaskArchive(task),
         });
       },
     });
@@ -903,6 +1075,7 @@ function render() {
           onEdit: () => handleTaskEdit(task),
           onDelete: () => handleTaskDelete(task),
           onDuplicate: () => handleTaskDuplicate(task),
+          onArchive: () => handleTaskArchive(task),
         });
       },
       onReschedule: (task, newStart, newEnd) => {
@@ -910,7 +1083,7 @@ function render() {
         task.endDate = newEnd;
         task.updatedAt = Date.now();
         persistTaskChange();
-        render();
+        renderPreservingScroll();
         showToast('Task rescheduled', 'success');
       },
     });
@@ -924,6 +1097,7 @@ function render() {
           onEdit: () => handleTaskEdit(task),
           onDelete: () => handleTaskDelete(task),
           onDuplicate: () => handleTaskDuplicate(task),
+          onArchive: () => handleTaskArchive(task),
         });
       },
       onAssignChange: (task, newAssigned) => {
@@ -1054,6 +1228,37 @@ function showToast(message, type = 'success') {
     toast.style.transition = 'opacity 0.3s';
     setTimeout(() => toast.remove(), 300);
   }, duration);
+}
+
+function showActionToast(message, { actionLabel = 'Undo', onAction, type = 'success', duration = 6000 } = {}) {
+  const root = document.getElementById('toast-root');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type} toast-with-action`;
+  const msg = document.createElement('span');
+  msg.className = 'toast-msg';
+  msg.textContent = message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'toast-action-btn';
+  btn.textContent = actionLabel;
+  toast.appendChild(msg);
+  toast.appendChild(btn);
+  root.appendChild(toast);
+
+  let dismissed = false;
+  const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  };
+  btn.addEventListener('click', () => {
+    if (dismissed) return;
+    dismiss();
+    onAction?.();
+  });
+  setTimeout(dismiss, duration);
 }
 
 // ─── Import modal ─────────────────────────────────────────────────────────────
@@ -1659,6 +1864,7 @@ function setupSettingsPanel() {
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
     $('#trash-view')?.classList.add('hidden');
+    $('#archive-view')?.classList.add('hidden');
     settingsView.classList.remove('hidden');
     $active.checked = _bgFx.getConfig().active;
     document.querySelector('main').classList.add('settings-open');
@@ -1710,6 +1916,8 @@ function setupSettingsPanel() {
     $('#planner-view').classList.add('hidden');
     $('#todolist-view').classList.add('hidden');
     settingsView.classList.add('hidden');
+    $('#trash-view')?.classList.add('hidden');
+    $('#archive-view')?.classList.add('hidden');
     document.querySelector('main').classList.add('settings-open');
   }
 
@@ -1771,11 +1979,13 @@ function setupSettingsPanel() {
         const t = entry.task;
         const daysAgo = Math.floor((Date.now() - entry.deletedAt) / 86400000);
         const expires = 30 - daysAgo;
+        const reason = entry.deleteReason ? `<div class="trash-item-reason"><strong>Reason:</strong> ${escapeHtml(entry.deleteReason)}</div>` : '';
         return `
           <div class="trash-item" data-index="${i}">
-            <div class="trash-item-title">${t.task || '(no name)'}</div>
-            <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).join(' · ')}</div>
+            <div class="trash-item-title">${escapeHtml(t.task || '(no name)')}</div>
+            <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).map(escapeHtml).join(' · ')}</div>
             <div class="trash-item-meta">Deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · expires in ${expires}d</div>
+            ${reason}
             <div class="trash-item-actions">
               <button class="modal-btn modal-save trash-restore-btn" data-name="${encodeURIComponent(t.task)}">Restore</button>
               <button class="modal-btn modal-cancel trash-delete-btn" data-name="${encodeURIComponent(t.task)}">Delete permanently</button>
@@ -1887,10 +2097,110 @@ function setupSettingsPanel() {
 
   window._showTrash = showTrashView;
 
+  // --- Archive view ---
+  const archiveView = $('#archive-view');
+  const archiveList = $('#archive-list');
+  const archiveSearch = $('#archive-search');
+  const archiveCount = $('#archive-count');
+
+  function renderArchiveList(filter = '') {
+    const q = (filter || '').toLowerCase();
+    const archived = allTasks
+      .filter(t => t.archived)
+      .filter(t => !q || (t.task?.toLowerCase().includes(q) || t.room?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)))
+      .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+
+    archiveCount.textContent = archived.length ? `${archived.length} task${archived.length !== 1 ? 's' : ''}` : '';
+
+    if (!archived.length) {
+      archiveList.innerHTML = `
+        <div class="trash-empty">
+          <p class="trash-empty-title">${q ? 'No results' : 'Nothing archived yet.'}</p>
+          <p class="trash-empty-body">${q ? 'No archived items match that search.' : 'Archive tasks you no longer need but want to keep for reference. Archived tasks stay here forever and never expire.'}</p>
+        </div>`;
+      return;
+    }
+
+    let html = `<p class="trash-intro">Archived tasks are hidden from your views but kept indefinitely. Restore one to bring it back, or delete to move it to the trash.</p>`;
+    html += archived.map(t => {
+      const when = t.archivedAt ? new Date(t.archivedAt) : null;
+      const ago = when ? Math.floor((Date.now() - t.archivedAt) / 86400000) : null;
+      const whenLabel = ago === null ? '' : (ago === 0 ? 'Archived today' : `Archived ${ago}d ago`);
+      const reason = t.archiveReason ? `<div class="trash-item-reason"><strong>Reason:</strong> ${escapeHtml(t.archiveReason)}</div>` : '';
+      return `
+        <div class="trash-item" data-id="${t.id}">
+          <div class="trash-item-title">${escapeHtml(t.task || '(no name)')}</div>
+          <div class="trash-item-meta">${[t.room, t.status, t.category].filter(Boolean).map(escapeHtml).join(' · ')}</div>
+          <div class="trash-item-meta">${whenLabel}</div>
+          ${reason}
+          <div class="trash-item-actions">
+            <button class="modal-btn modal-save archive-restore-btn" data-id="${t.id}">Restore</button>
+            <button class="modal-btn modal-cancel archive-delete-btn" data-id="${t.id}">Move to trash</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    archiveList.innerHTML = html;
+
+    archiveList.querySelectorAll('.archive-restore-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const task = allTasks.find(t => t.id === id);
+        if (task) {
+          handleTaskUnarchive(task);
+          showToast('Task restored', 'success');
+          renderArchiveList(archiveSearch.value);
+        }
+      });
+    });
+
+    archiveList.querySelectorAll('.archive-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const task = allTasks.find(t => t.id === id);
+        if (!task) return;
+        showConfirmDialog({
+          title: 'Move to trash?',
+          body: 'This task will go to the trash. You can restore it from there for 30 days before it is deleted permanently.',
+          confirmLabel: 'Move to trash',
+          onConfirm: () => {
+            handleTaskDelete(task);
+            renderArchiveList(archiveSearch.value);
+          },
+        });
+      });
+    });
+  }
+
+  function showArchiveView() {
+    hideAllViews();
+    archiveView.classList.remove('hidden');
+    archiveView.scrollTop = 0;
+    archiveSearch.value = '';
+    renderArchiveList();
+  }
+
+  function hideArchiveView() {
+    archiveView.classList.add('hidden');
+    $('.app-header').classList.remove('hidden');
+    document.querySelector('main').classList.remove('settings-open');
+    currentView = previousView;
+    render();
+  }
+
+  archiveSearch.addEventListener('input', () => renderArchiveList(archiveSearch.value));
+  $('#archive-back').addEventListener('click', hideArchiveView);
+  $('#sidebar-archive-btn').addEventListener('click', () => { previousView = currentView; showArchiveView(); });
+
+  window._showArchive = showArchiveView;
+
   // Logo / home tap — return to last main view from any overlay
   function goHome() {
     if (trashView && !trashView.classList.contains('hidden')) {
       hideTrashView();
+    } else if (archiveView && !archiveView.classList.contains('hidden')) {
+      hideArchiveView();
     } else if (settingsView && !settingsView.classList.contains('hidden')) {
       hideSettings();
     }
@@ -2352,6 +2662,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Wire mobile menu items
+  const mobileArchiveBtn = $('#mobile-archive-btn');
+  if (mobileArchiveBtn) mobileArchiveBtn.addEventListener('click', () => {
+    closeMenu();
+    if (window._showArchive) window._showArchive();
+  });
   const mobileTrashBtn = $('#mobile-trash-btn');
   if (mobileTrashBtn) mobileTrashBtn.addEventListener('click', () => {
     closeMenu();
