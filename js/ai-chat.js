@@ -195,6 +195,10 @@ function togglePanel() {
   const main = document.querySelector('main');
   if (main) main.classList.toggle('qp-chat-open', _isOpen);
 
+  // Persist so the panel restores on refresh
+  if (_isOpen) localStorage.setItem('qp-chat-open', '1');
+  else localStorage.removeItem('qp-chat-open');
+
   if (_isOpen) {
     _input.focus();
     _chatBubble.querySelector('.qp-chat-fab-dot')?.classList.add('hidden');
