@@ -25,11 +25,13 @@ export function buildContext(opts = {}) {
   const project = projects.find(p => p.id === projectId);
   if (!project) return null;
 
-  const tasks = (project.tasks || []).map(t => ({
-    ...t,
-    startDate: t.startDate ? new Date(t.startDate) : null,
-    endDate: t.endDate ? new Date(t.endDate) : null,
-  }));
+  const tasks = (project.tasks || [])
+    .filter(t => !t.archived)
+    .map(t => ({
+      ...t,
+      startDate: t.startDate ? new Date(t.startDate) : null,
+      endDate: t.endDate ? new Date(t.endDate) : null,
+    }));
 
   const hash = hashTasks(tasks);
   if (_cachedHash === hash && _cachedContext && _cachedContext.projectId === projectId) {
