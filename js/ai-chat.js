@@ -35,6 +35,7 @@ let _lastMutatedTaskId = null; // Last task touched by a mutation (for contextua
 let _onUpdateTask = null;
 let _onAddTask = null;
 let _onDeleteTask = null;
+let _onArchiveTask = null;
 let _onGetTasks = null;
 let _onProjectSwitch = null;
 
@@ -52,6 +53,7 @@ export function initChat(callbacks) {
   _onUpdateTask = callbacks.onUpdateTask;
   _onAddTask = callbacks.onAddTask;
   _onDeleteTask = callbacks.onDeleteTask;
+  _onArchiveTask = callbacks.onArchiveTask;
   _onGetTasks = callbacks.getTasks;
   _onProjectSwitch = callbacks.onProjectSwitch;
 
@@ -283,6 +285,13 @@ async function processMessage(text) {
         if (_onDeleteTask) _onDeleteTask(ud.taskId);
       } else if (ud.action === 'undo_delete' && ud.fields) {
         if (_onAddTask) _onAddTask(ud.fields);
+      } else if (ud.action === 'undo_archive' && ud.taskId) {
+        // Archive undo: clear archived flag via update
+        if (_onUpdateTask) _onUpdateTask(ud.taskId, { archived: false });
+      } else if (ud.action === 'bulk_unarchive' && Array.isArray(ud.taskIds)) {
+        for (const id of ud.taskIds) {
+          if (_onUpdateTask) _onUpdateTask(id, { archived: false });
+        }
       } else {
         executeMutation({ action: ud.action, taskId: ud.taskId, fields: ud.fields });
       }
@@ -436,13 +445,63 @@ function startFlow(intent) {
     return;
   }
 
-  if (flow === 'edit' || flow === 'delete') {
+  if (flow === 'edit' || flow === 'delete' || flow === 'archive') {
+    const reason = intent.reason || '';
+    const multiTarget = !!intent.multiTarget;
+
+    // Multi-target intent ("both X" / "all X") with multiple candidates →
+    // execute bulk on all candidates, prompting only if no reason was given.
+    if (multiTarget && candidates.length > 1 && (flow === 'archive' || flow === 'delete')) {
+      const ids = candidates.map(c => c.task.id);
+      const names = candidates.map(c => c.task.task || c.task.name);
+      if (reason) {
+        const result = executeMutation({
+          action: flow === 'archive' ? 'bulk_archive' : 'bulk_delete',
+          taskIds: ids,
+          reason,
+          names,
+          confirmation: flow === 'archive'
+            ? `Archived ${ids.length} tasks.`
+            : `Deleted ${ids.length} tasks — moved to bin.`,
+        });
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+      _conversationFlow = {
+        type: flow,
+        stage: flow === 'archive' ? 'confirm-bulk-archive' : 'confirm-bulk-delete',
+        taskIds: ids,
+        taskNames: names,
+        reason,
+      };
+      const verb = flow === 'archive' ? 'Archive' : 'Delete';
+      const tail = flow === 'archive'
+        ? `They'll be hidden but kept indefinitely.`
+        : `They'll be moved to trash for 30 days.`;
+      appendBubble('assistant', `${verb} ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')})?\n${tail}`);
+      return;
+    }
+
     if (candidates.length === 1 && candidates[0].confidence >= 0.8) {
       const task = candidates[0].task;
       const name = task.task || task.name;
       if (flow === 'delete') {
+        // Reason given inline = implicit confirmation. Execute immediately.
+        if (reason) {
+          const result = executeMutation({ action: 'delete', taskId: task.id, reason, confirmation: `Deleted "${name}" — moved to bin.` });
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
         _conversationFlow = { type: 'delete', stage: 'confirm-delete', taskId: task.id, taskName: name };
         appendBubble('assistant', `Delete "${name}"?\nIt'll be moved to trash for 30 days.`);
+      } else if (flow === 'archive') {
+        if (reason) {
+          const result = executeMutation({ action: 'archive', taskId: task.id, reason, confirmation: `Archived "${name}".` });
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
+        _conversationFlow = { type: 'archive', stage: 'confirm-archive', taskId: task.id, taskName: name };
+        appendBubble('assistant', `Archive "${name}"?\nIt'll be hidden from your views but kept indefinitely.`);
       } else {
         _conversationFlow = { type: 'edit', stage: 'pick-field', taskId: task.id, taskName: name };
         appendBubble('assistant', `What would you like to change on "${name}"?`);
@@ -454,14 +513,17 @@ function startFlow(intent) {
       // Low confidence — confirm the match
       const task = candidates[0].task;
       const name = task.task || task.name;
-      _conversationFlow = { type: flow, stage: 'confirm-match', taskId: task.id, taskName: name, candidates };
+      _conversationFlow = { type: flow, stage: 'confirm-match', taskId: task.id, taskName: name, candidates, reason };
       appendBubble('assistant', `Did you mean "${name}"?`);
       return;
     }
 
     // Multiple matches — show numbered list
-    _conversationFlow = { type: flow, stage: 'pick-task', candidates };
-    appendBubble('assistant', `I found ${candidates.length} matching tasks (nearest due first):\n${candidateList(candidates)}\nWhich one?`);
+    _conversationFlow = { type: flow, stage: 'pick-task', candidates, reason };
+    const multiHint = (flow === 'archive' || flow === 'delete')
+      ? `\nWhich one? (or say "both" / "all" to apply to all)`
+      : `\nWhich one?`;
+    appendBubble('assistant', `I found ${candidates.length} matching tasks (nearest due first):\n${candidateList(candidates)}${multiHint}`);
     return;
   }
 }
@@ -614,6 +676,13 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
   if (flow.type === 'delete') {
     if (flow.stage === 'confirm-match') {
       if (YES_WORDS.includes(lower)) {
+        // Reason was already given with the original message — skip prompt.
+        if (flow.reason) {
+          const result = executeMutation({ action: 'delete', taskId: flow.taskId, reason: flow.reason, confirmation: `Deleted "${flow.taskName}" — moved to bin.` });
+          _conversationFlow = null;
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
         flow.stage = 'confirm-delete';
         appendBubble('assistant', `Delete "${flow.taskName}"?\nIt'll be moved to trash for 30 days.`);
         return;
@@ -626,17 +695,61 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
     }
 
     if (flow.stage === 'pick-task') {
-      const num = parseInt(lower);
-      if (!isNaN(num) && num >= 1 && num <= flow.candidates.length) {
-        const picked = flow.candidates[num - 1].task;
+      const picks = parsePickSelection(lower, flow.candidates.length);
+      if (picks && picks.length > 1) {
+        const ids = picks.map(i => flow.candidates[i - 1].task.id);
+        const names = picks.map(i => flow.candidates[i - 1].task.task || flow.candidates[i - 1].task.name);
+        flow.candidates = null;
+        if (flow.reason) {
+          const result = executeMutation({ action: 'bulk_delete', taskIds: ids, reason: flow.reason, names, confirmation: `Deleted ${ids.length} tasks — moved to bin.` });
+          _conversationFlow = null;
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
+        flow.stage = 'confirm-bulk-delete';
+        flow.taskIds = ids;
+        flow.taskNames = names;
+        appendBubble('assistant', `Delete ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')})?\nThey'll be moved to trash for 30 days.`);
+        return;
+      }
+      if (picks && picks.length === 1) {
+        const picked = flow.candidates[picks[0] - 1].task;
         flow.taskId = picked.id;
         flow.taskName = picked.task || picked.name;
-        flow.stage = 'confirm-delete';
         flow.candidates = null;
+        if (flow.reason) {
+          const result = executeMutation({ action: 'delete', taskId: flow.taskId, reason: flow.reason, confirmation: `Deleted "${flow.taskName}" — moved to bin.` });
+          _conversationFlow = null;
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
+        flow.stage = 'confirm-delete';
         appendBubble('assistant', `Delete "${flow.taskName}"?\nIt'll be moved to trash for 30 days.`);
         return;
       }
-      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}).`);
+      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
+      return;
+    }
+
+    if (flow.stage === 'confirm-bulk-delete') {
+      if (YES_WORDS.includes(lower)) {
+        const result = executeMutation({
+          action: 'bulk_delete',
+          taskIds: flow.taskIds,
+          reason: flow.reason || '',
+          names: flow.taskNames,
+          confirmation: `Deleted ${flow.taskIds.length} tasks — moved to bin.`,
+        });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'Cancelled.');
+        return;
+      }
+      appendBubble('assistant', 'Say "yes" to delete all or "cancel" to keep them.');
       return;
     }
 
@@ -645,6 +758,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         const result = executeMutation({
           action: 'delete',
           taskId: flow.taskId,
+          reason: flow.reason || '',
           confirmation: `Done — moved to bin.`,
         });
         _conversationFlow = null;
@@ -661,8 +775,141 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
     }
   }
 
+  // ── ARCHIVE flow ──
+  if (flow.type === 'archive') {
+    if (flow.stage === 'confirm-match') {
+      if (YES_WORDS.includes(lower)) {
+        if (flow.reason) {
+          const result = executeMutation({ action: 'archive', taskId: flow.taskId, reason: flow.reason, confirmation: `Archived "${flow.taskName}".` });
+          _conversationFlow = null;
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
+        flow.stage = 'confirm-archive';
+        appendBubble('assistant', `Archive "${flow.taskName}"?\nIt'll be hidden from your views but kept indefinitely.`);
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'No worries. Can you describe the task differently?');
+        return;
+      }
+    }
+
+    if (flow.stage === 'pick-task') {
+      const picks = parsePickSelection(lower, flow.candidates.length);
+      if (picks && picks.length > 1) {
+        const ids = picks.map(i => flow.candidates[i - 1].task.id);
+        const names = picks.map(i => flow.candidates[i - 1].task.task || flow.candidates[i - 1].task.name);
+        flow.candidates = null;
+        if (flow.reason) {
+          const result = executeMutation({ action: 'bulk_archive', taskIds: ids, reason: flow.reason, names, confirmation: `Archived ${ids.length} tasks.` });
+          _conversationFlow = null;
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
+        flow.stage = 'confirm-bulk-archive';
+        flow.taskIds = ids;
+        flow.taskNames = names;
+        appendBubble('assistant', `Archive ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')})?\nThey'll be hidden but kept indefinitely.`);
+        return;
+      }
+      if (picks && picks.length === 1) {
+        const picked = flow.candidates[picks[0] - 1].task;
+        flow.taskId = picked.id;
+        flow.taskName = picked.task || picked.name;
+        flow.candidates = null;
+        if (flow.reason) {
+          const result = executeMutation({ action: 'archive', taskId: flow.taskId, reason: flow.reason, confirmation: `Archived "${flow.taskName}".` });
+          _conversationFlow = null;
+          appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+          return;
+        }
+        flow.stage = 'confirm-archive';
+        appendBubble('assistant', `Archive "${flow.taskName}"?\nIt'll be hidden from your views but kept indefinitely.`);
+        return;
+      }
+      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
+      return;
+    }
+
+    if (flow.stage === 'confirm-bulk-archive') {
+      if (YES_WORDS.includes(lower)) {
+        const result = executeMutation({
+          action: 'bulk_archive',
+          taskIds: flow.taskIds,
+          reason: flow.reason || '',
+          names: flow.taskNames,
+          confirmation: `Archived ${flow.taskIds.length} tasks.`,
+        });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'Cancelled.');
+        return;
+      }
+      appendBubble('assistant', 'Say "yes" to archive all or "cancel" to keep them visible.');
+      return;
+    }
+
+    if (flow.stage === 'confirm-archive') {
+      if (YES_WORDS.includes(lower)) {
+        const result = executeMutation({
+          action: 'archive',
+          taskId: flow.taskId,
+          reason: flow.reason || '',
+          confirmation: `Archived "${flow.taskName}".`,
+        });
+        _conversationFlow = null;
+        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+        return;
+      }
+      if (NO_WORDS.includes(lower)) {
+        _conversationFlow = null;
+        appendBubble('assistant', 'Cancelled.');
+        return;
+      }
+      appendBubble('assistant', 'Say "yes" to archive or "cancel" to keep it visible.');
+      return;
+    }
+  }
+
   // Fallback — shouldn't reach here
   _conversationFlow = null;
+}
+
+// Parse a user's selection from a numbered list. Accepts:
+//   "1" / "2"           → [1] / [2]
+//   "both"              → all if exactly 2 candidates
+//   "all" / "all of them" / "every" / "everything" → all candidates
+//   "1, 2" / "1 and 2" / "1 & 2" / "1+2"            → [1, 2]
+// Returns null if no valid selection found.
+function parsePickSelection(lower, total) {
+  const text = lower.trim();
+  if (!text) return null;
+  // "all", "all of them", "every", "everything", "all of em"
+  if (/\b(?:all(?:\s+of\s+(?:them|em))?|every(?:thing|\s+one)?)\b/.test(text)) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  // "both" anywhere in the message — only valid when there are exactly 2
+  if (/\bboth\b/.test(text)) {
+    if (total === 2) return [1, 2];
+    return null;
+  }
+  // "1 and 2", "1, 2", "1 & 2", "1+2", "1 2" — only treat short replies as
+  // a numeric pick to avoid grabbing digits inside a longer sentence.
+  if (text.length <= 30) {
+    const matches = text.match(/\d+/g);
+    if (matches) {
+      const nums = matches.map(n => parseInt(n)).filter(n => n >= 1 && n <= total);
+      const unique = [...new Set(nums)];
+      if (unique.length) return unique;
+    }
+  }
+  return null;
 }
 
 // ─── Mutation execution ───────────────────────────────────────────────────────
@@ -727,9 +974,22 @@ function _executeMutationInner(action) {
       }
       undoData = { action: 'undo_delete', fields: snap };
     }
-    if (_onDeleteTask) _onDeleteTask(action.taskId);
+    if (_onDeleteTask) _onDeleteTask(action.taskId, { reason: action.reason || '' });
     return {
       confirmation: action.confirmation || 'Task deleted (moved to bin).',
+      undoData,
+    };
+  }
+
+  if (action.action === 'archive' && action.taskId) {
+    const tasks = _onGetTasks ? _onGetTasks() : [];
+    const task = tasks.find(t => t.id === action.taskId);
+    if (task) {
+      undoData = { action: 'undo_archive', taskId: action.taskId };
+    }
+    if (_onArchiveTask) _onArchiveTask(action.taskId, { reason: action.reason || '' });
+    return {
+      confirmation: action.confirmation || 'Task archived.',
       undoData,
     };
   }
@@ -762,12 +1022,25 @@ function _executeMutationInner(action) {
   if (action.action === 'bulk_delete' && Array.isArray(action.taskIds)) {
     let deleted = 0;
     for (const id of action.taskIds) {
-      if (_onDeleteTask) _onDeleteTask(id);
+      if (_onDeleteTask) _onDeleteTask(id, { reason: action.reason || '' });
       deleted++;
     }
     return {
-      confirmation: `Deleted ${deleted} ${action.label || 'tasks'} (moved to bin).`,
+      confirmation: action.confirmation || `Deleted ${deleted} ${action.label || 'tasks'} (moved to bin).`,
       undoData: null,
+    };
+  }
+
+  // Bulk archive
+  if (action.action === 'bulk_archive' && Array.isArray(action.taskIds)) {
+    let archived = 0;
+    for (const id of action.taskIds) {
+      if (_onArchiveTask) _onArchiveTask(id, { reason: action.reason || '' });
+      archived++;
+    }
+    return {
+      confirmation: action.confirmation || `Archived ${archived} ${action.label || 'tasks'}.`,
+      undoData: { action: 'bulk_unarchive', taskIds: [...action.taskIds] },
     };
   }
 

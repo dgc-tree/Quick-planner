@@ -23,6 +23,9 @@ Two custom commands (`.claude/commands/`):
 - **`/audit-css`** — sweeps the entire codebase for CSS compliance violations (tokens, WCAG, hardcoded values). Fixes all instances in one pass.
 - **`/pre-push`** — runs the full engineering discipline prevention checklist before pushing. Executable version of the engineering-discipline.md checklist.
 
+## Security
+Security and data integrity log: [SECURITY.md](SECURITY.md). Monthly checklist + changelog of incidents (data loss, schema drift, auth issues). Run `npm run audit` before every release. Dependabot opens weekly dep PRs. Add a changelog entry for every schema change, sync field, auth tweak, or secret rotation.
+
 ## Engineering Discipline
 Mandatory pre-push reading: the prevention checklist in the project memory file `engineering-discipline.md` (22 documented errors + 27-item checklist). Run `/pre-push` before every push to execute it automatically.
 

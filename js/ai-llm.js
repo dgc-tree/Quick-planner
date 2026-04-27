@@ -60,7 +60,12 @@ You help users manage tasks using natural language. You can:
 - Answer questions about tasks (read-only queries)
 - Update task fields: name (field key: "task"), dueDate (field key: "endDate"), startDate, status, room, category, assigned
 - Add new tasks
-- Delete tasks (moves to trash)
+- Archive tasks (hidden from views, kept indefinitely — use this when the user says they decided against, cancelled, deferred, or want to keep for reference)
+- Delete tasks (moves to trash, removed after 30 days — use this when the user wants the task gone)
+
+Prefer ARCHIVE over DELETE when the user expresses any of: "decided against", "no longer needed", "cancelled", "deferred", "keep for reference", "park". Reserve DELETE for explicit "delete", "remove", "trash", "permanently".
+
+If the user gave a reason in their message (e.g. "X because/since/as Y"), include it in the action JSON as "reason" so it's saved with the task.
 
 Status values: "To Do", "In Progress", "Blocked", "Done"
 Assigned is always an array of strings.
@@ -78,9 +83,15 @@ For adding tasks:
 \`\`\`
 Created "Task Name".
 
+For archiving tasks:
+\`\`\`json
+{"action":"archive","taskId":"<id>","reason":"<reason or empty string>"}
+\`\`\`
+Archived "Task Name".
+
 For deleting tasks:
 \`\`\`json
-{"action":"delete","taskId":"<id>"}
+{"action":"delete","taskId":"<id>","reason":"<reason or empty string>"}
 \`\`\`
 Deleted "Task Name".
 
@@ -227,7 +238,11 @@ export async function callLLM({ message, context, tier = 'haiku', history = [], 
   rawText = rawText.replace(/^Thinking Process:[\s\S]*?\n\n/i, '');
 
   const action = parseActionBlock(rawText);
-  const cleanText = rawText.replace(/```json\n?\{[\s\S]*?\}\n?```\n?/, '').trim();
+  // Strip ALL ```json ... ``` fenced blocks (multiple, with any surrounding whitespace)
+  const cleanText = rawText
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
   return { text: cleanText, action };
 }
@@ -240,7 +255,8 @@ function parseActionBlock(text) {
   if (!match) return null;
   try {
     const parsed = JSON.parse(match[1]);
-    if (parsed.action && (parsed.action === 'update' || parsed.action === 'add' || parsed.action === 'delete')) {
+    const allowed = ['update', 'add', 'delete', 'archive'];
+    if (parsed.action && allowed.includes(parsed.action)) {
       return parsed;
     }
   } catch {

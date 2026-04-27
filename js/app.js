@@ -545,17 +545,31 @@ async function initApp() {
       if (fields.notes !== undefined) task.notes = fields.notes || '';
       if (fields.contact !== undefined) task.contact = fields.contact || '';
       if (fields.tradeQuote !== undefined) task.tradeQuote = !!fields.tradeQuote;
+      if (fields.archived !== undefined) {
+        if (fields.archived) {
+          task.archived = true;
+          task.archivedAt = Date.now();
+        } else {
+          task.archived = false;
+          delete task.archivedAt;
+          delete task.archiveReason;
+        }
+      }
       task.updatedAt = Date.now();
       setupFilters();
-      render();
+      renderPreservingScroll();
       persistTaskChange();
     },
     onAddTask: (fields) => {
       return handleTaskCreate(fields);
     },
-    onDeleteTask: (taskId) => {
+    onDeleteTask: (taskId, opts = {}) => {
       const task = allTasks.find(t => t.id === taskId);
-      if (task) handleTaskDelete(task);
+      if (task) handleTaskDelete(task, { skipPrompt: true, reason: opts.reason || '' });
+    },
+    onArchiveTask: (taskId, opts = {}) => {
+      const task = allTasks.find(t => t.id === taskId);
+      if (task) handleTaskArchive(task, { skipPrompt: true, reason: opts.reason || '' });
     },
   });
 }
