@@ -35,12 +35,12 @@ Tick through this list on the first of each month and after any release that tou
 
 Most recent first. Each entry: date, summary, action taken, follow up.
 
-### 2026-04-27 - Baseline npm audit
-**Summary:** `npm audit` reports 1 high advisory in `basic-ftp` (transitive via `puppeteer`). Used only by the smoke test, not shipped to production.
+### 2026-04-27 - Baseline npm audit + first fix
+**Summary:** `npm audit` reported 1 high advisory in `basic-ftp` (transitive via `puppeteer`). `npm audit fix` applied a non-breaking bump (basic-ftp 5.2.0 -> 5.3.0). Audit now clean (0 vulnerabilities).
 
-**Action:** documented. Run `npm audit fix` when next bumping puppeteer.
+**Action:** lock committed; the security-audit GitHub Action should now pass on this branch.
 
-**Follow up:** none urgent. Re run after the next puppeteer release.
+**Follow up:** none. Audit re runs weekly via the workflow + on every package.json/lock PR.
 
 ### 2026-04-27 - Archive state lost on refresh (data integrity, not security)
 **Summary:** the qp-api D1 `tasks` table had no columns for `archived`, `archived_at`, `archive_reason`. `syncFromServer()` ran on every refresh and replaced localStorage with the server response, wiping the local archive flag.
