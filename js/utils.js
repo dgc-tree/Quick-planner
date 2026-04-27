@@ -10,6 +10,24 @@ export function getInitials(name) {
   return name ? name.slice(0, 2).toUpperCase() : '?';
 }
 
+// Normalise an assignee list: split string-or-array input into an array,
+// trim each name, drop empties, and dedupe case-insensitively. Preserves
+// the first-seen casing of each unique name.
+export function normaliseAssigned(assigned) {
+  const arr = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+  const seen = new Set();
+  const out = [];
+  for (const raw of arr) {
+    const name = (raw == null ? '' : String(raw)).trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  return out;
+}
+
 export function getAssignedColor(name) {
   return getAvatarColor(name);
 }

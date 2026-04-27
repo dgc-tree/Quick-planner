@@ -54,9 +54,14 @@ export function loadBin() {
   } catch { return []; }
 }
 
-export function addToBin(task) {
+export function addToBin(task, reason = '') {
   const bin = loadBin();
-  bin.push({ task: JSON.parse(JSON.stringify(task, (k, v) => v instanceof Date ? v.toISOString() : v)), deletedAt: Date.now() });
+  const entry = {
+    task: JSON.parse(JSON.stringify(task, (k, v) => v instanceof Date ? v.toISOString() : v)),
+    deletedAt: Date.now(),
+  };
+  if (reason) entry.deleteReason = reason;
+  bin.push(entry);
   localStorage.setItem(BIN_KEY, JSON.stringify(bin));
 }
 

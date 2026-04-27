@@ -1,5 +1,5 @@
 import { STATUS_COLORS } from './theme.js';
-import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange } from './utils.js';
+import { esc, getInitials, getAssignedColor, getCategoryColor, formatDateRange, normaliseAssigned } from './utils.js';
 import { openColorPickerModal } from './color-picker.js';
 import { loadColumnColors, saveColumnColors } from './storage.js';
 import { attachLongPress } from './context-menu.js';
@@ -157,7 +157,7 @@ function openColumnColorPicker(columnName, header) {
 }
 
 function renderAvatarStack(assigned, cls = 'card-avatar') {
-  const members = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+  const members = normaliseAssigned(assigned);
   if (members.length === 0) {
     const { bg, text } = getAssignedColor('');
     return `<div class="${cls}-stack"><span class="${cls}" style="background:${bg};color:${text}" title="Unassigned">?</span></div>`;

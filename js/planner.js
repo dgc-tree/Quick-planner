@@ -1,4 +1,4 @@
-import { esc, getInitials, getAssignedColor, getCategoryColor } from './utils.js';
+import { esc, getInitials, getAssignedColor, getCategoryColor, normaliseAssigned } from './utils.js';
 import { attachLongPress } from './context-menu.js';
 
 let _plannerCallbacks = {};
@@ -154,7 +154,7 @@ export function renderPlanner(container, tasks, callbacks = {}) {
 }
 
 function renderBarAvatarStack(assigned) {
-  const members = Array.isArray(assigned) ? assigned : (assigned ? [assigned] : []);
+  const members = normaliseAssigned(assigned);
   if (members.length === 0) {
     const { bg, text } = getAssignedColor('');
     return `<div class="bar-avatar-stack"><span class="bar-avatar" style="background:${bg};color:${text}" title="Unassigned">?</span></div>`;
@@ -222,7 +222,25 @@ function daysBetween(a, b) {
 
 /* ── Drag-to-reschedule ─────────────────────────────────────── */
 
+// Module-level drag context. setupPlannerDrag installs the pointer listeners
+// ONCE per container; subsequent renders just refresh the data the listeners
+// read. Without this, every renderPlanner call would stack another set of
+// listeners on the container, causing one drag to fire N reschedules and
+// compound the date delta per handler.
+const _plannerDragCtx = {
+  installed: new WeakSet(),
+  allTasks: [],
+  minDate: null,
+  totalDays: 0,
+};
+
 function setupPlannerDrag(container, allTasks, minDate, totalDays) {
+  _plannerDragCtx.allTasks = allTasks;
+  _plannerDragCtx.minDate = minDate;
+  _plannerDragCtx.totalDays = totalDays;
+  if (_plannerDragCtx.installed.has(container)) return;
+  _plannerDragCtx.installed.add(container);
+
   const THRESHOLD = 5;  // px before drag starts
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
   let dragState = null;
@@ -231,11 +249,15 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     const bar = e.target.closest('.planner-bar');
     if (!bar) return;
 
+    // Handles sit entirely OUTSIDE the bar (CSS positions them at left:-12 /
+    // right:-12 with width:12), so handle vs body is a pure DOM hit-test with
+    // no overlap. This means narrow bars still get fully working edge resize:
+    // the user grabs the tab next to the bar.
     const handle = e.target.closest('.planner-bar-handle');
-    const mode = handle ? handle.dataset.handle : 'move';  // 'left', 'right', or 'move'
+    const mode = handle ? handle.dataset.handle : 'move';
 
     const taskId = bar.dataset.taskId;
-    const task = allTasks.find(t => String(t.id) === taskId);
+    const task = _plannerDragCtx.allTasks.find(t => String(t.id) === taskId);
     if (!task || !task.startDate || !task.endDate) return;
 
     const barContainer = bar.closest('.planner-bar-container');
@@ -251,6 +273,10 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
       bodyEl,
       containerWidth,
       task,
+      // Snapshot dates at pointerdown so the upstream task object can mutate
+      // freely without affecting the delta math at pointerup.
+      taskStartAtPointerDown: task.startDate,
+      taskEndAtPointerDown: task.endDate,
       mode,
       startX: e.clientX,
       startY: e.clientY,
@@ -286,20 +312,21 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     }
 
     const deltaPct = (dx / dragState.containerWidth) * 100;
+    const days = _plannerDragCtx.totalDays;
 
     if (dragState.mode === 'move') {
       const newLeft = Math.max(0, Math.min(dragState.startPct + deltaPct, 100 - dragState.widthPct));
       dragState.bar.style.left = newLeft + '%';
       dragState.bar.style.width = dragState.widthPct + '%';
     } else if (dragState.mode === 'left') {
-      const maxDelta = dragState.widthPct - (1 / totalDays * 100);  // min 1 day
+      const maxDelta = dragState.widthPct - (1 / days * 100);  // min 1 day
       const clampedDelta = Math.min(deltaPct, maxDelta);
       const newLeft = Math.max(0, dragState.startPct + clampedDelta);
       const newWidth = dragState.widthPct - (newLeft - dragState.startPct);
       dragState.bar.style.left = newLeft + '%';
-      dragState.bar.style.width = Math.max(newWidth, 1 / totalDays * 100) + '%';
+      dragState.bar.style.width = Math.max(newWidth, 1 / days * 100) + '%';
     } else if (dragState.mode === 'right') {
-      const minWidthPct = (1 / totalDays) * 100;
+      const minWidthPct = (1 / days) * 100;
       const newWidth = Math.max(dragState.widthPct + deltaPct, minWidthPct);
       const maxWidth = 100 - dragState.startPct;
       dragState.bar.style.width = Math.min(newWidth, maxWidth) + '%';
@@ -320,27 +347,40 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     const suppressClick = (ev) => { ev.stopPropagation(); };
     container.addEventListener('click', suppressClick, { capture: true, once: true });
 
-    // Compute new dates from final bar position
+    // Map the bar's final visual position directly to dates: where you see the
+    // bar's edges = the saved start/end. The bar's left/width were updated in
+    // pointermove to follow the cursor, so its rendered position is the
+    // ground truth for the user's intent. Only edges that actually moved by a
+    // full day get rewritten — unchanged edges keep the original Date object so
+    // there's no timezone drift.
     const finalLeftPct = parseFloat(state.bar.style.left);
     const finalWidthPct = parseFloat(state.bar.style.width);
+    const days = _plannerDragCtx.totalDays;
+    const newStartOffset = Math.round((finalLeftPct / 100) * days);
+    const newEndOffset = Math.round(((finalLeftPct + finalWidthPct) / 100) * days);
+    const origStartOffset = Math.round((state.startPct / 100) * days);
+    const origEndOffset = Math.round(((state.startPct + state.widthPct) / 100) * days);
+    const startChanged = newStartOffset !== origStartOffset;
+    const endChanged = newEndOffset !== origEndOffset;
 
-    const startDayOffset = Math.round((finalLeftPct / 100) * totalDays);
-    const durationDays = Math.max(1, Math.round((finalWidthPct / 100) * totalDays));
+    if (!startChanged && !endChanged) {
+      // Sub-day drag — snap back to rendered position
+      state.bar.style.left = state.startPct + '%';
+      state.bar.style.width = state.widthPct + '%';
+      return;
+    }
 
-    const newStart = new Date(minDate.getTime() + startDayOffset * MS_PER_DAY);
-    const newEnd = new Date(newStart.getTime() + durationDays * MS_PER_DAY);
+    const dayAtOffset = (offset) => {
+      const d = new Date(_plannerDragCtx.minDate.getTime() + offset * MS_PER_DAY);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+    const newStart = startChanged ? dayAtOffset(newStartOffset) : state.taskStartAtPointerDown;
+    const newEnd = endChanged ? dayAtOffset(newEndOffset) : state.taskEndAtPointerDown;
 
-    // Normalise to midnight
-    newStart.setHours(0, 0, 0, 0);
-    newEnd.setHours(0, 0, 0, 0);
-
-    // Only call back if dates actually changed
-    const startChanged = newStart.getTime() !== state.task.startDate.getTime();
-    const endChanged = newEnd.getTime() !== state.task.endDate.getTime();
-    if ((startChanged || endChanged) && _plannerCallbacks.onReschedule) {
+    if (_plannerCallbacks.onReschedule) {
       _plannerCallbacks.onReschedule(state.task, newStart, newEnd);
     } else {
-      // Snap bar back to original position
       state.bar.style.left = state.startPct + '%';
       state.bar.style.width = state.widthPct + '%';
     }

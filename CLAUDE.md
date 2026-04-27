@@ -1,13 +1,17 @@
 # Quick Planner — Project Rules
 
 ## CSS Workflow
-- **Read before writing**: Read the full rule + dark mode override + mobile media query before editing any CSS. For layout bugs, read body → main → container chain AND every sibling that shares the same layout context (header, tabs, content). Map the complete box model (padding, margin, max-width, position) of ALL related elements in one pass before writing a single line. Never guess at cascade.
+- **Read before writing**: Read the full rule + dark mode override + mobile media query before editing any CSS. For layout bugs, read body → main → container chain AND every sibling that shares the same layout context (header, tabs, content). Map the complete box model (padding, margin, max-width, position) of ALL related elements in one pass before writing a single line. Never guess at cascade. **Grep for the selector across ALL CSS files** - a property set at line 6 can be overridden at line 460 in a media query. Fixing one without the other is a no-op on mobile.
 - **One-shot CSS**: Check all override contexts (dark, mobile, responsive) and apply all changes in one round. Don't iterate with the user as debugger.
 - **Measure before writing**: State target dimensions with arithmetic before writing layout CSS. "Modal = content(640) + sidebar(320) = 960px." One commit, not five iterations.
 - **Verify visually before merging**: Every CSS change must be checked on localhost. Hover/focus/active states must be manually triggered. Never merge visual changes sight-unseen.
 - **Mobile alongside, not after**: Test every visual change at 375px before committing. If it doesn't work on mobile, the feature isn't done.
 - **Batch compliance fixes**: When fixing a token/WCAG/style violation, grep the codebase for the same pattern. Fix all instances in one commit.
 - **Token-driven modes**: The `--blur` token drives all `backdrop-filter` values via `blur(var(--blur))` or `blur(calc(var(--blur) * N))`. Flat surface mode sets `--blur: 0px` — one line cascades to every component. Never add hardcoded `blur(Npx)` values; always use `calc(var(--blur) * factor)`. Same principle applies to any new visual mode: override the token, not the components.
+- **Token pipeline: seed → ramp → theme → CSS.** When changing the default accent colour: update the seed in `tokens/base.colors.json`, then check the theme JSONs (`themes/light.colors.json`, `themes/dark.colors.json`) reference the correct ramp step or literal hex, then run `node scripts/build-tokens.js` to regenerate `css/tokens.css`. Also grep the codebase for any hardcoded hex from the old ramp. The baked tokens are the first-load defaults for users with no saved theme.
+- **Design system tokens (styles.css :root).** Type: `--text-xs` through `--text-2xl` (7 steps). Weight: `--weight-normal` through `--weight-extrabold` (5 steps). Radius: `--radius-sm` through `--radius-full` (5 steps). Spacing: `--space-2` through `--space-96` (verbatim px values) + semantic aliases `--space-xxs` through `--space-xxl`. Mobile scales all text 1.2x via `html { font-size: 16.8px }` at the 768px breakpoint.
+- **Dark mode requires `--dark-*` defaults.** The `[data-theme="dark"]` block in styles.css MUST define `--dark-surface`, `--dark-card`, `--dark-card-hover`, `--dark-surface-deep`, `--dark-surface-deepest`, `--dark-border` using the neutral ramp. The theme customiser overrides these with accent-tinted values when a user picks a custom colour. Without defaults, 22+ `var(--dark-*)` references resolve to transparent.
+- **Flat mode must override ALL glass tokens.** `[data-surface="flat"]` must set every `--glass-*` token to opaque values AND kill `backdrop-filter` on sticky/header elements. Both light and dark flat need separate blocks. Test all 4 combos: light frost, dark frost, light flat, dark flat.
 
 ## Automation
 Three Claude Code hooks run automatically (`.claude/hooks/`):
@@ -117,5 +121,12 @@ Session pushed 13 commits to the feature branch but never merged to `main` or cr
 - Don't patch plumbing the user has already abandoned — remove dead code instead
 - Prefer deletion over repair when the feature is no longer needed
 - **Integration decision step**: Before touching any integration, first determine: is it staying or going? If going, follow Migration Discipline (section 5). Don't make a different decision each session — check project memory for prior decisions before acting.
+
+## 7. Figma Design System Builds
+- **Extract exact CSS values before building any Figma component.** Read padding, font-size, border-radius, colours, and shadows from `css/styles.css` and `css/tokens.css` with line numbers. Never guess proportions.
+- **Use actual SVG icons from `index.html`, not text placeholders.** Grep for `viewBox` to find every icon's path data. Use `figma.createNodeFromSvg()` with the real paths. The app uses Heroicons (24×24 viewBox, stroke-based).
+- **The token architecture is OKLCH-based.** User picks a seed colour → `ramp-generator.js` produces 13 steps via OKLCH lightness interpolation → `build-tokens.js` generates CSS → `theme-customizer.js` regenerates at runtime. Any Figma token documentation must explain this pipeline, not just list hex values.
+- **Always show Light and Dark variants side by side.** The app has a full dark theme driven by `[data-theme="dark"]`. Every component in the design system must be shown in both themes. Free Figma plan limits modes to 1 — use paired frames (light bg + dark bg) as the workaround.
+- **The mascot is a gorilla** at `images/mascot-trash.png`. It appears on the auth/login screen and onboarding. Never omit it from design system documentation.
 
 # ── END: Claude Guidelines ──

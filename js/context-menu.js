@@ -5,12 +5,14 @@ let menuEl = null;
 const ICONS = {
   edit: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 2.5a1.77 1.77 0 0 1 2.5 2.5L5.25 13.75 2 14.5l.75-3.25Z"/><path d="M10 4l2.5 2.5"/></svg>`,
   duplicate: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M2 11V3.5A1.5 1.5 0 0 1 3.5 2H11"/></svg>`,
+  archive: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="3" rx="0.75"/><path d="M3 6.5v6A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-6"/><path d="M6.5 9h3"/></svg>`,
   delete: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5h11"/><path d="M5.5 4.5V3a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.5"/><path d="M3.5 4.5l.75 9a1.5 1.5 0 0 0 1.5 1.5h4.5a1.5 1.5 0 0 0 1.5-1.5l.75-9"/></svg>`,
 };
 
 const ITEMS = [
   { key: 'edit', label: 'Edit', icon: ICONS.edit },
   { key: 'duplicate', label: 'Duplicate', icon: ICONS.duplicate },
+  { key: 'archive', label: 'Archive', icon: ICONS.archive },
   { key: 'delete', label: 'Delete', icon: ICONS.delete, destructive: true },
 ];
 
@@ -30,6 +32,7 @@ export function showContextMenu(event, task, callbacks) {
       if (item.key === 'edit') callbacks.onEdit?.();
       else if (item.key === 'delete') callbacks.onDelete?.();
       else if (item.key === 'duplicate') callbacks.onDuplicate?.();
+      else if (item.key === 'archive') callbacks.onArchive?.();
     });
     menu.appendChild(btn);
   }

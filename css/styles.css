@@ -1932,20 +1932,30 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 .planner-bar:hover { opacity: 0.85; }
 .planner-bar:active { cursor: grabbing; }
-.planner-bar--done { opacity: 0.5; }
+.planner-bar--done { opacity: 0.3; }
 .planner-bar--done .bar-label { text-decoration: line-through; }
 
-/* Drag resize handles on left/right edges */
+/* Drag resize handles. Positioned entirely OUTSIDE the bar so they never
+   overlap the bar body — the bar body is always "move", the tabs are always
+   "resize". Lets narrow bars stay resizable: the user grabs the adjacent tab. */
 .planner-bar-handle {
   position: absolute;
   top: 0;
-  width: 6px;
+  width: 12px;
   height: 100%;
   cursor: ew-resize;
   z-index: 2;
 }
-.planner-bar-handle--left { left: -3px; }
-.planner-bar-handle--right { right: -3px; }
+.planner-bar-handle--left { left: -12px; }
+.planner-bar-handle--right { right: -12px; }
+/* Subtle hover hint so users see where the handle tabs are */
+.planner-bar:hover .planner-bar-handle {
+  background: linear-gradient(to right, transparent, rgba(0,0,0,0.08));
+  border-radius: 2px;
+}
+.planner-bar:hover .planner-bar-handle--left {
+  background: linear-gradient(to left, transparent, rgba(0,0,0,0.08));
+}
 
 /* Bar being dragged */
 .planner-bar.dragging {
@@ -3089,6 +3099,50 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   background: color-mix(in srgb, var(--warning-solid) 90%, transparent);
   color: var(--content-inverse);
   box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.15), 0 4px 16px rgba(146,100,12,0.3);
+}
+
+.toast.toast-with-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  max-width: 420px;
+  padding-right: var(--space-8);
+}
+.toast .toast-msg {
+  flex: 1;
+  min-width: 0;
+}
+.toast .toast-action-btn {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.18);
+  color: inherit;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-6) var(--space-12);
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  min-height: 32px;
+}
+.toast .toast-action-btn:hover {
+  background: rgba(255,255,255,0.28);
+}
+
+.trash-item-reason {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--surface-subtle, rgba(0,0,0,0.04));
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-10);
+  margin-top: var(--space-6);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.trash-item-reason strong {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
 }
 
 @keyframes toast-in {
