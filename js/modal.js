@@ -409,7 +409,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   const depSearchInput = modalEl.querySelector('.dep-search-input');
   const depDropdown = modalEl.querySelector('.dep-dropdown');
   const depSelected = modalEl.querySelector('.dep-selected');
-  const otherTasks = (options.allTasks || []).filter(t => t.task !== task.task);
+  // Exclude archived tasks from dependency candidates — depending on a hidden
+  // task is confusing; restore from Archive first if you really need it.
+  const otherTasks = (options.allTasks || []).filter(t => t.task !== task.task && !t.archived);
   const depRaw = Array.isArray(task.dependencies) ? task.dependencies.join(', ') : (task.dependencies || '');
   let selectedDeps = depRaw ? depRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
 

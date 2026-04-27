@@ -35,6 +35,11 @@ export async function syncToServer() {
         end_date: t.endDate instanceof Date ? t.endDate.toISOString() : (t.endDate || null),
         dependencies: Array.isArray(t.dependencies) ? t.dependencies : [],
         notes: t.notes || '',
+        // Sent so a future server schema can store them; today's worker
+        // ignores unknown fields without erroring.
+        archived: !!t.archived,
+        archived_at: t.archivedAt || null,
+        archive_reason: t.archiveReason || '',
       })),
     }));
     await pushAllData(payload);
@@ -56,23 +61,56 @@ export async function syncFromServer() {
     const remote = await pullAllData();
     if (!Array.isArray(remote) || remote.length === 0) return false;
 
+    // Build an index of local tasks so we can preserve any fields the server
+    // schema doesn't yet round-trip (archived, archiveReason, cost, contact,
+    // tradeQuote). Without this, a refresh would wipe local-only state.
+    const localTasksById = new Map();
+    for (const lp of loadProjects()) {
+      for (const lt of (lp.tasks || [])) localTasksById.set(lt.id, lt);
+    }
+
     const projects = remote.map(rp => ({
       id: rp.id,
       name: rp.name,
       type: rp.type || 'local',
-      tasks: (rp.tasks || []).map(t => ({
-        id: t.id,
-        task: t.task,
-        status: t.status,
-        category: t.category,
-        room: t.room,
-        assigned: Array.isArray(t.assigned) ? t.assigned : JSON.parse(t.assigned || '[]'),
-        startDate: t.start_date || null,
-        endDate: t.end_date || null,
-        dependencies: Array.isArray(t.dependencies) ? t.dependencies.join(', ') : (t.dependencies || ''),
-        notes: t.notes || '',
-        updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
-      })),
+      tasks: (rp.tasks || []).map(t => {
+        const merged = {
+          id: t.id,
+          task: t.task,
+          status: t.status,
+          category: t.category,
+          room: t.room,
+          assigned: Array.isArray(t.assigned) ? t.assigned : JSON.parse(t.assigned || '[]'),
+          startDate: t.start_date || null,
+          endDate: t.end_date || null,
+          dependencies: Array.isArray(t.dependencies) ? t.dependencies.join(', ') : (t.dependencies || ''),
+          notes: t.notes || '',
+          updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
+        };
+        // Archive fields: server is authoritative once the schema migration
+        // has run (column present). Before that, fall back to the local copy
+        // so the field survives a sync pull.
+        if ('archived' in t) {
+          merged.archived = !!t.archived;
+          merged.archivedAt = t.archived_at ? new Date(t.archived_at).getTime() : null;
+          merged.archiveReason = t.archive_reason || '';
+        } else {
+          const local = localTasksById.get(t.id);
+          if (local) {
+            if (local.archived !== undefined) merged.archived = local.archived;
+            if (local.archivedAt !== undefined) merged.archivedAt = local.archivedAt;
+            if (local.archiveReason !== undefined) merged.archiveReason = local.archiveReason;
+          }
+        }
+        // Other local-only fields the server schema still doesn't track.
+        const local = localTasksById.get(t.id);
+        if (local) {
+          if (local.cost !== undefined && local.cost !== null) merged.cost = local.cost;
+          if (local.contact) merged.contact = local.contact;
+          if (local.tradeQuote !== undefined) merged.tradeQuote = local.tradeQuote;
+        }
+        return merged;
+      }),
     }));
 
     saveProjects(projects);

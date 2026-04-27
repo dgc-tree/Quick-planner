@@ -10,7 +10,8 @@
     "dev": "npm run version:stamp && python3 -m http.server 8000",
     "setup-hooks": "bash scripts/setup-hooks.sh",
     "smoke": "node scripts/smoke-test.js http://localhost:8000",
-    "smoke:live": "node scripts/smoke-test.js https://planner.davegregurke.au"
+    "smoke:live": "node scripts/smoke-test.js https://planner.davegregurke.au",
+    "audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
     "culori": "^4.0.1",

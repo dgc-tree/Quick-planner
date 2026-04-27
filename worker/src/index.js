@@ -398,12 +398,13 @@ async function handleSyncTasks(request, user, env, projectId) {
   for (const t of tasks) {
     const id = t.id || crypto.randomUUID();
     stmts.push(env.DB.prepare(
-      `INSERT INTO tasks (id, project_id, user_id, task, status, category, room, assigned, start_date, end_date, dependencies, notes, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `INSERT INTO tasks (id, project_id, user_id, task, status, category, room, assigned, start_date, end_date, dependencies, notes, archived, archived_at, archive_reason, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT(id) DO UPDATE SET
          task = excluded.task, status = excluded.status, category = excluded.category,
          room = excluded.room, assigned = excluded.assigned, start_date = excluded.start_date,
          end_date = excluded.end_date, dependencies = excluded.dependencies, notes = excluded.notes,
+         archived = excluded.archived, archived_at = excluded.archived_at, archive_reason = excluded.archive_reason,
          updated_at = datetime('now')`
     ).bind(
       id, projectId, user.sub,
@@ -412,7 +413,10 @@ async function handleSyncTasks(request, user, env, projectId) {
       t.start_date || t.startDate || null,
       t.end_date || t.endDate || null,
       JSON.stringify(t.dependencies || []),
-      (t.notes || '').slice(0, 2000)
+      (t.notes || '').slice(0, 2000),
+      t.archived ? 1 : 0,
+      t.archived_at || (typeof t.archivedAt === 'number' ? new Date(t.archivedAt).toISOString() : null),
+      (t.archive_reason || t.archiveReason || '').slice(0, 1000)
     ));
   }
 
@@ -453,12 +457,13 @@ async function handleFullSync(request, user, env) {
       for (const t of p.tasks) {
         const taskId = t.id || crypto.randomUUID();
         stmts.push(env.DB.prepare(
-          `INSERT INTO tasks (id, project_id, user_id, task, status, category, room, assigned, start_date, end_date, dependencies, notes, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+          `INSERT INTO tasks (id, project_id, user_id, task, status, category, room, assigned, start_date, end_date, dependencies, notes, archived, archived_at, archive_reason, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
            ON CONFLICT(id) DO UPDATE SET
              task = excluded.task, status = excluded.status, category = excluded.category,
              room = excluded.room, assigned = excluded.assigned, start_date = excluded.start_date,
              end_date = excluded.end_date, dependencies = excluded.dependencies, notes = excluded.notes,
+             archived = excluded.archived, archived_at = excluded.archived_at, archive_reason = excluded.archive_reason,
              updated_at = datetime('now')`
         ).bind(
           taskId, projectId, user.sub,
@@ -467,7 +472,10 @@ async function handleFullSync(request, user, env) {
           t.start_date || t.startDate || null,
           t.end_date || t.endDate || null,
           JSON.stringify(t.dependencies || []),
-          (t.notes || '').slice(0, 2000)
+          (t.notes || '').slice(0, 2000),
+          t.archived ? 1 : 0,
+          t.archived_at || (typeof t.archivedAt === 'number' ? new Date(t.archivedAt).toISOString() : null),
+          (t.archive_reason || t.archiveReason || '').slice(0, 1000)
         ));
       }
     }

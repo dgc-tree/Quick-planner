@@ -526,7 +526,10 @@ async function initApp() {
 
   // QP Chat assistant — LOCAL DEV ONLY (comment out before pushing to live)
   initChat({
-    getTasks: () => allTasks,
+    // Hide archived tasks from the chat: read queries (overdue, summary,
+    // tasks-for) and intent matching all operate on the live set. Restore
+    // from the Archive view to act on an archived task again.
+    getTasks: () => allTasks.filter(t => !t.archived),
     onUpdateTask: (taskId, fields) => {
       const task = allTasks.find(t => t.id === taskId);
       if (!task) return;
@@ -545,17 +548,31 @@ async function initApp() {
       if (fields.notes !== undefined) task.notes = fields.notes || '';
       if (fields.contact !== undefined) task.contact = fields.contact || '';
       if (fields.tradeQuote !== undefined) task.tradeQuote = !!fields.tradeQuote;
+      if (fields.archived !== undefined) {
+        if (fields.archived) {
+          task.archived = true;
+          task.archivedAt = Date.now();
+        } else {
+          task.archived = false;
+          delete task.archivedAt;
+          delete task.archiveReason;
+        }
+      }
       task.updatedAt = Date.now();
       setupFilters();
-      render();
+      renderPreservingScroll();
       persistTaskChange();
     },
     onAddTask: (fields) => {
       return handleTaskCreate(fields);
     },
-    onDeleteTask: (taskId) => {
+    onDeleteTask: (taskId, opts = {}) => {
       const task = allTasks.find(t => t.id === taskId);
-      if (task) handleTaskDelete(task);
+      if (task) handleTaskDelete(task, { skipPrompt: true, reason: opts.reason || '' });
+    },
+    onArchiveTask: (taskId, opts = {}) => {
+      const task = allTasks.find(t => t.id === taskId);
+      if (task) handleTaskArchive(task, { skipPrompt: true, reason: opts.reason || '' });
     },
   });
 }
@@ -2342,9 +2359,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!q) { mobileSearchResults.innerHTML = ''; return; }
     const lower = q.toLowerCase();
     const matches = allTasks.filter(t =>
-      t.task.toLowerCase().includes(lower) ||
-      (t.room && t.room.toLowerCase().includes(lower)) ||
-      (t.category && t.category.toLowerCase().includes(lower))
+      !t.archived && (
+        t.task.toLowerCase().includes(lower) ||
+        (t.room && t.room.toLowerCase().includes(lower)) ||
+        (t.category && t.category.toLowerCase().includes(lower))
+      )
     ).slice(0, 25);
 
     if (matches.length === 0) {

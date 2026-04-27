@@ -1,0 +1,31 @@
+name: Security audit
+
+on:
+  schedule:
+    # Mondays 10:00 UTC (20:00 AEST) — weekly check
+    - cron: '0 10 * * 1'
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/security-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run npm audit
+        # Fails the job on moderate or higher advisories. Drop to --audit-level=high
+        # if moderate is too noisy.
+        run: npm audit --audit-level=moderate
+      - name: Notice on success
+        if: success()
+        run: echo "::notice::No moderate or higher npm advisories."

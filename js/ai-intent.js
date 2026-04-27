@@ -17,6 +17,30 @@ function today() {
   return d;
 }
 
+// Pull a "because/since/as X" reason out of a phrase. Splits on the first
+// reason connective and returns the cleaned name + reason. If `trailing` is
+// supplied (a remainder from a regex like "X can be archived <trailing>"), it
+// is also scanned for a reason. Used by archive/delete intents so the user can
+// give context inline and skip the confirmation prompt.
+function stripReason(rawName, trailing = '') {
+  const REASON_RE = /\b(?:because|since|as|cause|coz|cos|due to|on account of)\b\s+(.+)$/i;
+  let name = rawName.trim();
+  let reason = '';
+  const inName = name.match(REASON_RE);
+  if (inName) {
+    reason = inName[1].trim();
+    name = name.slice(0, inName.index).trim();
+  } else if (trailing) {
+    const t = trailing.trim();
+    const m = t.match(REASON_RE);
+    if (m) reason = m[1].trim();
+    else if (t) reason = t.replace(/^[-—:,]\s*/, '').trim();
+  }
+  // Strip punctuation around the captured reason
+  reason = reason.replace(/^[\s—\-:,]+/, '').replace(/[\s.!?]+$/, '');
+  return { name, reason };
+}
+
 function nextDayOfWeek(dayIndex, fromDate) {
   const d = new Date(fromDate || today());
   const diff = (dayIndex - d.getDay() + 7) % 7 || 7;
@@ -819,7 +843,9 @@ export function resolveIntent(message, context) {
 
   // ─── Who's doing what / assigned queries ────────────────────────
   // "what's assigned to [person]" / "[person]'s tasks" / "tasks for [person]"
-  {
+  // Skip if the message is a mutation phrase ("X can be archived/deleted") —
+  // those should fall through to the archive/delete intent below.
+  if (!/\b(?:can|should)\s+be\s+(?:archived|deleted|removed|trashed)\b/.test(lower)) {
     const assignedQuery = lower.match(/(?:what(?:'s| is)\s+assigned\s+to|tasks?\s+(?:for|assigned\s+to)|show\s+(?:me\s+)?(.+?)(?:'s)\s+tasks?|(.+?)(?:'s)\s+tasks?)\s*(.+?)?\s*\??$/);
     if (assignedQuery) {
       const person = (assignedQuery[3] || assignedQuery[2] || assignedQuery[1] || '').trim();
@@ -1292,16 +1318,58 @@ export function resolveIntent(message, context) {
     };
   }
 
-  // "delete [task]" / "remove [task]" — always confirm via flow
-  const deleteMatch = lower.match(/^(?:delete|remove|trash)\s+(.+)$/);
-  if (deleteMatch) {
-    const taskQuery = deleteMatch[1].replace(/\b(?:the|task)\b/gi, '').trim();
+  // "delete [task]" / "remove [task]" / "archive [task]" — confirm via flow,
+  // unless the user gave a reason inline ("because X", "since X", "as X"),
+  // which counts as confirmation: we record the reason and skip the prompt.
+  // "both X" / "all X" → multi-target intent: apply to every match.
+  const cleanQuery = (raw) => {
+    let q = raw;
+    let multiTarget = false;
+    const multiMatch = q.match(/^\s*(both|all(?:\s+of)?(?:\s+the|\s+them)?|every)\s+/i);
+    if (multiMatch) {
+      multiTarget = true;
+      q = q.slice(multiMatch[0].length);
+    }
+    q = q.replace(/^\s*(?:the\s+)?tasks?\s+(?:for|named|called)\s+/i, '');
+    q = q.replace(/\b(?:the|task|tasks)\b/gi, '').replace(/\s+/g, ' ').trim();
+    return { query: q, multiTarget };
+  };
+
+  const archiveMatch =
+    lower.match(/^archive\s+(.+)$/) ||
+    lower.match(/^(.+?)\s+(?:can|should)\s+be\s+archived(?:\s+|$)(.*)$/);
+  if (archiveMatch) {
+    const rawTaskQuery = archiveMatch[1];
+    const trailing = archiveMatch[2] || '';
+    const { name: cleanName, reason } = stripReason(rawTaskQuery, trailing);
+    const { query: taskQuery, multiTarget } = cleanQuery(cleanName);
     const matches = findTasks(taskQuery, tasks);
-    if (!matches.length) return { type: 'clarify', response: `I couldn't find a task matching "${deleteMatch[1]}". Can you be more specific?` };
+    if (!matches.length) return { type: 'clarify', response: `I couldn't find a task matching "${cleanName}". Can you be more specific?` };
+    return {
+      type: 'flow',
+      flow: 'archive',
+      candidates: matches,
+      reason,
+      multiTarget,
+    };
+  }
+
+  const deleteMatch =
+    lower.match(/^(?:delete|remove|trash)\s+(.+)$/) ||
+    lower.match(/^(.+?)\s+(?:can|should)\s+be\s+(?:deleted|removed|trashed)(?:\s+|$)(.*)$/);
+  if (deleteMatch) {
+    const rawTaskQuery = deleteMatch[1];
+    const trailing = deleteMatch[2] || '';
+    const { name: cleanName, reason } = stripReason(rawTaskQuery, trailing);
+    const { query: taskQuery, multiTarget } = cleanQuery(cleanName);
+    const matches = findTasks(taskQuery, tasks);
+    if (!matches.length) return { type: 'clarify', response: `I couldn't find a task matching "${cleanName}". Can you be more specific?` };
     return {
       type: 'flow',
       flow: 'delete',
       candidates: matches,
+      reason,
+      multiTarget,
     };
   }
 
