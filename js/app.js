@@ -40,6 +40,94 @@ let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
 let filters = { room: '', category: '', assigned: '', search: '', dateFrom: '', dateTo: '' };
 let currentProjectId = loadActiveProjectId();
+
+// Overlay view persistence (settings/trash/archive). Stored in localStorage so
+// it survives a full browser restart, not just a same-tab refresh.
+const OVERLAY_VIEW_KEY = 'qp-overlay-view';
+function saveOverlayView(name) {
+  if (name) localStorage.setItem(OVERLAY_VIEW_KEY, name);
+  else localStorage.removeItem(OVERLAY_VIEW_KEY);
+}
+function loadOverlayView() {
+  return localStorage.getItem(OVERLAY_VIEW_KEY) || '';
+}
+
+// Scroll position persistence. Saved on `beforeunload` and on view changes,
+// keyed by the active view. Restored after the next render cycle.
+const SCROLL_KEY_PREFIX = 'qp-scroll-';
+function activeViewName() {
+  const overlay = loadOverlayView();
+  if (overlay) return overlay;
+  return currentView;
+}
+function snapshotScrollForView(view) {
+  const snap = { docY: window.scrollY || document.documentElement.scrollTop || 0 };
+  if (view === 'planner') {
+    const p = document.querySelector('.planner-scroll');
+    if (p) { snap.x = p.scrollLeft; snap.y = p.scrollTop; }
+  } else if (view === 'kanban') {
+    snap.cols = [...document.querySelectorAll('.kanban-cards')]
+      .map(c => ({ g: c.dataset.group, y: c.scrollTop }));
+  } else {
+    const sel = view === 'todolist' ? '#todolist-view'
+      : view === 'settings' ? '#settings-view'
+      : view === 'trash' ? '#trash-view'
+      : view === 'archive' ? '#archive-view' : null;
+    if (sel) {
+      const el = document.querySelector(sel);
+      if (el) snap.y = el.scrollTop;
+    }
+  }
+  return snap;
+}
+function persistScrollForActiveView() {
+  const view = activeViewName();
+  const snap = snapshotScrollForView(view);
+  try { localStorage.setItem(SCROLL_KEY_PREFIX + view, JSON.stringify(snap)); } catch {}
+}
+// Re-open the overlay (settings/trash/archive) and chat panel that were open
+// before the page was refreshed. Called once after init's first render
+// completes; running it earlier would race with init's own render() call,
+// which hides any open overlay.
+function restoreOverlayOnLoad() {
+  const overlay = loadOverlayView();
+  if (overlay === 'settings' && typeof window._showSettings === 'function') window._showSettings();
+  else if (overlay === 'trash' && typeof window._showTrash === 'function') window._showTrash();
+  else if (overlay === 'archive' && typeof window._showArchive === 'function') window._showArchive();
+  // Chat panel: opened via initChat's openPanel exposed to window
+  if (localStorage.getItem('qp-chat-open') === '1' && typeof window._openChatPanel === 'function') {
+    window._openChatPanel();
+  }
+}
+
+function restorePersistedScrollForView(view) {
+  let snap;
+  try { snap = JSON.parse(localStorage.getItem(SCROLL_KEY_PREFIX + view) || 'null'); } catch {}
+  if (!snap) return;
+  // Two rAFs: layout completes after innerHTML rewrites, then scroll
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (snap.docY) window.scrollTo(0, snap.docY);
+    if (view === 'planner') {
+      const p = document.querySelector('.planner-scroll');
+      if (p) { p.scrollLeft = snap.x || 0; p.scrollTop = snap.y || 0; }
+    } else if (view === 'kanban' && Array.isArray(snap.cols)) {
+      for (const c of snap.cols) {
+        if (!c.g) continue;
+        const el = document.querySelector(`.kanban-cards[data-group="${CSS.escape(c.g)}"]`);
+        if (el) el.scrollTop = c.y || 0;
+      }
+    } else {
+      const sel = view === 'todolist' ? '#todolist-view'
+        : view === 'settings' ? '#settings-view'
+        : view === 'trash' ? '#trash-view'
+        : view === 'archive' ? '#archive-view' : null;
+      if (sel) {
+        const el = document.querySelector(sel);
+        if (el && snap.y) el.scrollTop = snap.y;
+      }
+    }
+  }));
+}
 let _updateFilterBadge = () => {};
 
 const $ = (sel) => document.querySelector(sel);
@@ -494,6 +582,10 @@ async function initApp() {
     updateSummary();
     setupFilters();
     render();
+    // Restore main-view scroll first; overlay restore (next) will overwrite
+    // it if an overlay was open before refresh.
+    restorePersistedScrollForView(currentView);
+    restoreOverlayOnLoad();
   } catch (err) {
     showError(err.message);
   }
@@ -523,6 +615,9 @@ async function initApp() {
   initDigest();
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
+
+  // Expose chat openPanel so the post-init overlay restore can re-open it
+  window._openChatPanel = openChatPanel;
 
   // QP Chat assistant — LOCAL DEV ONLY (comment out before pushing to live)
   initChat({
@@ -1887,9 +1982,10 @@ function setupSettingsPanel() {
     document.querySelector('main').classList.add('settings-open');
     // Reset to General tab
     switchSettingsTab('general');
-    sessionStorage.setItem('qp-view', 'settings');
+    saveOverlayView('settings');
     // Refresh people section
     if (_people) _people.load();
+    restorePersistedScrollForView('settings');
   }
 
   function hideSettings() {
@@ -1897,16 +1993,16 @@ function setupSettingsPanel() {
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
     saveCustomColors(colors);
-    sessionStorage.removeItem('qp-view');
+    saveOverlayView('');
     // Restore previous view
     currentView = previousView;
     render();
+    restorePersistedScrollForView(currentView);
   }
 
-  // Restore settings view if it was open before refresh
-  if (sessionStorage.getItem('qp-view') === 'settings') {
-    showSettings();
-  }
+  // (overlay restore on refresh is handled centrally by restoreOverlayOnLoad
+  // after init's render completes — this avoids a race where init's render
+  // hides the overlay we just restored)
 
   $('#sidebar-settings-btn').addEventListener('click', showSettings);
   $('#settings-back').addEventListener('click', hideSettings);
@@ -2095,17 +2191,20 @@ function setupSettingsPanel() {
   function showTrashView() {
     hideAllViews();
     trashView.classList.remove('hidden');
-    trashView.scrollTop = 0;
     trashSearch.value = '';
     renderTrashList();
+    saveOverlayView('trash');
+    restorePersistedScrollForView('trash');
   }
 
   function hideTrashView() {
     trashView.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
+    saveOverlayView('');
     currentView = previousView;
     render();
+    restorePersistedScrollForView(currentView);
   }
 
   trashSearch.addEventListener('input', () => renderTrashList(trashSearch.value));
@@ -2193,17 +2292,20 @@ function setupSettingsPanel() {
   function showArchiveView() {
     hideAllViews();
     archiveView.classList.remove('hidden');
-    archiveView.scrollTop = 0;
     archiveSearch.value = '';
     renderArchiveList();
+    saveOverlayView('archive');
+    restorePersistedScrollForView('archive');
   }
 
   function hideArchiveView() {
     archiveView.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
+    saveOverlayView('');
     currentView = previousView;
     render();
+    restorePersistedScrollForView(currentView);
   }
 
   archiveSearch.addEventListener('input', () => renderArchiveList(archiveSearch.value));
@@ -2302,6 +2404,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      // Snapshot the current view's scroll before switching so a return trip
+      // lands where the user left it.
+      persistScrollForActiveView();
       closeOverlayViews();
       document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -2309,10 +2414,18 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('qp-view', currentView);
       $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
       $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
-      window.scrollTo(0, 0);
-      document.querySelector('main').scrollTop = 0;
       render();
+      restorePersistedScrollForView(currentView);
     });
+  });
+
+  // Persist scroll on full page unload so a refresh returns the user to the
+  // same place. Per-view changes are persisted at click time above.
+  window.addEventListener('beforeunload', persistScrollForActiveView);
+  // Also persist when the page is hidden (mobile background, tab switch) since
+  // beforeunload doesn't always fire on mobile browsers.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') persistScrollForActiveView();
   });
 
   // Filters
