@@ -11,6 +11,7 @@ import { shouldShowOnboarding, showOnboarding, TEMPLATES } from './onboarding.js
 import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
   loadBin, restoreFromBin, addProjectToBin, loadProjectBin, restoreProjectFromBin,
+  migrateBinToProjectScope,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
   loadUserName, saveUserName, exportBackup, runMigrations,
 } from './storage.js';
@@ -167,6 +168,10 @@ async function loadProjectData() {
     currentProjectId = fallback.id;
     saveActiveProjectId(currentProjectId);
   }
+
+  // One-time: stamp legacy trash entries with the current project so the
+  // per-project Trash filter doesn't hide them.
+  migrateBinToProjectScope(currentProjectId);
 
   const project = projects.find(p => p.id === currentProjectId);
   if (project) {
@@ -1011,7 +1016,8 @@ function handleTaskDelete(task, opts = {}) {
 }
 
 function _commitTaskDelete(task, reason) {
-  addToBin(task, reason);
+  const projectId = currentProjectId;
+  addToBin(task, reason, projectId);
   const idx = allTasks.findIndex(t => t === task);
   if (idx !== -1) allTasks.splice(idx, 1);
   setupFilters();
@@ -1021,7 +1027,7 @@ function _commitTaskDelete(task, reason) {
   showActionToast(`Deleted "${taskName}"`, {
     actionLabel: 'Undo',
     onAction: () => {
-      const restored = restoreFromBin(taskName);
+      const restored = restoreFromBin(taskName, projectId);
       if (!restored) return;
       ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
       allTasks.push(restored);
@@ -2035,7 +2041,7 @@ function setupSettingsPanel() {
   }
 
   function renderTrashList(filter = '') {
-    const taskBin = loadBin();
+    const taskBin = loadBin(currentProjectId);
     const projectBin = loadProjectBin();
     const q = filter.toLowerCase();
     const filteredTasks = q ? taskBin.filter(e => e.task.task?.toLowerCase().includes(q) || e.task.room?.toLowerCase().includes(q)) : taskBin;
@@ -2160,7 +2166,7 @@ function setupSettingsPanel() {
     trashList.querySelectorAll('.trash-restore-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = decodeURIComponent(btn.dataset.name);
-        const restored = restoreFromBin(name);
+        const restored = restoreFromBin(name, currentProjectId);
         if (restored) {
           ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
           allTasks.push(restored);
@@ -2180,7 +2186,7 @@ function setupSettingsPanel() {
           body: 'This task cannot be recovered.',
           confirmLabel: 'Delete',
           onConfirm: () => {
-            restoreFromBin(name);
+            restoreFromBin(name, currentProjectId);
             renderTrashList(trashSearch.value);
           },
         });
@@ -2191,6 +2197,8 @@ function setupSettingsPanel() {
   function showTrashView() {
     hideAllViews();
     trashView.classList.remove('hidden');
+    const titleEl = trashView.querySelector('.settings-page-title');
+    if (titleEl) titleEl.textContent = `Trash · ${getProjectName() || 'Project'}`;
     trashSearch.value = '';
     renderTrashList();
     saveOverlayView('trash');
@@ -2292,6 +2300,8 @@ function setupSettingsPanel() {
   function showArchiveView() {
     hideAllViews();
     archiveView.classList.remove('hidden');
+    const titleEl = archiveView.querySelector('.settings-page-title');
+    if (titleEl) titleEl.textContent = `Archive · ${getProjectName() || 'Project'}`;
     archiveSearch.value = '';
     renderArchiveList();
     saveOverlayView('archive');
