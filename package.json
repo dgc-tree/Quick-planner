@@ -15,6 +15,6 @@
   },
   "dependencies": {
     "culori": "^4.0.1",
-    "puppeteer": "^24.38.0"
+    "puppeteer": "^24.42.0"
   }
 }
