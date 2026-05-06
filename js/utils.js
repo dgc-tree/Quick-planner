@@ -6,8 +6,15 @@ export function esc(str) {
   return d.innerHTML;
 }
 
+// Two-letter initials. Multi-word names use first + last word's first letter
+// ("Dave Gregurke" → "DG"). Single-word names use the first two characters
+// ("Simone" → "SI"). Empty/null → "?".
 export function getInitials(name) {
-  return name ? name.slice(0, 2).toUpperCase() : '?';
+  if (!name) return '?';
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 // Normalise an assignee list: split string-or-array input into an array,

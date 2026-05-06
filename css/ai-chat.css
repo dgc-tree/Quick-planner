@@ -20,6 +20,11 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.qp-chat-fab svg {
+  width: 26px;
+  height: 26px;
+}
+
 .qp-chat-fab:hover {
   transform: scale(1.08);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.24);

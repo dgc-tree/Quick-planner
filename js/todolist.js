@@ -3,9 +3,12 @@ import { ASSIGNED_COLORS } from './theme.js';
 import { attachLongPress } from './context-menu.js';
 
 const checkedItems = new Map(); // taskId → previousStatus
-const assignedNames = Object.keys(ASSIGNED_COLORS);
 
 export function renderTodoList(container, tasks, callbacks = {}) {
+  // Cycle through the project's roster, not the theme palette keys.
+  const assignedNames = (callbacks.assignees && callbacks.assignees.length)
+    ? callbacks.assignees
+    : Object.keys(ASSIGNED_COLORS);
   const today = new Date();
   today.setHours(23, 59, 59, 999);
 

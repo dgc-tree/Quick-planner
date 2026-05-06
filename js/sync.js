@@ -24,6 +24,8 @@ export async function syncToServer() {
       id: p.id,
       name: p.name,
       type: p.type || 'local',
+      // Future server schema may persist this; today's worker ignores it.
+      members: Array.isArray(p.members) ? p.members : [],
       tasks: (p.tasks || []).map(t => ({
         id: t.id,
         task: t.task || '',
@@ -73,6 +75,9 @@ export async function syncFromServer() {
       id: rp.id,
       name: rp.name,
       type: rp.type || 'local',
+      // Server may not round-trip members yet — left empty triggers a
+      // local rebuild from task names in loadProjectData.
+      members: Array.isArray(rp.members) ? rp.members : [],
       tasks: (rp.tasks || []).map(t => {
         const merged = {
           id: t.id,

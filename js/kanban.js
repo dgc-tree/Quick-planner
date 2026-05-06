@@ -156,6 +156,95 @@ function openColumnColorPicker(columnName, header) {
   });
 }
 
+function showAssignPopover(anchorEl, task) {
+  document.querySelectorAll('.assign-popover').forEach(el => el.remove());
+
+  const members = (_callbacks.assignees || []).filter(Boolean);
+  const current = normaliseAssigned(task.assigned);
+  const currentSet = new Set(current);
+
+  const pop = document.createElement('div');
+  pop.className = 'assign-popover';
+
+  const checkSvg = '<svg class="assign-popover-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  let html = '';
+  if (members.length) {
+    html += members.map(name => {
+      const { bg, text } = getAssignedColor(name);
+      const checked = currentSet.has(name) ? checkSvg : '';
+      return `
+        <button class="assign-popover-item" data-name="${esc(name)}">
+          <span class="assign-popover-avatar" style="background:${bg};color:${text}">${getInitials(name)}</span>
+          <span class="assign-popover-name">${esc(name)}</span>
+          ${checked}
+        </button>`;
+    }).join('');
+  } else {
+    html += `<div class="assign-popover-item" style="opacity:0.6;cursor:default">No team members yet</div>`;
+  }
+  if (current.length) {
+    html += `<div class="assign-popover-divider"></div>`;
+    html += `<button class="assign-popover-item" data-action="unassign">Unassign</button>`;
+  }
+  html += `<div class="assign-popover-divider"></div>`;
+  html += `<button class="assign-popover-item assign-popover-more" data-action="more">Assign to more people…</button>`;
+
+  pop.innerHTML = html;
+  document.body.appendChild(pop);
+
+  const r = anchorEl.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  let top = r.bottom + 6;
+  let left = r.right - popRect.width;
+  if (top + popRect.height > window.innerHeight - 8) {
+    top = Math.max(8, r.top - popRect.height - 6);
+  }
+  left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+
+  function closePopover() {
+    pop.remove();
+    document.removeEventListener('click', outsideClick, true);
+    document.removeEventListener('keydown', escClose);
+    window.removeEventListener('scroll', closePopover, true);
+  }
+  function outsideClick(e) {
+    if (!pop.contains(e.target)) closePopover();
+  }
+  function escClose(e) {
+    if (e.key === 'Escape') closePopover();
+  }
+
+  pop.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const item = e.target.closest('.assign-popover-item');
+    if (!item) return;
+    const action = item.dataset.action;
+    if (action === 'more') {
+      closePopover();
+      _callbacks.onAssignMore?.(task);
+      return;
+    }
+    if (action === 'unassign') {
+      closePopover();
+      _callbacks.onAssignChange?.(task, []);
+      return;
+    }
+    const name = item.dataset.name;
+    if (!name) return;
+    closePopover();
+    _callbacks.onAssignChange?.(task, [name]);
+  });
+
+  setTimeout(() => {
+    document.addEventListener('click', outsideClick, true);
+    document.addEventListener('keydown', escClose);
+    window.addEventListener('scroll', closePopover, true);
+  }, 0);
+}
+
 function renderAvatarStack(assigned, cls = 'card-avatar') {
   const members = normaliseAssigned(assigned);
   if (members.length === 0) {
@@ -204,6 +293,16 @@ function createCard(task) {
     </div>
     ${depsHTML}
   `;
+
+  // Avatar stack — quick reassign popover (intercepts before card click)
+  const avatarStack = card.querySelector('.card-avatar-stack');
+  if (avatarStack) {
+    avatarStack.style.cursor = 'pointer';
+    avatarStack.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showAssignPopover(avatarStack, task);
+    });
+  }
 
   // Click — open edit modal or expand
   card.addEventListener('click', (e) => {

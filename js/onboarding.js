@@ -2,6 +2,7 @@
  * 3-step onboarding: colour picker → template → import.
  */
 import { hasVisited, markVisited, saveCustomColors, loadProjects, saveProjects, saveActiveProjectId } from './storage.js';
+import { canonicaliseProject } from './members.js';
 import { applyCustomColors } from './theme-customizer.js';
 import { openColorPickerModal } from './color-picker.js';
 import { importCSV } from './projects.js';
@@ -298,8 +299,10 @@ export function showOnboarding(onFinish) {
         const text = await droppedFile.text();
         const tasks = importCSV(text);
         projectId = crypto.randomUUID();
+        const project = { id: projectId, name: droppedFile.name.replace(/\.csv$/i, ''), tasks, members: [] };
+        canonicaliseProject(project);
         const projects = loadProjects();
-        projects.push({ id: projectId, name: droppedFile.name.replace(/\.csv$/i, ''), tasks });
+        projects.push(project);
         saveProjects(projects);
         saveActiveProjectId(projectId);
       } catch (err) {
@@ -311,8 +314,10 @@ export function showOnboarding(onFinish) {
       const tpl = TEMPLATES.find(t => t.id === selectedTemplateId);
       projectId = crypto.randomUUID();
       const tasks = tpl.tasks.map(t => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() }));
+      const project = { id: projectId, name: tpl.label, tasks, members: [] };
+      canonicaliseProject(project);
       const projects = loadProjects();
-      projects.push({ id: projectId, name: tpl.label, tasks });
+      projects.push(project);
       saveProjects(projects);
       saveActiveProjectId(projectId);
     }

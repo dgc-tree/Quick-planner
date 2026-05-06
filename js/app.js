@@ -13,8 +13,10 @@ import {
   loadBin, restoreFromBin, addProjectToBin, loadProjectBin, restoreProjectFromBin,
   migrateBinToProjectScope,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
+  saveProjectMembers,
   loadUserName, saveUserName, exportBackup, runMigrations,
 } from './storage.js';
+import { canonicaliseAssigned, rebuildMembersFromTasks, canonicaliseProject, renameMember, removeMember } from './members.js';
 import { importCSV, sheetsUrlToCsvUrl, exportToCSV } from './projects.js';
 import { openColorPickerModal } from './color-picker.js';
 import { showContextMenu } from './context-menu.js';
@@ -26,7 +28,7 @@ import {
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
 import { initChat, onProjectSwitch as chatProjectSwitch, clearConversation, hideBubble as hideChatBubble, showBubble as showChatBubble, setTTSEnabled, setBriefingMode, getTTSEnabled, getBriefingMode, openPanel as openChatPanel } from './ai-chat.js';
-import { initDigest, getDigestFrequency, setDigestFrequency } from './digest.js';
+import { initDigest, removeDigest, getDigestFrequency, setDigestFrequency, getDigestActive, setDigestActive } from './digest.js';
 import { getProviderConfig, setProvider, setLocalConfig, testClaudeConnection, testLocalConnection, hasApiKey } from './ai-llm.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
@@ -38,9 +40,16 @@ let APP_VERSION = 'dev';
 import('./version.js').then(v => { APP_VERSION = v.APP_VERSION; }).catch(() => {});
 
 let allTasks = [];
+let currentProjectMembers = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
 let filters = { room: '', category: '', assigned: '', search: '', dateFrom: '', dateTo: '' };
 let currentProjectId = loadActiveProjectId();
+
+// Synthetic project view for the canonicaliser — kept in sync with the
+// in-memory tasks/members so members.js helpers can mutate freely.
+function getCurrentProjectView() {
+  return { id: currentProjectId, members: currentProjectMembers, tasks: allTasks };
+}
 
 // Overlay view persistence (settings/trash/archive). Stored in localStorage so
 // it survives a full browser restart, not just a same-tab refresh.
@@ -147,6 +156,7 @@ function getProjectName() {
 
 function persistTaskChange() {
   saveProjectTasks(currentProjectId, allTasks);
+  saveProjectMembers(currentProjectId, currentProjectMembers);
   syncToServer();
 }
 
@@ -180,6 +190,19 @@ async function loadProjectData() {
       startDate: t.startDate ? new Date(t.startDate) : null,
       endDate: t.endDate ? new Date(t.endDate) : null,
     }));
+    currentProjectMembers = Array.isArray(project.members)
+      ? project.members.map(m => ({ ...m }))
+      : [];
+    // Self-heal: rebuild the roster from task data if absent (e.g. a pull
+    // from a server that doesn't round-trip the members array).
+    if (!currentProjectMembers.length) {
+      const view = getCurrentProjectView();
+      rebuildMembersFromTasks(view);
+      currentProjectMembers = view.members;
+      saveProjectMembers(currentProjectId, currentProjectMembers);
+    }
+  } else {
+    currentProjectMembers = [];
   }
 }
 
@@ -393,18 +416,16 @@ function showReasonDialog({ title, body, placeholder, confirmLabel, destructive,
   overlay.className = 'modal-overlay open';
   const confirmClass = destructive ? 'modal-delete-confirm-btn' : 'modal-save';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:420px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">${title}</h1>
-        ${body ? `<p class="modal-delete-body">${body}</p>` : ''}
-        <div class="modal-field" style="margin:16px 0 24px">
-          <label for="reason-input">Reason (optional)</label>
-          <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}" style="width:100%;resize:vertical;min-height:72px"></textarea>
-        </div>
-        <div class="modal-delete-actions">
-          <button class="modal-btn modal-cancel">Cancel</button>
-          <button class="modal-btn ${confirmClass}">${confirmLabel || 'Confirm'}</button>
-        </div>
+    <div class="modal-dialog modal-reason-dialog" role="dialog">
+      <h2 class="modal-reason-title">${title}</h2>
+      ${body ? `<p class="modal-reason-body">${body}</p>` : ''}
+      <div class="modal-field modal-reason-field">
+        <label for="reason-input">Reason (optional)</label>
+        <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-cancel">Cancel</button>
+        <button class="modal-btn ${confirmClass}">${confirmLabel || 'Confirm'}</button>
       </div>
     </div>
   `;
@@ -483,7 +504,8 @@ function handleDuplicateProject(id, name) {
       id: crypto.randomUUID(),
       updatedAt: now,
     }));
-    const newProject = { id: newId, name: dupName, type: 'local', tasks: clonedTasks };
+    const newProject = { id: newId, name: dupName, type: 'local', tasks: clonedTasks, members: [] };
+    canonicaliseProject(newProject);
     projects.push(newProject);
     saveProjects(projects);
     syncToServer();
@@ -579,7 +601,9 @@ async function initApp() {
       const tpl = TEMPLATES[0];
       const tasks = tpl.tasks.map(t => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() }));
       const projectId = crypto.randomUUID();
-      saveProjects([{ id: projectId, name: `${tpl.icon} ${tpl.label}`, tasks }]);
+      const project = { id: projectId, name: `${tpl.icon} ${tpl.label}`, tasks, members: [] };
+      canonicaliseProject(project);
+      saveProjects([project]);
       saveActiveProjectId(projectId);
     }
 
@@ -637,7 +661,10 @@ async function initApp() {
       if (fields.room !== undefined) task.room = fields.room;
       if (fields.category !== undefined) task.category = fields.category;
       if (fields.status !== undefined) task.status = fields.status;
-      if (fields.assigned !== undefined) task.assigned = Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',').filter(Boolean) : []);
+      if (fields.assigned !== undefined) {
+        const incoming = Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',').filter(Boolean) : []);
+        task.assigned = canonicaliseAssigned(getCurrentProjectView(), incoming);
+      }
       if (fields.startDate !== undefined) task.startDate = fields.startDate ? new Date(fields.startDate) : null;
       if (fields.endDate !== undefined) task.endDate = fields.endDate ? new Date(fields.endDate) : null;
       if (fields.dependencies !== undefined) task.dependencies = fields.dependencies;
@@ -779,8 +806,9 @@ function setupAccountButtons() {
       const tpl = TEMPLATES[0];
       const tasks = tpl.tasks.map(t => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() }));
       const projectId = crypto.randomUUID();
-      const projects = [{ id: projectId, name: `${tpl.icon} ${tpl.label}`, tasks }];
-      saveProjects(projects);
+      const project = { id: projectId, name: `${tpl.icon} ${tpl.label}`, tasks, members: [] };
+      canonicaliseProject(project);
+      saveProjects([project]);
       saveActiveProjectId(projectId);
       await loadProjectData();
       render();
@@ -962,7 +990,12 @@ function setupFilters() {
 
 function getModalOptions() {
   const opts = buildFilterOptions(allTasks);
-  return { categories: opts.categories, assignees: opts.assigned, rooms: opts.rooms, allTasks, getActiveProjectId: () => currentProjectId };
+  // Roster is authoritative — includes members with no current tasks.
+  // Fall back to derived names for an empty roster (defensive).
+  const assignees = currentProjectMembers.length
+    ? currentProjectMembers.map(m => m.name)
+    : opts.assigned;
+  return { categories: opts.categories, assignees, rooms: opts.rooms, allTasks, getActiveProjectId: () => currentProjectId };
 }
 
 function handleTaskEdit(task) {
@@ -1112,7 +1145,7 @@ function handleTaskCreate(fields) {
     room: fields.room || '',
     category: fields.category || '',
     status: fields.status || 'To Do',
-    assigned: normaliseAssigned(fields.assigned ? (Array.isArray(fields.assigned) ? fields.assigned : fields.assigned.split(',')) : []),
+    assigned: canonicaliseAssigned(getCurrentProjectView(), fields.assigned ? (Array.isArray(fields.assigned) ? fields.assigned : fields.assigned.split(',')) : []),
     startDate: fields.startDate ? new Date(fields.startDate) : null,
     endDate: fields.endDate ? new Date(fields.endDate) : null,
     dependencies: fields.dependencies || '',
@@ -1133,7 +1166,7 @@ function applyLocalUpdate(task, fields) {
   if (fields.task) task.task = fields.task;
   if (fields.room !== undefined) task.room = fields.room;
   if (fields.category) task.category = fields.category;
-  task.assigned = normaliseAssigned(Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',') : []));
+  task.assigned = canonicaliseAssigned(getCurrentProjectView(), Array.isArray(fields.assigned) ? fields.assigned : (fields.assigned ? fields.assigned.split(',') : []));
   if (fields.status) task.status = fields.status;
   task.startDate = fields.startDate ? new Date(fields.startDate) : null;
   task.endDate = fields.endDate ? new Date(fields.endDate) : null;
@@ -1183,6 +1216,17 @@ function render() {
           onArchive: () => handleTaskArchive(task),
         });
       },
+      assignees: currentProjectMembers.map(m => m.name),
+      onAssignChange: (task, newAssigned) => {
+        const incoming = Array.isArray(newAssigned) ? newAssigned : [newAssigned].filter(Boolean);
+        task.assigned = canonicaliseAssigned(getCurrentProjectView(), incoming);
+        task.updatedAt = Date.now();
+        persistTaskChange();
+        renderPreservingScroll();
+        const label = task.assigned.length ? task.assigned.join(', ') : 'no one';
+        showToast(`Assigned to ${label}`, 'success');
+      },
+      onAssignMore: (task) => handleTaskEdit(task),
     });
   } else if (currentView === 'planner') {
     plannerContainer.classList.remove('hidden');
@@ -1208,6 +1252,7 @@ function render() {
   } else if (currentView === 'todolist') {
     todolistContainer.classList.remove('hidden');
     renderTodoList(todolistContainer, filtered, {
+      assignees: currentProjectMembers.map(m => m.name),
       onStatusChange: handleStatusChange,
       onTaskClick: handleTaskEdit,
       onContextMenu: (event, task) => {
@@ -1219,10 +1264,11 @@ function render() {
         });
       },
       onAssignChange: (task, newAssigned) => {
-        task.assigned = Array.isArray(newAssigned) ? newAssigned : [newAssigned];
+        const incoming = Array.isArray(newAssigned) ? newAssigned : [newAssigned];
+        task.assigned = canonicaliseAssigned(getCurrentProjectView(), incoming);
         task.updatedAt = Date.now();
         persistTaskChange();
-        const label = Array.isArray(newAssigned) ? newAssigned.join(', ') : newAssigned;
+        const label = task.assigned.length ? task.assigned.join(', ') : 'no one';
         showToast(`Assigned to ${label}`, 'success');
       },
     });
@@ -1514,13 +1560,15 @@ function setupImportModal() {
         id: crypto.randomUUID(),
         name,
         type: 'local',
-        tasks: [],
+        tasks,
+        members: [],
         createdAt: Date.now(),
       };
+      // Build the roster + dedupe casings before persisting.
+      canonicaliseProject(project);
       const projects = loadProjects();
       projects.push(project);
       saveProjects(projects);
-      saveProjectTasks(project.id, tasks);
       syncToServer();
 
       modal.close();
@@ -1712,9 +1760,92 @@ function setupSettingsPanel() {
     selectSwatch(DEFAULT_PRIMARY);
   });
 
-  // --- BG Effects toggle ---
+  // --- BG Effects: master toggle in Settings + dev-only floating tuning panel ---
   const $active = $('#bgfx-active');
-  $active.addEventListener('change', () => _bgFx.setConfig({ active: $active.checked }));
+  const $bgfxCard = $('#settings-bgfx-card');
+  const $bgfxPanel = $('#bgfx-panel');
+  const $bgfxClose = $('#bgfx-panel-close');
+  const $speed = $('#bgfx-speed');
+  const $width = $('#bgfx-width');
+  const $height = $('#bgfx-height');
+  const $speedOut = $('#bgfx-speed-out');
+  const $widthOut = $('#bgfx-width-out');
+  const $heightOut = $('#bgfx-height-out');
+  const $bgfxReset = $('#bgfx-reset');
+
+  function syncBgfxPanelInputs() {
+    bgFxReady.then(() => {
+      const cfg = _bgFx.getConfig();
+      if ($speed) { $speed.value = cfg.speed ?? 50; if ($speedOut) $speedOut.value = String($speed.value); }
+      if ($width) { $width.value = cfg.width ?? 50; if ($widthOut) $widthOut.value = String($width.value); }
+      if ($height) { $height.value = cfg.height ?? 50; if ($heightOut) $heightOut.value = String($height.value); }
+    });
+  }
+
+  function toggleBgfxPanel() {
+    if (!$bgfxPanel) return;
+    if ($bgfxPanel.hidden) {
+      syncBgfxPanelInputs();
+      $bgfxPanel.hidden = false;
+    } else {
+      $bgfxPanel.hidden = true;
+    }
+  }
+
+  // Master toggle just flips the engine on/off — no panel reveal for end users.
+  $active.addEventListener('change', () => {
+    _bgFx.setConfig({ active: $active.checked });
+  });
+
+  if ($bgfxClose) $bgfxClose.addEventListener('click', () => { $bgfxPanel.hidden = true; });
+
+  // Dev-only access: Cmd+Alt+G (Mac) / Ctrl+Alt+G (Win/Linux) toggles the panel.
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'g') {
+      e.preventDefault();
+      toggleBgfxPanel();
+    }
+  });
+
+  function bindSlider(input, output, key) {
+    if (!input) return;
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      if (output) output.value = String(v);
+      _bgFx.setConfig({ [key]: v });
+    });
+  }
+  bindSlider($speed, $speedOut, 'speed');
+  bindSlider($width, $widthOut, 'width');
+  bindSlider($height, $heightOut, 'height');
+
+  if ($bgfxReset) {
+    $bgfxReset.addEventListener('click', () => {
+      bgFxReady.then(() => {
+        _bgFx.resetConfig?.();
+        const cfg = _bgFx.getConfig();
+        if ($speed) { $speed.value = cfg.speed; if ($speedOut) $speedOut.value = String(cfg.speed); }
+        if ($width) { $width.value = cfg.width; if ($widthOut) $widthOut.value = String(cfg.width); }
+        if ($height) { $height.value = cfg.height; if ($heightOut) $heightOut.value = String(cfg.height); }
+        $active.checked = cfg.active;
+      });
+    });
+  }
+
+  // Hide the entire BG-effects settings card when flat surface is active —
+  // there's nothing visual to control in flat mode, so the card would only
+  // confuse users.
+  function syncBgfxCardVisibility() {
+    if (!$bgfxCard) return;
+    const surface = document.documentElement.getAttribute('data-surface');
+    $bgfxCard.style.display = surface === 'flat' ? 'none' : '';
+  }
+  syncBgfxCardVisibility();
+  // Watch for surface changes on <html> so the card hides/shows live.
+  new MutationObserver(syncBgfxCardVisibility).observe(
+    document.documentElement,
+    { attributes: true, attributeFilter: ['data-surface'] }
+  );
 
   // --- Export CSV ---
   const exportBtn = $('#settings-export-btn');
@@ -1932,14 +2063,35 @@ function setupSettingsPanel() {
     showToast(`Voice responses ${aiTtsToggle.checked ? 'enabled' : 'disabled'}`, 'success');
   });
 
-  // Digest frequency
+  // Digest master toggle + frequency
+  const digestActiveToggle = $('#settings-digest-active');
+  const digestControls = $('#settings-digest-controls');
   const digestFreqSelect = $('#settings-digest-freq');
+
+  function applyDigestActive(active) {
+    if (digestControls) digestControls.style.display = active ? '' : 'none';
+    if (active) initDigest();
+    else removeDigest();
+  }
+
+  if (digestActiveToggle) {
+    const initialActive = getDigestActive();
+    digestActiveToggle.checked = initialActive;
+    if (digestControls) digestControls.style.display = initialActive ? '' : 'none';
+    digestActiveToggle.addEventListener('change', () => {
+      const on = digestActiveToggle.checked;
+      setDigestActive(on);
+      applyDigestActive(on);
+      showToast(`Notifications ${on ? 'on' : 'off'}`, 'success');
+    });
+  }
+
   if (digestFreqSelect) {
     digestFreqSelect.value = getDigestFrequency();
     digestFreqSelect.addEventListener('change', () => {
       setDigestFrequency(digestFreqSelect.value);
-      const labels = { off: 'Off', hourly: 'Hourly', daily: 'Daily', friday5pm: 'Friday 5pm', monday9am: 'Monday 9am', monthly: 'Monthly' };
-      showToast(`Notifications set to ${labels[digestFreqSelect.value] || digestFreqSelect.value}`, 'success');
+      const labels = { off: 'Off', instant: 'Instant', hourly: 'Hourly', daily: 'Daily', friday5pm: 'Friday 5pm', monday9am: 'Monday 9am', monthly: 'Monthly' };
+      showToast(`Frequency set to ${labels[digestFreqSelect.value] || digestFreqSelect.value}`, 'success');
     });
   }
 
@@ -2407,8 +2559,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeOverlayViews() {
     $('#settings-view').classList.add('hidden');
     $('#trash-view').classList.add('hidden');
+    $('#archive-view')?.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
+    // Clear the persisted overlay so a refresh after switching to a board
+    // view doesn't re-open the last overlay (Trash/Archive/Settings).
+    saveOverlayView('');
   }
   window._closeOverlayViews = closeOverlayViews;
 
@@ -2546,27 +2702,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const desktopFilterBadge = $('#desktop-filter-badge');
   const desktopFilterPopover = $('#desktop-filter-popover');
 
-  // Desktop filter popover toggle
-  if (desktopFilterBtn && desktopFilterPopover) {
-    desktopFilterBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = desktopFilterPopover.classList.toggle('hidden') === false;
-      desktopFilterBtn.classList.toggle('active', isOpen);
-      if (isOpen) {
-        const rect = desktopFilterBtn.getBoundingClientRect();
-        desktopFilterPopover.style.top = (rect.bottom + 10) + 'px';
-        desktopFilterPopover.style.right = (window.innerWidth - rect.right) + 'px';
-      }
-    });
-    document.addEventListener('click', (e) => {
-      if (!desktopFilterPopover.classList.contains('hidden') &&
-          !desktopFilterBtn.contains(e.target) &&
-          !desktopFilterPopover.contains(e.target)) {
-        desktopFilterPopover.classList.add('hidden');
-        desktopFilterBtn.classList.remove('active');
-      }
-    });
-  }
+  // Desktop filter button — opens the same full-screen overlay as mobile.
 
   function updateFilterBadge() {
     const count = [filters.room, filters.category, filters.assigned, filters.dateFrom, filters.dateTo].filter(Boolean).length;
@@ -2613,7 +2749,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (mobileFilterBtn) mobileFilterBtn.addEventListener('click', openMobileFilter);
+  if (desktopFilterBtn) desktopFilterBtn.addEventListener('click', openMobileFilter);
   if (mobileFilterDone) mobileFilterDone.addEventListener('click', closeMobileFilter);
+  // Click backdrop to close — matches other modals.
+  if (mobileFilterOverlay) {
+    mobileFilterOverlay.addEventListener('click', (e) => {
+      if (e.target === mobileFilterOverlay) closeMobileFilter();
+    });
+  }
+  // Escape closes the filter overlay.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileFilterOverlay.classList.contains('open')) {
+      closeMobileFilter();
+    }
+  });
   if (mobileFilterClear) {
     mobileFilterClear.addEventListener('click', () => {
       filters.room = ''; filters.category = ''; filters.assigned = '';

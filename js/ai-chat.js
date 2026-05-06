@@ -382,7 +382,7 @@ async function processMessage(text) {
     if (err.name === 'AbortError') {
       appendBubble('assistant', 'Stopped. What would you like to do instead?');
     } else if (err.message === 'NO_API_KEY' || err.message === 'NOT_LOGGED_IN') {
-      appendBubble('assistant', 'Log in or <a href="#" onclick="window._showSettingsTab(\'assistant\'); return false;">set up AI in Settings</a> to use this feature.', { html: true });
+      appendBubble('assistant', "AI features are paused. Ask QP about your tasks and I'll handle it locally.");
     } else if (err.message === 'INVALID_API_KEY') {
       appendBubble('assistant', 'Your API key is invalid. Check it in Settings.');
     } else if (err.message === 'RATE_LIMITED') {
@@ -471,18 +471,24 @@ function startFlow(intent) {
         appendBubble('assistant', result.confirmation, { undoData: result.undoData });
         return;
       }
+      if (flow === 'archive') {
+        _conversationFlow = {
+          type: 'archive',
+          stage: 'need-bulk-archive-reason',
+          taskIds: ids,
+          taskNames: names,
+        };
+        appendBubble('assistant', `Archive ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')}). What's the reason? (or "skip" / "cancel")`);
+        return;
+      }
       _conversationFlow = {
-        type: flow,
-        stage: flow === 'archive' ? 'confirm-bulk-archive' : 'confirm-bulk-delete',
+        type: 'delete',
+        stage: 'confirm-bulk-delete',
         taskIds: ids,
         taskNames: names,
         reason,
       };
-      const verb = flow === 'archive' ? 'Archive' : 'Delete';
-      const tail = flow === 'archive'
-        ? `They'll be hidden but kept indefinitely.`
-        : `They'll be moved to trash for 30 days.`;
-      appendBubble('assistant', `${verb} ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')})?\n${tail}`);
+      appendBubble('assistant', `Delete ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')})?\nThey'll be moved to trash for 30 days.`);
       return;
     }
 
@@ -504,8 +510,8 @@ function startFlow(intent) {
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
         }
-        _conversationFlow = { type: 'archive', stage: 'confirm-archive', taskId: task.id, taskName: name };
-        appendBubble('assistant', `Archive "${name}"?\nIt'll be hidden from your views but kept indefinitely.`);
+        _conversationFlow = { type: 'archive', stage: 'need-archive-reason', taskId: task.id, taskName: name };
+        appendBubble('assistant', `Archive "${name}". What's the reason? (or "skip" / "cancel")`);
       } else {
         _conversationFlow = { type: 'edit', stage: 'pick-field', taskId: task.id, taskName: name };
         appendBubble('assistant', `What would you like to change on "${name}"?`);
@@ -789,8 +795,8 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
         }
-        flow.stage = 'confirm-archive';
-        appendBubble('assistant', `Archive "${flow.taskName}"?\nIt'll be hidden from your views but kept indefinitely.`);
+        flow.stage = 'need-archive-reason';
+        appendBubble('assistant', `Archive "${flow.taskName}". What's the reason? (or "skip" / "cancel")`);
         return;
       }
       if (NO_WORDS.includes(lower)) {
@@ -812,10 +818,10 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
         }
-        flow.stage = 'confirm-bulk-archive';
+        flow.stage = 'need-bulk-archive-reason';
         flow.taskIds = ids;
         flow.taskNames = names;
-        appendBubble('assistant', `Archive ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')})?\nThey'll be hidden but kept indefinitely.`);
+        appendBubble('assistant', `Archive ${ids.length} tasks (${names.map(n => `"${n}"`).join(', ')}). What's the reason? (or "skip" / "cancel")`);
         return;
       }
       if (picks && picks.length === 1) {
@@ -829,54 +835,40 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
         }
-        flow.stage = 'confirm-archive';
-        appendBubble('assistant', `Archive "${flow.taskName}"?\nIt'll be hidden from your views but kept indefinitely.`);
+        flow.stage = 'need-archive-reason';
+        appendBubble('assistant', `Archive "${flow.taskName}". What's the reason? (or "skip" / "cancel")`);
         return;
       }
       appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
       return;
     }
 
-    if (flow.stage === 'confirm-bulk-archive') {
-      if (YES_WORDS.includes(lower)) {
-        const result = executeMutation({
-          action: 'bulk_archive',
-          taskIds: flow.taskIds,
-          reason: flow.reason || '',
-          names: flow.taskNames,
-          confirmation: `Archived ${flow.taskIds.length} tasks.`,
-        });
-        _conversationFlow = null;
-        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
-        return;
-      }
-      if (NO_WORDS.includes(lower)) {
-        _conversationFlow = null;
-        appendBubble('assistant', 'Cancelled.');
-        return;
-      }
-      appendBubble('assistant', 'Say "yes" to archive all or "cancel" to keep them visible.');
+    if (flow.stage === 'need-bulk-archive-reason') {
+      const skip = lower === 'skip' || lower === 'no reason' || lower === 'none' || lower === '' || NO_WORDS.includes(lower);
+      const reason = skip ? '' : text.trim();
+      const result = executeMutation({
+        action: 'bulk_archive',
+        taskIds: flow.taskIds,
+        reason,
+        names: flow.taskNames,
+        confirmation: `Archived ${flow.taskIds.length} tasks${reason ? ` — reason: ${reason}` : ''}.`,
+      });
+      _conversationFlow = null;
+      appendBubble('assistant', result.confirmation, { undoData: result.undoData });
       return;
     }
 
-    if (flow.stage === 'confirm-archive') {
-      if (YES_WORDS.includes(lower)) {
-        const result = executeMutation({
-          action: 'archive',
-          taskId: flow.taskId,
-          reason: flow.reason || '',
-          confirmation: `Archived "${flow.taskName}".`,
-        });
-        _conversationFlow = null;
-        appendBubble('assistant', result.confirmation, { undoData: result.undoData });
-        return;
-      }
-      if (NO_WORDS.includes(lower)) {
-        _conversationFlow = null;
-        appendBubble('assistant', 'Cancelled.');
-        return;
-      }
-      appendBubble('assistant', 'Say "yes" to archive or "cancel" to keep it visible.');
+    if (flow.stage === 'need-archive-reason') {
+      const skip = lower === 'skip' || lower === 'no reason' || lower === 'none' || lower === '' || NO_WORDS.includes(lower);
+      const reason = skip ? '' : text.trim();
+      const result = executeMutation({
+        action: 'archive',
+        taskId: flow.taskId,
+        reason,
+        confirmation: `Archived "${flow.taskName}"${reason ? ` — reason: ${reason}` : ''}.`,
+      });
+      _conversationFlow = null;
+      appendBubble('assistant', result.confirmation, { undoData: result.undoData });
       return;
     }
   }

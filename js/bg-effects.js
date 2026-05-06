@@ -1,73 +1,91 @@
 /**
- * bg-effects.js — Background accent movement
- * Desktop: cursor-reactive. Mobile/tablet: autonomous random drift.
+ * bg-effects.js — Background accent drift
+ * Two radial-gradient sprites drift slowly across the page, each with a
+ * gentle Y bobble. Like motes of dust in a sunbeam on a still day.
  * Drives CSS custom properties that offset the radial-gradient positions.
+ *
+ * cfg.speed / width / height are 1-100 sliders. Mappings live in
+ * speedToPeriod / widthToSwing / heightToBobble below.
  */
 
 import { loadBgEffects, saveBgEffects } from './storage.js';
 
 const DEFAULTS = {
-  intensity: 10,
-  smoothing: 0.3,
+  speed: 80,    // 1 = glacial, 100 = brisk
+  width: 100,   // 1 = barely drifts, 100 = full sweep + spillover
+  height: 100,  // 1 = flat, 100 = floats high and low
   accent1: true,
   accent2: true,
   active: true,
 };
 
+// One-shot migration — bake the tuned production defaults into existing
+// localStorage on next load. Future tuning persists normally afterwards.
+const BGFX_VERSION_KEY = 'qp-bgfx-version';
+const BGFX_CURRENT_VERSION = 2;
+
+// Origins. Sine oscillation about (xBase, yBase) ± (xSwing, yBobble).
+const ACCENT_1 = { xBase: 50, yBase: 90 };
+const ACCENT_2 = { xBase: 50, yBase: 15 };
+
+// Slider 1-100 mappings — defaults at 50 reproduce the original feel.
+function speedToPeriod(speed) {
+  // Exponential: speed=1 → 600s half-cycle, 50 → ~128s, 100 → 24s.
+  const minP = 24000, maxP = 600000;
+  const t = (Math.max(1, Math.min(100, speed)) - 1) / 99;
+  return Math.round(maxP * Math.pow(minP / maxP, t));
+}
+function widthToSwing(width)  { return (Math.max(1, Math.min(100, width))  / 100) * 80; }
+function heightToBobble(height) { return (Math.max(1, Math.min(100, height)) / 100) * 30; }
+
+const Y1_PERIOD_MS = 23000;
+const Y2_PERIOD_MS = 31000;
+
 let cfg = { ...DEFAULTS };
-let target = { x: 0, y: 0 };
-let current = { x: 0, y: 0 };
 let raf = null;
 let running = false;
-let isMobile = false;
-const DRIFT_SMOOTHING = 0.004;        // mobile drift easing
+let startTime = 0;
+let phase1 = 0;
+let phase2 = 0;
+
+// Derived from cfg — recomputed whenever cfg changes.
+let xPeriod = speedToPeriod(DEFAULTS.speed);
+let xSwing = widthToSwing(DEFAULTS.width);
+let yBobble = heightToBobble(DEFAULTS.height);
+
+function recomputeDerived() {
+  xPeriod = speedToPeriod(cfg.speed);
+  xSwing = widthToSwing(cfg.width);
+  yBobble = heightToBobble(cfg.height);
+}
 
 /* ── Core ─────────────────────────────────────────── */
 
-function pickWaypoint() {
-  target.x = (Math.random() - 0.5) * 2; // range [-1, 1]
-  target.y = (Math.random() - 0.5) * 2;
-}
-
-function onMouseMove(e) {
-  // Map cursor position directly to [-1, 1] range — no smoothing, precise tracking
-  const x = (e.clientX / window.innerWidth - 0.5) * 2;
-  const y = (e.clientY / window.innerHeight - 0.5) * 2;
-  target.x = x;
-  target.y = y;
-  current.x = x;
-  current.y = y;
-}
-
-function updateDrift() {
-  // When close enough to waypoint, pick a new one
-  const dx = target.x - current.x;
-  const dy = target.y - current.y;
-  if (dx * dx + dy * dy < 0.01) pickWaypoint();
-}
-
 function tick() {
-  if (isMobile) {
-    updateDrift();
-    // Smooth drift toward waypoint
-    current.x += (target.x - current.x) * DRIFT_SMOOTHING;
-    current.y += (target.y - current.y) * DRIFT_SMOOTHING;
-  }
-  // Desktop: current is set directly in onMouseMove — no easing needed
+  const t = performance.now() - startTime;
 
-  const dx = current.x * cfg.intensity;
-  const dy = current.y * cfg.intensity;
+  // X drift: sin from -1..+1, half-cycle = xPeriod, full bounce = 2x.
+  // Accent 2 offset by π so it drifts in counter-phase to accent 1.
+  const xSin1 = Math.sin((t / xPeriod) * Math.PI + phase1);
+  const xSin2 = Math.sin((t / xPeriod) * Math.PI + phase2 + Math.PI);
+
+  // Y bobble: independent slower period per sprite for a non-repeating feel.
+  const ySin1 = Math.sin((t / Y1_PERIOD_MS) * Math.PI * 2 + phase1 * 1.7);
+  const ySin2 = Math.sin((t / Y2_PERIOD_MS) * Math.PI * 2 + phase2 * 1.3);
+
+  const a1x = ACCENT_1.xBase + xSin1 * xSwing;
+  const a1y = ACCENT_1.yBase + ySin1 * yBobble;
+  const a2x = ACCENT_2.xBase + xSin2 * xSwing;
+  const a2y = ACCENT_2.yBase + ySin2 * yBobble;
 
   const bs = document.body.style;
-
   if (cfg.accent1) {
-    bs.setProperty('--bg-a1-x', `${10 - dx * 0.6}%`);
-    bs.setProperty('--bg-a1-y', `${90 - dy * 0.4}%`);
+    bs.setProperty('--bg-a1-x', `${a1x}%`);
+    bs.setProperty('--bg-a1-y', `${a1y}%`);
   }
   if (cfg.accent2) {
-    // Accent 2 moves opposite direction
-    bs.setProperty('--bg-a2-x', `${90 + dx}%`);
-    bs.setProperty('--bg-a2-y', `${15 + dy}%`);
+    bs.setProperty('--bg-a2-x', `${a2x}%`);
+    bs.setProperty('--bg-a2-y', `${a2y}%`);
   }
 
   raf = requestAnimationFrame(tick);
@@ -75,18 +93,18 @@ function tick() {
 
 function start() {
   if (running) return;
+  // Honour OS-level reduced-motion preference: hold sprites at their origin.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   running = true;
-  if (isMobile) {
-    pickWaypoint();
-  } else {
-    document.addEventListener('mousemove', onMouseMove);
-  }
+  recomputeDerived();
+  startTime = performance.now();
+  phase1 = Math.random() * Math.PI * 2;
+  phase2 = Math.random() * Math.PI * 2;
   raf = requestAnimationFrame(tick);
 }
 
 function stop() {
   running = false;
-  if (!isMobile) document.removeEventListener('mousemove', onMouseMove);
   cancelAnimationFrame(raf);
   const bs = document.body.style;
   bs.removeProperty('--bg-a1-x');
@@ -105,6 +123,7 @@ export function setConfig(newCfg) {
   const wasActive = cfg.active;
   Object.assign(cfg, newCfg);
   saveBgEffects(cfg);
+  recomputeDerived();
 
   if (cfg.active && !wasActive) start();
   else if (!cfg.active && wasActive) stop();
@@ -113,16 +132,25 @@ export function setConfig(newCfg) {
 export function resetConfig() {
   Object.assign(cfg, DEFAULTS);
   saveBgEffects(cfg);
+  recomputeDerived();
   if (!running && cfg.active) start();
 }
 
 /* ── Init ─────────────────────────────────────────── */
 
 export function initBgEffects() {
-  isMobile = window.matchMedia('(hover: none)').matches || window.innerWidth < 900;
-
-  const saved = loadBgEffects();
-  if (saved) Object.assign(cfg, saved);
+  const savedVersion = Number(localStorage.getItem(BGFX_VERSION_KEY) || '1');
+  if (savedVersion < BGFX_CURRENT_VERSION) {
+    // First load on this version — write the new tuned defaults, regardless
+    // of any prior tuning. End users see the production-ready feel.
+    Object.assign(cfg, DEFAULTS);
+    saveBgEffects(cfg);
+    localStorage.setItem(BGFX_VERSION_KEY, String(BGFX_CURRENT_VERSION));
+  } else {
+    const saved = loadBgEffects();
+    if (saved) Object.assign(cfg, saved);
+  }
+  recomputeDerived();
 
   if (cfg.active) start();
 }

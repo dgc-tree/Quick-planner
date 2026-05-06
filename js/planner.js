@@ -41,15 +41,10 @@ export function renderPlanner(container, tasks, callbacks = {}) {
   container.innerHTML = `
     <div class="planner-toolbar">
       <span class="planner-toolbar-label">View size</span>
-      <div class="planner-view-size">
-        <button class="view-size-btn${_viewSize === 'large' ? ' active' : ''}" data-size="large">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/></svg>
-          Large
-        </button>
-        <button class="view-size-btn${_viewSize === 'medium' ? ' active' : ''}" data-size="medium">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="12" height="8" rx="1.5"/></svg>
-          Medium
-        </button>
+      <div class="planner-view-size" role="group" aria-label="Adjust view size">
+        <button class="view-size-btn view-size-btn--minus" data-action="decrease" aria-label="Decrease size" title="Decrease size">A<span class="view-size-glyph">−</span></button>
+        <button class="view-size-btn view-size-btn--reset" data-action="reset" aria-label="Reset to default size" title="Default">Aa</button>
+        <button class="view-size-btn view-size-btn--plus" data-action="increase" aria-label="Increase size" title="Increase size">A<span class="view-size-glyph">+</span></button>
       </div>
     </div>
     <div class="planner-timeline-header">
@@ -104,17 +99,37 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
   }, { passive: true });
 
-  // View size buttons
+  // View size: A− / Aa / A+ pattern (BBC My Web My Way / WAI-style).
+  // Three discrete steps: small / medium (default) / large.
+  const sizeSteps = ['small', 'medium', 'large'];
+  const minusBtn = container.querySelector('.view-size-btn--minus');
+  const plusBtn = container.querySelector('.view-size-btn--plus');
+  const resetBtn = container.querySelector('.view-size-btn--reset');
+
+  function applyViewSize(next) {
+    _viewSize = next;
+    container.dataset.viewSize = _viewSize;
+    container.querySelector('.planner-wrapper').dataset.viewSize = _viewSize;
+    const idx = sizeSteps.indexOf(_viewSize);
+    if (minusBtn) minusBtn.disabled = idx <= 0;
+    if (plusBtn) plusBtn.disabled = idx >= sizeSteps.length - 1;
+    if (resetBtn) resetBtn.disabled = _viewSize === 'medium';
+    // Re-sync after size change (scroll position unchanged)
+    labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
+  }
+
+  // Initial state — sync button enabled/disabled to current size
+  applyViewSize(_viewSize);
+
   container.querySelectorAll('.view-size-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      _viewSize = btn.dataset.size;
-      container.dataset.viewSize = _viewSize;
-      container.querySelector('.planner-wrapper').dataset.viewSize = _viewSize;
-      container.querySelectorAll('.view-size-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      // Re-sync after size change (scroll position unchanged)
-      labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
+      const action = btn.dataset.action;
+      let idx = sizeSteps.indexOf(_viewSize);
+      if (action === 'decrease') idx = Math.max(0, idx - 1);
+      else if (action === 'increase') idx = Math.min(sizeSteps.length - 1, idx + 1);
+      else if (action === 'reset') idx = sizeSteps.indexOf('medium');
+      applyViewSize(sizeSteps[idx]);
     });
   });
 

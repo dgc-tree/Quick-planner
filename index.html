@@ -16,6 +16,36 @@
 </head>
 <body class="auth-gate">
 
+  <!-- Floating BG-effects tuning panel — fixed bottom-right, visible across all views. -->
+  <aside id="bgfx-panel" class="bgfx-panel" hidden role="dialog" aria-label="Background effects tuning">
+    <div class="bgfx-panel-header">
+      <span class="bgfx-panel-title">Background effects</span>
+      <button id="bgfx-panel-close" class="bgfx-panel-close" aria-label="Close tuning panel" title="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="bgfx-panel-body">
+      <div class="bgfx-slider-row">
+        <label for="bgfx-speed">Speed</label>
+        <input type="range" id="bgfx-speed" class="bgfx-slider" min="1" max="100" step="1" value="50">
+        <output for="bgfx-speed" id="bgfx-speed-out" class="bgfx-slider-value">50</output>
+      </div>
+      <div class="bgfx-slider-row">
+        <label for="bgfx-width">Width</label>
+        <input type="range" id="bgfx-width" class="bgfx-slider" min="1" max="100" step="1" value="50">
+        <output for="bgfx-width" id="bgfx-width-out" class="bgfx-slider-value">50</output>
+      </div>
+      <div class="bgfx-slider-row">
+        <label for="bgfx-height">Height</label>
+        <input type="range" id="bgfx-height" class="bgfx-slider" min="1" max="100" step="1" value="50">
+        <output for="bgfx-height" id="bgfx-height-out" class="bgfx-slider-value">50</output>
+      </div>
+    </div>
+    <div class="bgfx-panel-footer">
+      <button id="bgfx-reset" class="modal-btn modal-cancel">Reset</button>
+    </div>
+  </aside>
+
   <aside class="sidebar-rail">
     <button id="sidebar-top" class="sidebar-top" title="Back to board" aria-label="Go to board">
       <span class="sidebar-logo-icon">Qp</span>
@@ -90,17 +120,17 @@
       </div>
     </nav>
     <div class="sidebar-account-wrap">
+      <div id="sidebar-account-popover" class="sidebar-account-popover hidden">
+        <div class="sidebar-account-popover-email" id="sidebar-popover-email"></div>
+        <button id="sidebar-popover-settings" class="sidebar-account-popover-item">Settings</button>
+        <button id="sidebar-popover-logout" class="sidebar-account-popover-item sidebar-account-popover-logout">Log out</button>
+      </div>
       <button id="sidebar-account-btn" class="sidebar-item sidebar-account-btn" title="Account">
         <span id="sidebar-account-avatar" class="sidebar-account-avatar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
         </span>
         <span class="sidebar-label" id="sidebar-account-label">Account</span>
       </button>
-      <div id="sidebar-account-popover" class="sidebar-account-popover hidden">
-        <div class="sidebar-account-popover-email" id="sidebar-popover-email"></div>
-        <button id="sidebar-popover-settings" class="sidebar-account-popover-item">Settings</button>
-        <button id="sidebar-popover-logout" class="sidebar-account-popover-item sidebar-account-popover-logout">Log out</button>
-      </div>
     </div>
     <div class="sidebar-bottom">
       <button id="sidebar-toggle" class="sidebar-item sidebar-toggle-btn" title="Show or hide menu" aria-expanded="false" aria-label="Toggle sidebar menu">
@@ -131,44 +161,48 @@
     <div id="mobile-search-results" class="mobile-search-results"></div>
   </div>
 
-  <div id="mobile-filter-overlay" class="mobile-filter-overlay" role="dialog" aria-modal="true" aria-label="Filter tasks">
-    <div class="mobile-filter-header">
-      <span class="mobile-filter-title">Filter</span>
-      <button id="mobile-filter-done" class="mobile-filter-done">Done</button>
-    </div>
-    <div class="mobile-filter-body">
-      <div class="mobile-filter-row">
-        <label class="mobile-filter-label" for="m-filter-room">Room</label>
-        <select id="m-filter-room" class="mobile-filter-select"><option value="">All</option></select>
+  <div id="mobile-filter-overlay" class="modal-overlay filter-modal-overlay" role="dialog" aria-modal="true" aria-label="Filter tasks">
+    <div class="modal-dialog filter-dialog">
+      <div class="modal-header">
+        <h2 class="modal-title">Filter</h2>
+        <button id="mobile-filter-done" class="modal-icon-btn filter-close-btn" aria-label="Close filter">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
-      <div class="mobile-filter-row">
-        <label class="mobile-filter-label" for="m-filter-category">Category</label>
-        <select id="m-filter-category" class="mobile-filter-select"><option value="">All</option></select>
+      <div class="filter-grid">
+        <div class="modal-field">
+          <label for="m-filter-room">Room</label>
+          <select id="m-filter-room"><option value="">All</option></select>
+        </div>
+        <div class="modal-field">
+          <label for="m-filter-category">Category</label>
+          <select id="m-filter-category"><option value="">All</option></select>
+        </div>
+        <div class="modal-field">
+          <label for="m-filter-assigned">Assigned</label>
+          <select id="m-filter-assigned"><option value="">All</option></select>
+        </div>
+        <div id="m-group-by-wrap" class="modal-field">
+          <label for="m-group-by">Group by</label>
+          <select id="m-group-by">
+            <option value="status">Status</option>
+            <option value="room">Room</option>
+            <option value="category">Category</option>
+            <option value="assigned">Assigned</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label for="m-filter-date-from">From</label>
+          <input type="date" id="m-filter-date-from">
+        </div>
+        <div class="modal-field">
+          <label for="m-filter-date-to">To</label>
+          <input type="date" id="m-filter-date-to">
+        </div>
       </div>
-      <div class="mobile-filter-row">
-        <label class="mobile-filter-label" for="m-filter-assigned">Assigned</label>
-        <select id="m-filter-assigned" class="mobile-filter-select"><option value="">All</option></select>
+      <div class="modal-actions">
+        <button id="mobile-filter-clear" class="modal-btn modal-cancel">Clear filters</button>
       </div>
-      <div class="mobile-filter-row">
-        <label class="mobile-filter-label" for="m-filter-date-from">From</label>
-        <input type="date" id="m-filter-date-from" class="mobile-filter-date">
-      </div>
-      <div class="mobile-filter-row">
-        <label class="mobile-filter-label" for="m-filter-date-to">To</label>
-        <input type="date" id="m-filter-date-to" class="mobile-filter-date">
-      </div>
-      <div id="m-group-by-wrap" class="mobile-filter-row">
-        <label class="mobile-filter-label" for="m-group-by">Group by</label>
-        <select id="m-group-by" class="mobile-filter-select">
-          <option value="status">Status</option>
-          <option value="room">Room</option>
-          <option value="category">Category</option>
-          <option value="assigned">Assigned</option>
-        </select>
-      </div>
-    </div>
-    <div class="mobile-filter-footer">
-      <button id="mobile-filter-clear" class="mobile-filter-clear">Clear filters</button>
     </div>
   </div>
 
@@ -284,7 +318,7 @@
         <button class="settings-tab active" data-tab="general">General</button>
         <button class="settings-tab" data-tab="account">Account</button>
         <button class="settings-tab" data-tab="data">Data</button>
-        <button class="settings-tab" data-tab="assistant">Assistant</button>
+        <button class="settings-tab" data-tab="assistant" hidden>Assistant</button>
       </nav>
       <div class="settings-page-content">
 
@@ -305,7 +339,7 @@
             </div>
           </section>
 
-          <section class="settings-card">
+          <section class="settings-card" id="settings-bgfx-card">
             <label class="toggle-row">
               <span>Background effects</span>
               <input type="checkbox" id="bgfx-active" class="toggle-input">
@@ -313,24 +347,35 @@
             </label>
           </section>
 
+          <section class="settings-card" id="settings-notifications-card">
+            <label class="toggle-row">
+              <span>Notifications</span>
+              <input type="checkbox" id="settings-digest-active" class="toggle-input">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+            <div class="settings-card-body" id="settings-digest-controls">
+              <div class="modal-field" style="margin:16px 0 0">
+                <label for="settings-digest-freq">Frequency</label>
+                <p class="settings-field-hint">How often to show changes made by other users in shared projects.</p>
+                <select id="settings-digest-freq" style="width:100%">
+                  <option value="off">Off</option>
+                  <option value="instant" selected>Instant</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                  <option value="friday5pm">Friday 5pm</option>
+                  <option value="monday9am">Monday 9am</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           <section class="settings-card">
             <h3 class="settings-card-title">Preferences</h3>
-            <div class="modal-field" style="margin:0 0 16px">
-              <label for="settings-digest-freq">Notifications</label>
-              <p class="settings-field-hint">How often to show changes made by other users in shared projects.</p>
-              <select id="settings-digest-freq" class="mobile-filter-select" style="width:100%">
-                <option value="off">Off</option>
-                <option value="hourly">Hourly</option>
-                <option value="daily" selected>Daily</option>
-                <option value="friday5pm">Friday 5pm</option>
-                <option value="monday9am">Monday 9am</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
             <div class="modal-field" style="margin:0">
               <label for="settings-ai-briefing">Task summary</label>
               <p class="settings-field-hint">Get a quick overview of upcoming and overdue tasks when you open the app.</p>
-              <select id="settings-ai-briefing" class="mobile-filter-select" style="width:100%">
+              <select id="settings-ai-briefing" style="width:100%">
                 <option value="off">Off</option>
                 <option value="daily" selected>Daily</option>
                 <option value="weekly">Weekly</option>
@@ -425,13 +470,11 @@
           <section id="settings-export-section" class="settings-card">
             <h3 class="settings-card-title">Data</h3>
             <p class="settings-card-desc">Export this project or back up all app data.</p>
-            <div class="settings-card-actions">
+            <div class="settings-card-actions settings-data-actions">
               <button id="settings-export-btn" class="modal-btn modal-cancel">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Export CSV
               </button>
-            </div>
-            <div class="settings-card-actions settings-backup-actions">
               <button id="settings-backup-btn" class="modal-btn modal-cancel">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Backup all data
@@ -445,8 +488,8 @@
           </section>
         </div>
 
-        <!-- ═══ Assistant tab ═══ -->
-        <div class="settings-tab-panel" data-panel="assistant">
+        <!-- ═══ Assistant tab ═══ — parked, focus on local-intent QP Chat -->
+        <div class="settings-tab-panel" data-panel="assistant" hidden>
           <section class="settings-card" id="settings-assistant">
             <h3 class="settings-card-title">Assistant</h3>
             <p class="settings-card-desc">QP Chat works without any external service - add tasks, check what's due and manage your project using natural language. Optionally connect an AI provider for complex queries.</p>

@@ -9,6 +9,7 @@ import { loadActiveProjectId } from './storage.js';
 const API_BASE = 'https://qp-api.davegregurke.workers.dev';
 const DIGEST_SEEN_KEY = 'qp-digest-seen';
 const DIGEST_FREQ_KEY = 'qp-digest-freq';
+const DIGEST_ACTIVE_KEY = 'qp-digest-active';
 
 let _bellBtn = null;
 let _badge = null;
@@ -18,11 +19,20 @@ let _changes = [];
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 export function getDigestFrequency() {
-  return localStorage.getItem(DIGEST_FREQ_KEY) || 'daily';
+  return localStorage.getItem(DIGEST_FREQ_KEY) || 'instant';
 }
 
 export function setDigestFrequency(freq) {
   localStorage.setItem(DIGEST_FREQ_KEY, freq);
+}
+
+export function getDigestActive() {
+  const v = localStorage.getItem(DIGEST_ACTIVE_KEY);
+  return v === null ? true : v === 'true';
+}
+
+export function setDigestActive(active) {
+  localStorage.setItem(DIGEST_ACTIVE_KEY, active ? 'true' : 'false');
 }
 
 function getLastSeen() {
@@ -39,6 +49,7 @@ function getSinceDate() {
   const freq = getDigestFrequency();
   const now = new Date();
   switch (freq) {
+    case 'instant': return getLastSeen();
     case 'hourly': return new Date(now - 3600000).toISOString();
     case 'daily': return new Date(now.setHours(0, 0, 0, 0)).toISOString();
     case 'friday5pm': {
@@ -158,10 +169,11 @@ function timeAgo(date) {
 
 export function initDigest() {
   if (!isLoggedIn() || isSandbox()) return;
+  if (!getDigestActive()) return;
 
-  // Inject bell button into sidebar (before settings)
-  const settingsBtn = document.getElementById('sidebar-settings-btn');
-  if (!settingsBtn || document.getElementById('sidebar-digest-btn')) return;
+  // Inject bell button at the top of the sidebar nav.
+  const nav = document.querySelector('.sidebar-nav');
+  if (!nav || document.getElementById('sidebar-digest-btn')) return;
 
   _bellBtn = document.createElement('button');
   _bellBtn.id = 'sidebar-digest-btn';
@@ -172,7 +184,7 @@ export function initDigest() {
     <span class="sidebar-label">Notifications</span>
     <span class="digest-badge hidden" id="digest-badge">0</span>
   `;
-  settingsBtn.parentNode.insertBefore(_bellBtn, settingsBtn);
+  nav.prepend(_bellBtn);
 
   _badge = _bellBtn.querySelector('#digest-badge');
   _bellBtn.addEventListener('click', toggleDigestPanel);
@@ -197,6 +209,16 @@ export function initDigest() {
 
   // Check for changes
   checkForChanges();
+}
+
+// Tear the bell + panel down. Called when the master toggle is switched off.
+export function removeDigest() {
+  document.getElementById('sidebar-digest-btn')?.remove();
+  document.getElementById('digest-panel')?.remove();
+  _bellBtn = null;
+  _badge = null;
+  _panel = null;
+  _changes = [];
 }
 
 async function checkForChanges() {

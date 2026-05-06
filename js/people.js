@@ -2,6 +2,30 @@
 // Manages project members and pending invitations
 
 import { isLoggedIn, isSandbox } from './auth.js';
+import { getInitials } from './utils.js';
+import { loadProjects, loadActiveProjectId } from './storage.js';
+
+// Cross-reference the server-side member name (often a single first name)
+// with the project's canonical members (built from task assignments — often
+// fuller). When the canonical name shares the first word but has more parts,
+// prefer it for display so initials and labels match the rest of the app.
+function resolveCanonicalDisplay(serverName) {
+  if (!serverName) return serverName;
+  try {
+    const projects = loadProjects();
+    const activeId = loadActiveProjectId();
+    const project = projects.find(p => p.id === activeId);
+    const canonicalMembers = (project && Array.isArray(project.members)) ? project.members : [];
+    const baseFirst = String(serverName).trim().split(/\s+/)[0].toLowerCase();
+    const match = canonicalMembers.find(cm => {
+      const parts = String(cm.name || '').trim().split(/\s+/);
+      return parts.length > 1 && parts[0].toLowerCase() === baseFirst;
+    });
+    return match ? match.name : serverName;
+  } catch {
+    return serverName;
+  }
+}
 
 const API_BASE = 'https://qp-api.davegregurke.workers.dev';
 
@@ -155,8 +179,9 @@ export function initPeopleSection(container, { getActiveProjectId }) {
       html += `<h4 class="people-section-label">${groupLabels[role]}</h4>`;
       html += `<div class="people-avatar-grid">`;
       for (const m of grouped[role]) {
-        const initial = (m.name || m.email)[0].toUpperCase();
-        const displayName = m.name || m.email.split('@')[0];
+        const baseName = m.name || m.email.split('@')[0];
+        const displayName = resolveCanonicalDisplay(baseName);
+        const initial = getInitials(displayName);
         const isOwner = m.role === 'owner';
         html += `
           <div class="people-avatar-card" data-member-id="${m.id}" data-user-id="${m.user_id}" title="${esc(escHtml(m.email))}">

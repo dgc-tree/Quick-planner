@@ -245,10 +245,261 @@ function migrateAssignedToArray() {
   }
 }
 
+function migrateMembers() {
+  if (localStorage.getItem('qp-members-v1')) return;
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if (!raw) { localStorage.setItem('qp-members-v1', '1'); return; }
+    const projects = JSON.parse(raw);
+
+    // Build per-project canonical member list (case-fold dedupe; canonical
+    // casing = most frequent occurrence, ties broken by first-seen).
+    for (const project of projects) {
+      const counts = new Map();
+      const variants = new Map();
+      let order = 0;
+      const firstOrder = new Map();
+      const visit = (name) => {
+        const trimmed = String(name == null ? '' : name).trim();
+        if (!trimmed) return;
+        const key = trimmed.toLowerCase();
+        counts.set(key, (counts.get(key) || 0) + 1);
+        if (!variants.has(key)) variants.set(key, new Map());
+        const vmap = variants.get(key);
+        vmap.set(trimmed, (vmap.get(trimmed) || 0) + 1);
+        if (!firstOrder.has(key)) firstOrder.set(key, order++);
+      };
+      for (const t of (project.tasks || [])) {
+        const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+        for (const n of arr) visit(n);
+      }
+      // Pick canonical casing per key
+      const canonicalByKey = new Map();
+      for (const [key, vmap] of variants) {
+        let bestVariant = null, bestCount = -1;
+        for (const [v, c] of vmap) {
+          if (c > bestCount) { bestCount = c; bestVariant = v; }
+        }
+        canonicalByKey.set(key, bestVariant);
+      }
+      const members = [...counts.keys()]
+        .sort((a, b) => firstOrder.get(a) - firstOrder.get(b))
+        .map(key => ({ name: canonicalByKey.get(key) }));
+      project.members = members;
+
+      // Rewrite every task's assigned array to canonical casing, drop
+      // case-insensitive duplicates within the same task.
+      for (const t of (project.tasks || [])) {
+        const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+        const seen = new Set();
+        const out = [];
+        for (const raw of arr) {
+          const trimmed = String(raw == null ? '' : raw).trim();
+          if (!trimmed) continue;
+          const key = trimmed.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push(canonicalByKey.get(key) || trimmed);
+        }
+        if (JSON.stringify(out) !== JSON.stringify(arr)) {
+          t.assigned = out;
+        }
+      }
+    }
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects, DATE_REPLACER));
+
+    // Apply the same canonicalisation to bin entries so restored tasks
+    // come back with the canonical name. Match each entry to its project
+    // via entry.projectId (set by migrateBinToProjectScope).
+    const projectsByKey = new Map(projects.map(p => [p.id, p]));
+    const fold = (s) => String(s == null ? '' : s).trim().toLowerCase();
+    const canonicalForProject = (projectId, name) => {
+      const project = projectsByKey.get(projectId);
+      if (!project || !Array.isArray(project.members)) return name;
+      const member = project.members.find(m => fold(m.name) === fold(name));
+      return member ? member.name : name;
+    };
+
+    try {
+      const binRaw = localStorage.getItem(BIN_KEY);
+      if (binRaw) {
+        const bin = JSON.parse(binRaw);
+        let binChanged = false;
+        for (const entry of bin) {
+          if (!entry.task || !entry.projectId) continue;
+          const arr = Array.isArray(entry.task.assigned) ? entry.task.assigned : (entry.task.assigned ? [entry.task.assigned] : []);
+          const seen = new Set();
+          const out = [];
+          for (const raw of arr) {
+            const trimmed = String(raw == null ? '' : raw).trim();
+            if (!trimmed) continue;
+            const key = trimmed.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(canonicalForProject(entry.projectId, trimmed));
+          }
+          if (JSON.stringify(out) !== JSON.stringify(arr)) {
+            entry.task.assigned = out;
+            binChanged = true;
+          }
+        }
+        if (binChanged) localStorage.setItem(BIN_KEY, JSON.stringify(bin));
+      }
+    } catch (err) {
+      console.warn('Bin canonicalisation skipped:', err.message);
+    }
+
+    // Project bin: each entry stores a whole project blob; rebuild members
+    // from its own tasks then canonicalise.
+    try {
+      const pbinRaw = localStorage.getItem(PROJECT_BIN_KEY);
+      if (pbinRaw) {
+        const pbin = JSON.parse(pbinRaw);
+        let pbinChanged = false;
+        for (const entry of pbin) {
+          if (!entry.project) continue;
+          const proj = entry.project;
+          const counts = new Map();
+          const variants = new Map();
+          for (const t of (proj.tasks || [])) {
+            const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+            for (const n of arr) {
+              const trimmed = String(n == null ? '' : n).trim();
+              if (!trimmed) continue;
+              const k = trimmed.toLowerCase();
+              counts.set(k, (counts.get(k) || 0) + 1);
+              if (!variants.has(k)) variants.set(k, new Map());
+              variants.get(k).set(trimmed, (variants.get(k).get(trimmed) || 0) + 1);
+            }
+          }
+          const canonByKey = new Map();
+          for (const [key, vmap] of variants) {
+            let best = null, bestC = -1;
+            for (const [v, c] of vmap) if (c > bestC) { bestC = c; best = v; }
+            canonByKey.set(key, best);
+          }
+          proj.members = [...canonByKey.values()].map(name => ({ name }));
+          for (const t of (proj.tasks || [])) {
+            const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+            const seen = new Set();
+            const out = [];
+            for (const raw of arr) {
+              const trimmed = String(raw == null ? '' : raw).trim();
+              if (!trimmed) continue;
+              const key = trimmed.toLowerCase();
+              if (seen.has(key)) continue;
+              seen.add(key);
+              out.push(canonByKey.get(key) || trimmed);
+            }
+            if (JSON.stringify(out) !== JSON.stringify(arr)) {
+              t.assigned = out;
+              pbinChanged = true;
+            }
+          }
+        }
+        if (pbinChanged) localStorage.setItem(PROJECT_BIN_KEY, JSON.stringify(pbin));
+      }
+    } catch (err) {
+      console.warn('Project bin canonicalisation skipped:', err.message);
+    }
+
+    localStorage.setItem('qp-members-v1', '1');
+  } catch (err) {
+    console.warn('Members migration failed:', err.message);
+  }
+}
+
+// One-shot rename: link any "Simone" / "SG" / "Simone G" assignments and
+// canonical members to the full name "Simone Gregurke". Hardcoded for the
+// owner's project, kept minimal because the proper fix is server-side
+// (require last name at signup; allow editing display name in profile).
+function migrateSimoneFullName() {
+  if (localStorage.getItem('qp-simone-fullname-v1')) return;
+  try {
+    const TARGET = 'Simone Gregurke';
+    const ALIASES = new Set(['simone', 'sg', 's g', 's gregurke', 'simone g', 'simone g.']);
+    const isAlias = (n) => ALIASES.has(String(n == null ? '' : n).trim().toLowerCase());
+    const canonicalise = (n) => isAlias(n) ? TARGET : n;
+
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if (raw) {
+      const projects = JSON.parse(raw);
+      let changed = false;
+      for (const project of projects) {
+        // Members: rename any aliased entries to TARGET, dedupe.
+        if (Array.isArray(project.members)) {
+          const seen = new Set();
+          const out = [];
+          for (const m of project.members) {
+            const renamed = isAlias(m && m.name) ? { ...m, name: TARGET } : m;
+            const k = String(renamed.name || '').trim().toLowerCase();
+            if (!k || seen.has(k)) { changed = true; continue; }
+            seen.add(k);
+            if (renamed !== m) changed = true;
+            out.push(renamed);
+          }
+          project.members = out;
+        }
+        // Tasks: canonicalise assigned[] entries.
+        for (const t of (project.tasks || [])) {
+          const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+          const seen = new Set();
+          const out = [];
+          for (const raw2 of arr) {
+            const renamed = canonicalise(raw2);
+            const k = String(renamed || '').trim().toLowerCase();
+            if (!k || seen.has(k)) continue;
+            seen.add(k);
+            out.push(renamed);
+          }
+          if (JSON.stringify(out) !== JSON.stringify(arr)) {
+            t.assigned = out;
+            changed = true;
+          }
+        }
+      }
+      if (changed) localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects, DATE_REPLACER));
+    }
+
+    // Bin entries: canonicalise assigned on each archived/trashed task.
+    const binRaw = localStorage.getItem(BIN_KEY);
+    if (binRaw) {
+      const bin = JSON.parse(binRaw);
+      let binChanged = false;
+      for (const entry of bin) {
+        const t = entry && entry.task;
+        if (!t) continue;
+        const arr = Array.isArray(t.assigned) ? t.assigned : (t.assigned ? [t.assigned] : []);
+        const seen = new Set();
+        const out = [];
+        for (const raw2 of arr) {
+          const renamed = canonicalise(raw2);
+          const k = String(renamed || '').trim().toLowerCase();
+          if (!k || seen.has(k)) continue;
+          seen.add(k);
+          out.push(renamed);
+        }
+        if (JSON.stringify(out) !== JSON.stringify(arr)) {
+          t.assigned = out;
+          binChanged = true;
+        }
+      }
+      if (binChanged) localStorage.setItem(BIN_KEY, JSON.stringify(bin, DATE_REPLACER));
+    }
+
+    localStorage.setItem('qp-simone-fullname-v1', '1');
+  } catch (err) {
+    console.warn('Simone fullname migration failed:', err.message);
+    localStorage.setItem('qp-simone-fullname-v1', '1');
+  }
+}
+
 export function runMigrations() {
   migrateToUUIDs();
   migrateCategoryRenames();
   migrateAssignedToArray();
+  migrateMembers();
+  migrateSimoneFullName();
 }
 
 export function loadProjects() {
@@ -280,6 +531,16 @@ export function saveProjectTasks(id, tasks) {
   const idx = projects.findIndex(p => p.id === id);
   if (idx === -1) return;
   projects[idx].tasks = JSON.parse(JSON.stringify(tasks, DATE_REPLACER));
+  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+}
+
+export function saveProjectMembers(id, members) {
+  const projects = loadProjects();
+  const idx = projects.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  projects[idx].members = Array.isArray(members)
+    ? members.map(m => ({ ...m }))
+    : [];
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
 }
 
