@@ -95,7 +95,9 @@ function restoreOverlayOnLoad() {
   if (overlay === 'settings' && typeof window._showSettings === 'function') window._showSettings();
   else if (overlay === 'trash' && typeof window._showTrash === 'function') window._showTrash();
   else if (overlay === 'archive' && typeof window._showArchive === 'function') window._showArchive();
-  // Chat panel: opened via initChat's openPanel exposed to window
+}
+
+function restoreChatPanelOnLoad() {
   if (localStorage.getItem('qp-chat-open') === '1' && typeof window._openChatPanel === 'function') {
     window._openChatPanel();
   }
@@ -557,19 +559,24 @@ async function initApp() {
       let valid = false;
       try { valid = await verifySession(); } catch { valid = false; }
       if (!valid) {
-        // Token expired or invalid — back to login gate
-        showLoading(false);
-        document.body.classList.add('auth-gate');
-        showAuthModal(async () => { await initApp(); }, { gate: true });
-        return;
-      }
-      const synced = await syncFromServer();
-      // After sync, validate active project still exists (may have gained shared projects)
-      if (synced) {
-        const projects = loadProjects();
-        if (projects.length && !projects.find(p => p.id === currentProjectId)) {
-          currentProjectId = projects[0].id;
-          saveActiveProjectId(currentProjectId);
+        if (!isLoggedIn()) {
+          // Token was confirmed invalid/expired by the server — back to login gate
+          showLoading(false);
+          document.body.classList.add('auth-gate');
+          showAuthModal(async () => { await initApp(); }, { gate: true });
+          return;
+        }
+        // Network error: couldn't reach the server but token still exists locally.
+        // Fall through and render from cached localStorage — sync is skipped.
+      } else {
+        const synced = await syncFromServer();
+        // After sync, validate active project still exists (may have gained shared projects)
+        if (synced) {
+          const projects = loadProjects();
+          if (projects.length && !projects.find(p => p.id === currentProjectId)) {
+            currentProjectId = projects[0].id;
+            saveActiveProjectId(currentProjectId);
+          }
         }
       }
     }
@@ -621,10 +628,8 @@ async function initApp() {
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
 
-  // Expose chat openPanel so the post-init overlay restore can re-open it
   window._openChatPanel = openChatPanel;
 
-  // QP Chat assistant — LOCAL DEV ONLY (comment out before pushing to live)
   initChat({
     // Hide archived tasks from the chat: read queries (overdue, summary,
     // tasks-for) and intent matching all operate on the live set. Restore
@@ -675,6 +680,8 @@ async function initApp() {
       if (task) handleTaskArchive(task, { skipPrompt: true, reason: opts.reason || '' });
     },
   });
+  // Restore chat panel after initChat() has injected the UI into the DOM
+  restoreChatPanelOnLoad();
 }
 
 async function init() {

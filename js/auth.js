@@ -45,7 +45,11 @@ export async function apiCall(path, options = {}) {
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -86,9 +90,13 @@ export async function verifySession() {
     _user = user;
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     return true;
-  } catch {
-    // Token expired or invalid
-    setAuth(null, null);
+  } catch (err) {
+    // Only wipe the token for confirmed server rejections (401/403).
+    // Network errors, timeouts, and 5xx responses should not log the user out —
+    // the token may still be valid; we just couldn't reach the server.
+    if (err.status === 401 || err.status === 403) {
+      setAuth(null, null);
+    }
     return false;
   }
 }
