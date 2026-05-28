@@ -539,7 +539,8 @@ body {
   background: color-mix(in srgb, var(--dark-surface) 85%, transparent);
   border-color: var(--glass-border-strong);
 }
-[data-theme="dark"] .modal-field span { color: var(--content-secondary); }
+[data-theme="dark"] .modal-field span,
+[data-theme="dark"] .modal-field label { color: var(--content-secondary); }
 [data-theme="dark"] .modal-field input,
 [data-theme="dark"] .modal-field select,
 [data-theme="dark"] .modal-field textarea {
@@ -2173,6 +2174,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   color: var(--text);
+  margin: 0;
 }
 
 /* Multi-member picker in modal */
@@ -2445,7 +2447,8 @@ main.settings-open { overflow: hidden; padding: 0; }
   margin-left: calc(-1 * var(--space-4));
 }
 
-.modal-field span {
+.modal-field span,
+.modal-field label {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--content-secondary);
@@ -2515,7 +2518,8 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 
 .modal-field input:focus,
-.modal-field select:focus {
+.modal-field select:focus,
+.modal-field textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
@@ -2653,6 +2657,12 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-field--deps {
   flex: 1 1 0;
   min-width: 100px;
+}
+
+.modal-dialog-desc {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: var(--space-4) 0 var(--space-16);
 }
 
 .modal-actions {

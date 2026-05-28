@@ -370,11 +370,13 @@ function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:360px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">${title}</h1>
-        <p class="modal-delete-body">${body}</p>
-        <div class="modal-delete-actions">
+    <div class="modal-dialog" role="dialog" style="max-width:400px">
+      <div class="modal-header">
+        <h2 class="modal-title">${title}</h2>
+      </div>
+      <p class="modal-dialog-desc">${body}</p>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
           <button class="modal-btn modal-cancel">Cancel</button>
           <button class="modal-btn modal-delete-confirm-btn">${confirmLabel || 'Confirm'}</button>
         </div>
@@ -386,6 +388,7 @@ function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   overlay.querySelector('.modal-cancel').addEventListener('click', remove);
   overlay.querySelector('.modal-delete-confirm-btn').addEventListener('click', () => { remove(); onConfirm(); });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+  document.addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { remove(); document.removeEventListener('keydown', onKey); } });
 }
 
 function showReasonDialog({ title, body, placeholder, confirmLabel, destructive, onConfirm }) {
@@ -393,15 +396,17 @@ function showReasonDialog({ title, body, placeholder, confirmLabel, destructive,
   overlay.className = 'modal-overlay open';
   const confirmClass = destructive ? 'modal-delete-confirm-btn' : 'modal-save';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:420px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">${title}</h1>
-        ${body ? `<p class="modal-delete-body">${body}</p>` : ''}
-        <div class="modal-field" style="margin:16px 0 24px">
-          <label for="reason-input">Reason (optional)</label>
-          <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}" style="width:100%;resize:vertical;min-height:72px"></textarea>
-        </div>
-        <div class="modal-delete-actions">
+    <div class="modal-dialog" role="dialog" style="max-width:440px">
+      <div class="modal-header">
+        <h2 class="modal-title">${title}</h2>
+      </div>
+      ${body ? `<p class="modal-dialog-desc">${body}</p>` : ''}
+      <div class="modal-field">
+        <label for="reason-input">Reason (optional)</label>
+        <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}"></textarea>
+      </div>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
           <button class="modal-btn modal-cancel">Cancel</button>
           <button class="modal-btn ${confirmClass}">${confirmLabel || 'Confirm'}</button>
         </div>
@@ -420,6 +425,7 @@ function showReasonDialog({ title, body, placeholder, confirmLabel, destructive,
     onConfirm(reason);
   });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+  document.addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { remove(); document.removeEventListener('keydown', onKey); } });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -447,14 +453,16 @@ function handleDuplicateProject(id, name) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:360px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">Duplicate project</h1>
-        <div class="modal-field" style="margin:16px 0 24px">
-          <label>Project name</label>
-          <input type="text" class="dup-name-input" value="${defaultName.replace(/"/g, '&quot;')}" />
-        </div>
-        <div class="modal-delete-actions">
+    <div class="modal-dialog" role="dialog" style="max-width:400px">
+      <div class="modal-header">
+        <h2 class="modal-title">Duplicate project</h2>
+      </div>
+      <div class="modal-field">
+        <label>Project name</label>
+        <input type="text" class="dup-name-input" value="${defaultName.replace(/"/g, '&quot;')}" />
+      </div>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
           <button class="modal-btn modal-cancel">Cancel</button>
           <button class="modal-btn modal-save dup-save-btn">Save</button>
         </div>
