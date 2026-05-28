@@ -1248,9 +1248,47 @@ export function resolveIntent(message, context) {
     }
   }
 
-  // "delete/remove all [filter]"
+  // "start fresh" / "clear everything" / "delete all tasks"
+  if (/^(?:start\s+fresh|reset\s+(?:all\s+)?tasks?|clear\s+everything|delete\s+everything|remove\s+everything|wipe\s+(?:all\s+)?tasks?)$/i.test(lower) ||
+      /^(?:delete|remove|trash|clear)\s+all\s+tasks?\s*$/i.test(lower)) {
+    if (tasks.length === 0) return { type: 'read', response: 'No tasks to delete.' };
+    return {
+      type: 'clarify',
+      response: `This will move all ${tasks.length} tasks to the bin. Proceed?`,
+      pendingAction: {
+        action: 'bulk_delete',
+        taskIds: tasks.map(t => t.id),
+        label: 'all tasks',
+      },
+    };
+  }
+
+  // "delete/clear all tasks except [task name]"
   {
-    const bulkDelete = lower.match(/^(?:delete|remove|trash)\s+(?:all\s+)?(.+)$/);
+    const exceptMatch = lower.match(/^(?:delete|remove|trash|clear)\s+(?:all\s+)?(?:tasks?\s+)?except\s+(?:for\s+)?(.+)$/);
+    if (exceptMatch) {
+      const keepQuery = exceptMatch[1].trim();
+      const keepResult = findTask(keepQuery, tasks);
+      if (keepResult) {
+        const toDelete = tasks.filter(t => t.id !== keepResult.id);
+        if (toDelete.length === 0) return { type: 'read', response: `Only "${keepResult.task}" exists — nothing else to delete.` };
+        return {
+          type: 'clarify',
+          response: `Keep "${keepResult.task}" and move the other ${toDelete.length} task${toDelete.length === 1 ? '' : 's'} to the bin. Proceed?`,
+          pendingAction: {
+            action: 'bulk_delete',
+            taskIds: toDelete.map(t => t.id),
+            label: `all tasks except "${keepResult.task}"`,
+          },
+        };
+      }
+      return { type: 'read', response: `I couldn't find a task called "${keepQuery}" to keep. Which task should I preserve?` };
+    }
+  }
+
+  // "delete/remove/clear all [filter]"
+  {
+    const bulkDelete = lower.match(/^(?:delete|remove|trash|clear)\s+(?:all\s+)?(.+)$/);
     if (bulkDelete) {
       const result = filterTasks(bulkDelete[1], tasks);
       if (result && result.matched.length > 1) {
