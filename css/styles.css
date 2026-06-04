@@ -4,20 +4,20 @@
 :root {
   --font: 'DM Sans', system-ui, -apple-system, sans-serif;
   /* Type scale (base 14px on html) */
-  --text-xs: 0.65rem;    /* ~9px — badges, micro labels */
-  --text-sm: 0.75rem;    /* ~10.5px — captions, field labels */
-  --text-base: 0.9rem;   /* ~12.6px — body, inputs, cards */
-  --text-md: 1rem;       /* 14px — nav items, emphasis */
-  --text-lg: 1.1rem;     /* ~15.4px — section titles, modal headers */
-  --text-xl: 1.3rem;     /* ~18.2px — page headings */
-  --text-2xl: 1.6rem;    /* ~22.4px — display, hero */
+  --text-xs: 0.65rem;    /* ~9px - badges, micro labels */
+  --text-sm: 0.75rem;    /* ~10.5px - captions, field labels */
+  --text-base: 0.9rem;   /* ~12.6px - body, inputs, cards */
+  --text-md: 1rem;       /* 14px - nav items, emphasis */
+  --text-lg: 1.1rem;     /* ~15.4px - section titles, modal headers */
+  --text-xl: 1.3rem;     /* ~18.2px - page headings */
+  --text-2xl: 1.6rem;    /* ~22.4px - display, hero */
   /* Weight scale */
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
   --weight-extrabold: 800;
-  /* Spacing — verbatim pixel values (2px steps to 20, then 8px grid) */
+  /* Spacing - verbatim pixel values (2px steps to 20, then 8px grid) */
   --space-0: 0px;
   --space-2: 2px;
   --space-4: 4px;
@@ -30,19 +30,20 @@
   --space-18: 18px;
   --space-20: 20px;
   --space-24: 24px;
+  --space-28: 28px;
   --space-32: 32px;
   --space-40: 40px;
   --space-48: 48px;
   --space-64: 64px;
   --space-96: 96px;
-  /* Spacing — semantic aliases (adjust these to tune the whole system) */
-  --space-xxs: var(--space-2);   /* 2px — hairline */
-  --space-xs: var(--space-4);    /* 4px — tight internal */
-  --space-s: var(--space-8);     /* 8px — standard gap */
-  --space-m: var(--space-12);    /* 12px — field/card spacing */
-  --space-l: var(--space-16);    /* 16px — section padding */
-  --space-xl: var(--space-24);   /* 24px — group spacing */
-  --space-xxl: var(--space-32);  /* 32px — section gaps */
+  /* Spacing - semantic aliases (adjust these to tune the whole system) */
+  --space-xxs: var(--space-2);   /* 2px - hairline */
+  --space-xs: var(--space-4);    /* 4px - tight internal */
+  --space-s: var(--space-8);     /* 8px - standard gap */
+  --space-m: var(--space-12);    /* 12px - field/card spacing */
+  --space-l: var(--space-16);    /* 16px - section padding */
+  --space-xl: var(--space-24);   /* 24px - group spacing */
+  --space-xxl: var(--space-32);  /* 32px - section gaps */
   /* Radius scale */
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -70,12 +71,12 @@
   --shadow-accent-hover: var(--color-primary1-900, #004d57);
   --planner-tint: color-mix(in srgb, var(--color-primary1-100, #cef7ff) 45%, white);
   --planner-tint-dark: var(--color-primary1-900, rgba(0, 37, 44, 0.85));
-  /* Status column header defaults — tokens.css sets the real values;
+  /* Status column header defaults - tokens.css sets the real values;
      these are fallbacks only if tokens fail to load */
   --status-todo-bg: #2B6CB0;
   --status-in-progress-bg: rgb(170, 51, 208);
   --status-blocked-bg: #C53030;
-  /* Status text — overridden by JS when user picks a custom column colour */
+  /* Status text - overridden by JS when user picks a custom column colour */
   --status-todo-text: #FFFFFF;
   --status-in-progress-text: #FFFFFF;
   --status-blocked-text: #FFFFFF;
@@ -109,6 +110,10 @@
   --icon-on-dark: #fff;
   /* Auth/landing page surface */
   --surface-landing: #fafafa;
+  /* Home prompt accent card - light values (sourced from qp-ux-proposal.html) */
+  --glass-card-accent:        color-mix(in srgb, var(--accent-primary1) 10%, rgba(255,255,255,0.88));
+  --glass-card-accent-border: color-mix(in srgb, var(--accent-primary1) 40%, rgba(255,255,255,0.6));
+  --glass-card-accent-hover:  color-mix(in srgb, var(--accent-primary1) 18%, rgba(255,255,255,0.92));
 }
 
 html { font-size: 14px; overflow-x: hidden; }
@@ -476,7 +481,7 @@ body {
 
 /* === Dark Theme === */
 [data-theme="dark"] {
-  /* Dark surface defaults — theme-customizer overrides these with accent-tinted values */
+  /* Dark surface defaults - theme-customizer overrides these with accent-tinted values */
   --dark-surface: var(--color-neutral-1100, #202020);
   --dark-card: var(--color-neutral-1000, #313131);
   --dark-card-hover: var(--color-neutral-900, #434343);
@@ -487,7 +492,7 @@ body {
   --shadow-card: 0 2px 8px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2);
   --shadow-hover: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
   --shadow-glass: inset 0 1px 0 0 var(--highlight), 0 1px 3px rgba(0,0,0,0.3);
-  /* Glass surfaces — dark */
+  /* Glass surfaces - dark */
   --glass-dialog: rgba(22,24,34,0.88);
   --glass-nav: rgba(22,24,34,0.88);
   --glass-overlay: rgba(12,12,22,0.88);
@@ -496,22 +501,26 @@ body {
   --glass-border-strong: rgba(255,255,255,0.15);
   --glass-border-subtle: rgba(255,255,255,0.08);
   --glass-highlight: rgba(255,255,255,0.08);
+  /* Home prompt accent card - dark overrides */
+  --glass-card-accent:        color-mix(in srgb, var(--accent-primary1) 12%, rgba(22,24,34,0.92));
+  --glass-card-accent-border: color-mix(in srgb, var(--accent-primary1) 45%, rgba(255,255,255,0.12));
+  --glass-card-accent-hover:  color-mix(in srgb, var(--accent-primary1) 20%, rgba(30,33,45,0.95));
   --glass-shadow: 0 8px 32px rgba(0,0,0,0.3);
   --glass-shadow-inset: inset 0 1px 0 rgba(255,255,255,0.08);
-  /* Form inputs — dark */
+  /* Form inputs - dark */
   --input-bg: rgba(22,24,34,0.93);
   --input-bg-hover: rgba(30,33,45,0.96);
   --input-border: rgba(255,255,255,0.15);
   --input-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
-  /* Today marker — dark */
+  /* Today marker - dark */
   --today-text: #FC8181;
   --today-bg: #3B1A1A;
   --today-border: #9B2C2C;
   --today-line: #E53E3E;
-  /* Neutral interaction states — dark */
+  /* Neutral interaction states - dark */
   --hover-overlay: rgba(255,255,255,0.08);
   --active-overlay: rgba(255,255,255,0.12);
-  /* Icons — dark */
+  /* Icons - dark */
   --icon-primary: var(--content-primary);
   /* Auth/landing page surface */
   --surface-landing: var(--dark-surface-deepest, #0f1117);
@@ -584,7 +593,7 @@ body {
 .sidebar-theme-group[data-mode="dark"] .theme-mode-icon-dark { display: flex; }
 .sidebar-theme-group[data-mode="system"] .theme-mode-icon-auto { display: flex; }
 
-/* Sub-panel — hidden by default, shown when open AND sidebar expanded */
+/* Sub-panel - hidden by default, shown when open AND sidebar expanded */
 .sidebar-theme-sub {
   display: none;
   flex-direction: column;
@@ -832,7 +841,7 @@ body {
 
 .view-btn svg { flex-shrink: 0; }
 
-/* === Toolbar Search (inside .search-filter-group — no own bg/border) === */
+/* === Toolbar Search (inside .search-filter-group - no own bg/border) === */
 .toolbar-search {
   display: flex;
   align-items: center;
@@ -947,7 +956,7 @@ body {
   width: 100%;
 }
 
-/* Legacy .filters wrapper — no longer used in DOM but keep for mobile compat */
+/* Legacy .filters wrapper - no longer used in DOM but keep for mobile compat */
 .filters { display: none; }
 
 select {
@@ -1679,7 +1688,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 [data-theme="dark"] .month-header { color: var(--color-neutral-200); }
 [data-theme="dark"] .planner-group-header { color: var(--color-neutral-100); }
 
-/* "Month" header — sticky to top */
+/* "Month" header - sticky to top */
 .planner-label-col {
   display: flex;
   align-items: center;
@@ -1753,7 +1762,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 .planner-wrapper[data-view-size="medium"] .planner-right { min-width: 1100px; }
 .planner-wrapper[data-view-size="large"] .planner-right { min-width: 1600px; }
 
-/* Month timeline header — outside scroll, full viewport width */
+/* Month timeline header - outside scroll, full viewport width */
 .planner-timeline-header {
   display: flex;
   overflow: hidden;
@@ -1776,7 +1785,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   mix-blend-mode: multiply;
 }
 
-/* Left stub in timeline header — aligns with .planner-left width */
+/* Left stub in timeline header - aligns with .planner-left width */
 .planner-timeline-month-col {
   width: 220px;
   flex-shrink: 0;
@@ -1789,7 +1798,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   border-right-color: rgba(255,255,255,0.08);
 }
 
-/* Scrolling label strip — synced via translateX in JS */
+/* Scrolling label strip - synced via translateX in JS */
 .planner-timeline-labels {
   flex: 1;
   position: relative;
@@ -1936,8 +1945,137 @@ main.settings-open { overflow: hidden; padding: 0; }
 .planner-bar--done { opacity: 0.3; }
 .planner-bar--done .bar-label { text-decoration: line-through; }
 
+/* Undated / endless bars - span full timeline width, dashed stroke signals
+   "open-ended until you add dates". Clicking opens the edit modal. */
+/* Undated bar: dashed stripe, no position set here so both contexts work.
+   .planner-bar-container sets position:absolute for the timeline; the
+   footer override below resets to relative. No !important needed. */
+.planner-bar--undated {
+  left: 0;
+  width: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 8px,
+    transparent 8px, transparent 16px
+  );
+  border: 1.5px dashed rgba(0,0,0,0.22);
+  border-left: 1.5px dashed rgba(0,0,0,0.22);
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.planner-bar--undated:hover { opacity: 1; }
+[data-theme="dark"] .planner-bar--undated {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 8px,
+    transparent 8px, transparent 16px
+  );
+  border-color: rgba(255,255,255,0.20);
+}
+.planner-bar-undated-tag {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.06);
+  color: var(--text-tertiary, var(--content-tertiary));
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+[data-theme="dark"] .planner-bar-undated-tag { background: rgba(255,255,255,0.08); }
+.planner-label--undated { opacity: 0.55; }
+
+/* === Undated footer - collapsible sticky panel at planner bottom ===
+   Always visible as the collapsed header. User opens it to see/click
+   undated tasks. State is toggled in-memory via aria-expanded.
+   Sits as flex-shrink:0 at the base of .planner-container (flex-column). */
+.planner-undated-footer {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  background: var(--planner-tint);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
+  position: relative;
+  z-index: 11;
+}
+[data-theme="dark"] .planner-undated-footer {
+  background: var(--planner-tint-dark);
+  border-top-color: rgba(255,255,255,0.06);
+}
+
+.planner-undated-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  padding: var(--space-10) var(--space-16) var(--space-10) 46px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: background 0.12s;
+}
+.planner-undated-toggle:hover { background: rgba(0,0,0,0.03); }
+[data-theme="dark"] .planner-undated-toggle:hover { background: rgba(255,255,255,0.04); }
+
+.put-count {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+.put-hint {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  flex: 1;
+}
+.put-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+.planner-undated-toggle.is-open .put-chevron { transform: rotate(180deg); }
+
+.planner-undated-list {
+  padding: var(--space-8) var(--space-16) var(--space-12) 46px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.planner-undated-list.hidden { display: none; }
+
+.planner-undated-row {
+  cursor: pointer;
+}
+/* Undated rows in footer: same dashed style, but constrained width (not full-timeline) */
+.planner-undated-row .planner-bar--undated {
+  position: relative;
+  left: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+.planner-undated-row:hover .planner-bar--undated { opacity: 1; }
+
+/* Inline empty-state when no scheduled tasks */
+.planner-empty-timeline {
+  padding: var(--space-24) var(--space-16);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+  min-height: 48px;
+}
+
 /* Drag resize handles. Positioned entirely OUTSIDE the bar so they never
-   overlap the bar body — the bar body is always "move", the tabs are always
+   overlap the bar body - the bar body is always "move", the tabs are always
    "resize". Lets narrow bars stay resizable: the user grabs the adjacent tab. */
 .planner-bar-handle {
   position: absolute;
@@ -2073,6 +2211,12 @@ main.settings-open { overflow: hidden; padding: 0; }
 
 .modal-overlay.open {
   display: flex;
+}
+
+/* Compact single-field dialogs (e.g. new project name) */
+.modal-dialog--sm {
+  max-width: 400px;
+  padding: var(--space-28) var(--space-32);
 }
 
 .modal-dialog {
@@ -2299,7 +2443,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex-shrink: 0;
 }
 
-/* Email form — input with embedded circular send button */
+/* Email form - input with embedded circular send button */
 .modal-member-invite-form {
   display: flex;
   align-items: center;
@@ -2533,13 +2677,13 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
-/* Task name in header — standard field styling, flex to fill */
+/* Task name in header - standard field styling, flex to fill */
 .modal-field--task-header {
   flex: 1;
   min-width: 0;
 }
 
-/* Assigned row — members + invite button inline */
+/* Assigned row - members + invite button inline */
 .modal-assigned-row {
   display: flex;
   align-items: center;
@@ -2548,7 +2692,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 .modal-assigned-row .modal-members-wrap { flex: 1; }
 
-/* Invite trigger — labelled button, right-aligned in assigned row */
+/* Invite trigger - labelled button, right-aligned in assigned row */
 .modal-invite-trigger {
   display: flex;
   align-items: center;
@@ -2569,7 +2713,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 .modal-invite-trigger:hover { background: var(--surface-raised); }
 .modal-invite-trigger.hidden { display: none; }
 
-/* Invite overlay — focused email input */
+/* Invite overlay - focused email input */
 .modal-invite-overlay {
   position: absolute;
   inset: 0;
@@ -2612,7 +2756,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 .modal-invite-overlay-close:hover { background: var(--surface-highlight); }
 
-/* Toggle field — label above, toggle below (matches column rhythm) */
+/* Toggle field - label above, toggle below (matches column rhythm) */
 .modal-field--toggle {
   flex: 0 0 auto;
   cursor: pointer;
@@ -3470,12 +3614,12 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 
 /* === Responsive === */
 @media (max-width: 768px), (orientation: landscape) and (max-height: 500px) {
-  /* Mobile type — 1.2x base font scales all rem tokens proportionally */
+  /* Mobile type - 1.2x base font scales all rem tokens proportionally */
   html { font-size: 16.8px; }
 
   .sidebar-rail { display: none; }
 
-  /* Primary nav — logo bar, hides on scroll */
+  /* Primary nav - logo bar, hides on scroll */
   .primary-nav {
     display: flex;
     align-items: center;
@@ -3512,7 +3656,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     flex-shrink: 0;
   }
 
-  /* Secondary nav — view toggle + filters, always visible */
+  /* Secondary nav - view toggle + filters, always visible */
   .app-header {
     padding: var(--space-12) var(--space-16);
     min-height: auto;
@@ -3670,7 +3814,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     text-align: center;
   }
 
-  /* Mobile filter button — badge positioning only (size inherited from shared rule) */
+  /* Mobile filter button - badge positioning only (size inherited from shared rule) */
   .mobile-filter-btn { position: relative; }
   .mobile-filter-badge {
     position: absolute;
@@ -3846,7 +3990,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   }
   .modal-field--contact { display: none; }
 
-  /* Hamburger button — icon only, top right of primary-nav */
+  /* Hamburger button - icon only, top right of primary-nav */
   .mobile-menu-btn {
     display: flex;
     align-items: center;
@@ -4047,7 +4191,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     font-size: var(--text-xl);
   }
 
-  /* Theme footer — slides up from bottom of overlay */
+  /* Theme footer - slides up from bottom of overlay */
   .mobile-menu-theme-footer {
     position: absolute;
     bottom: 0;
@@ -4115,7 +4259,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   .filter-group select { width: 100%; }
   #view-size-wrap:not(.hidden) { display: flex !important; }
 
-  /* WCAG AA — minimum legible text in menus (16px) */
+  /* WCAG AA - minimum legible text in menus (16px) */
   .sidebar-project-menu-item {
     font-size: var(--text-md);
     padding: var(--space-12) var(--space-16);
@@ -4496,7 +4640,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   margin-top: var(--space-12);
   max-width: 400px;
 }
-/* Compact controls inside settings forms — lower visual weight than modal CTAs */
+/* Compact controls inside settings forms - lower visual weight than modal CTAs */
 .settings-inline-form .modal-field input {
   font-size: var(--text-base);
   min-height: 38px;
@@ -4896,6 +5040,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 .ob-file-name { font-size: var(--text-sm); margin-top: var(--space-8); color: var(--text-secondary); }
 
 .ob-import-actions { display: flex; gap: 8px; margin-top: var(--space-12); }
+.ob-import-label { font-size: var(--text-sm); color: var(--text-secondary); margin: 0 0 var(--space-8); }
 
 .ob-footer {
   display: flex;
@@ -4991,12 +5136,12 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 }
 
 /* ─── Flat surface mode ─────────────────────────────────────────────────────── */
-/* One token override kills all blur — every blur(var(--blur)) resolves to 0 */
+/* One token override kills all blur - every blur(var(--blur)) resolves to 0 */
 
 /* Light flat: fully opaque surfaces, no glass effects */
 [data-surface="flat"] {
   --blur: 0px;
-  /* Opaque surfaces — no transparency */
+  /* Opaque surfaces - no transparency */
   --surface-base: var(--color-neutral-100);
   --surface-raised: #f5f5f5;
   --surface-header: #f0f0f0;
@@ -5248,7 +5393,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   min-width: unset;
 }
 .trash-delete-project-btn { color: var(--text-secondary); }
-/* Discard button (unsaved changes confirm) — neutral, not red */
+/* Discard button (unsaved changes confirm) - neutral, not red */
 .modal-discard-btn {
   background: var(--surface);
   color: var(--text);
@@ -5274,7 +5419,7 @@ dialog.import-modal {
   width: min(480px, 92vw);
   max-height: 90vh;
   overflow: visible;
-  /* Explicit centering — browser UA sheets are inconsistent for <dialog> */
+  /* Explicit centering - browser UA sheets are inconsistent for <dialog> */
   position: fixed;
   top: 50%;
   left: 50%;
@@ -6183,7 +6328,7 @@ body.sandbox-mode::after {
 }
 .auth-overlay.hidden { display: none; }
 
-/* Auth gate — hide app shell when user must log in */
+/* Auth gate - hide app shell when user must log in */
 body.auth-gate .sidebar-rail,
 body.auth-gate .primary-nav,
 body.auth-gate .app-header,
@@ -6191,7 +6336,7 @@ body.auth-gate main,
 body.auth-gate .fab-add,
 body.auth-gate #mobile-menu-overlay { display: none; }
 
-/* Landing page — asymmetric two-panel, generous negative space */
+/* Landing page - asymmetric two-panel, generous negative space */
 .landing-page {
   display: grid;
   grid-template-columns: auto auto;
@@ -6207,7 +6352,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
     var(--surface-landing);
 }
 
-/* Left panel — mascot + branding */
+/* Left panel - mascot + branding */
 .landing-hero {
   display: flex;
   flex-direction: column;
@@ -6247,7 +6392,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   letter-spacing: 0.01em;
 }
 
-/* Right panel — auth form, vertically centred with max breathing room */
+/* Right panel - auth form, vertically centred with max breathing room */
 .landing-auth {
   display: flex;
   align-items: center;
@@ -6386,10 +6531,10 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   animation: landing-slide-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
 }
 
-/* Auth card inline brand — hidden on desktop, shown on mobile */
+/* Auth card inline brand - hidden on desktop, shown on mobile */
 .auth-card-brand { display: none; }
 
-/* Landing mobile — single column, card fills width */
+/* Landing mobile - single column, card fills width */
 @media (max-width: 740px) {
   .landing-page {
     display: block;
@@ -6447,13 +6592,13 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   }
 }
 
-/* Auth dark mode — surface-landing token auto-switches; only non-token overrides here */
+/* Auth dark mode - surface-landing token auto-switches; only non-token overrides here */
 [data-theme="dark"] .landing-page {
   background:
     radial-gradient(ellipse 50% 50% at 20% 65%, color-mix(in srgb, var(--accent-primary1, rgba(0,227,255,1)) 6%, transparent) 0%, transparent 100%),
     var(--surface-landing);
 }
-/* Auth card + input dark overrides eliminated — tokens auto-switch */
+/* Auth card + input dark overrides eliminated - tokens auto-switch */
 
 /* === People / Invite Settings === */
 
@@ -6609,7 +6754,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 .people-invite-date { font-size: var(--text-xs); }
 .people-date--stale { color: var(--warning-solid); font-weight: var(--weight-medium); }
 
-/* Role pills — WCAG AA safe */
+/* Role pills - WCAG AA safe */
 .people-role {
   display: inline-block; font-size: var(--text-xs); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: 0.04em;
   padding: var(--space-2) var(--space-10); border-radius: var(--radius-xl); white-space: nowrap; flex-shrink: 0;
@@ -6685,4 +6830,259 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   .people-invite-actions { gap: var(--space-4); }
   .people-edit-access-btn { opacity: 1; }
 }
+
+/* ═══════════════════════════════════════════════════
+   HOME PROMPT  (v0.4.0)
+   CSS values ported verbatim from qp-ux-proposal.html (the validated mockup).
+   Class names prefixed to avoid collisions; values are identical.
+   Tokens --glass-card-accent / --glass-card-accent-border / --glass-card-accent-hover
+   are now defined in :root and [data-theme="dark"] above.
+═══════════════════════════════════════════════════ */
+.home-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.28);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: hp-fade-in 0.2s ease forwards;
+}
+[data-theme="dark"] .home-prompt-overlay {
+  background: color-mix(in srgb, var(--dark-surface-deepest, #030303) 50%, transparent);
+}
+.home-prompt-overlay--out { animation: hp-fade-out 0.15s ease forwards; }
+@keyframes hp-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hp-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Dialog - opaque enough to block colour bleed from the kanban board behind it.
+   The mockup used neutral gray ghosts so rgba(255,255,255,0.88) looked clean there.
+   In the real app the saturated kanban bleeds through at that opacity. */
+.home-prompt-dialog {
+  background: rgba(255,255,255,0.97);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: var(--radius-xl);
+  padding: var(--space-28) var(--space-32) var(--space-24);
+  width: min(700px, calc(100vw - var(--space-32)));
+  box-shadow: var(--glass-shadow), var(--glass-shadow-inset), 0 20px 60px rgba(0,0,0,0.15);
+}
+[data-theme="dark"] .home-prompt-dialog {
+  background: color-mix(in srgb, var(--dark-surface) 97%, transparent);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: var(--glass-shadow), 0 20px 60px rgba(0,0,0,0.4);
+}
+
+/* Greeting - from mockup .home-greeting */
+.home-prompt-greeting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  margin-bottom: var(--space-4);
+}
+.home-prompt-greeting svg { color: var(--shadow-accent); flex-shrink: 0; }
+.home-prompt-title { font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--text); }
+.home-prompt-sub { font-size: var(--text-base); color: var(--text-secondary); margin-bottom: var(--space-20); }
+
+/* 3-column card grid - from mockup .home-cards */
+.home-prompt-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-10);
+  margin-bottom: var(--space-16);
+}
+@media (max-width: 520px) { .home-prompt-cards { grid-template-columns: 1fr; } }
+
+/* Base card - exact values from mockup .home-card */
+.home-prompt-card {
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-glass), var(--shadow-card);
+  text-align: left;
+  width: 100%;
+  font-family: var(--font);
+}
+.home-prompt-card:hover {
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-glass), var(--shadow-hover);
+}
+.home-prompt-card.active {
+  border-color: var(--accent-primary1);
+  background: var(--surface-raised);
+}
+[data-theme="dark"] .home-prompt-card {
+  background: var(--glass-card);
+}
+[data-theme="dark"] .home-prompt-card:hover {
+  background: color-mix(in srgb, var(--glass-card) 90%, var(--glass-border));
+}
+
+/* Primary card - accent-tinted surface, same border-radius as siblings */
+.home-prompt-card--primary {
+  background: color-mix(in srgb, var(--accent-primary1) 12%, var(--surface-base));
+  border-color: color-mix(in srgb, var(--accent-primary1) 35%, transparent);
+}
+.home-prompt-card--primary:hover {
+  background: color-mix(in srgb, var(--accent-primary1) 18%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--accent-primary1) 50%, transparent);
+}
+[data-theme="dark"] .home-prompt-card--primary {
+  background: color-mix(in srgb, var(--accent-primary1) 14%, rgba(22,24,34,0.92));
+  border-color: color-mix(in srgb, var(--accent-primary1) 40%, rgba(255,255,255,0.12));
+}
+
+/* Card icon - from mockup .hc-icon */
+.hp-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 15%, rgba(255,255,255,0.4));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--shadow-accent);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .hp-card-icon {
+  background: color-mix(in srgb, var(--accent) 18%, rgba(22,24,34,0.8));
+  color: var(--accent-text);
+}
+.home-prompt-card--primary .hp-card-icon {
+  background: color-mix(in srgb, var(--accent) 28%, rgba(255,255,255,0.5));
+}
+[data-theme="dark"] .home-prompt-card--primary .hp-card-icon {
+  background: color-mix(in srgb, var(--accent) 28%, rgba(22,24,34,0.8));
+}
+.hp-card-icon svg { display: block; }
+
+/* Card text - from mockup .hc-title / .hc-desc / .hc-cta */
+.hp-card-label { font-size: var(--text-md); font-weight: var(--weight-bold); color: var(--text); }
+.hp-card-desc  { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.5; }
+.hp-card-cta {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--shadow-accent);
+}
+.hp-file-input { display: none; }
+
+/* Expandable input area - from mockup .home-input-area */
+.hp-tell-area {
+  background: var(--surface-base);
+  border: 1px solid var(--border-outer);
+  border-radius: var(--radius-lg);
+  padding: var(--space-12) var(--space-14);
+  margin-bottom: var(--space-12);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+}
+[data-theme="dark"] .hp-tell-area {
+  background: rgba(22,24,34,0.6);
+  border-color: var(--glass-border);
+}
+.hp-tell-area.hidden { display: none; }
+
+/* Textarea - from mockup .home-input-area textarea */
+.hp-textarea {
+  width: 100%;
+  min-height: 80px;
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font);
+  font-size: var(--text-base);
+  color: var(--text);
+  line-height: 1.6;
+}
+.hp-textarea::placeholder { color: var(--text-tertiary, var(--content-tertiary)); }
+
+/* Action row - from mockup .home-input-row */
+.hp-tell-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--border-outer);
+  margin-top: var(--space-4);
+}
+
+/* Mic button - from mockup .mic-btn */
+.hp-mic-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-outer);
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.hp-mic-btn:hover:not(:disabled) { color: var(--shadow-accent); border-color: var(--shadow-accent); }
+.hp-mic-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.hp-mic-btn.recording {
+  background: rgba(220,38,38,0.1);
+  border-color: #dc2626;
+  color: #dc2626;
+  animation: hp-mic-pulse 1s ease-in-out infinite;
+}
+@keyframes hp-mic-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+}
+
+/* Add / submit button - mirrors .modal-save */
+.hp-add-btn {
+  font-family: var(--font);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  min-height: 44px;
+  padding: var(--space-10) 22px;
+  border-radius: var(--radius-lg);
+  border: none;
+  background: var(--accent);
+  color: var(--on-accent-primary1);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.hp-add-btn:hover { opacity: 0.88; }
+
+/* Status banners */
+.hp-confirm {
+  display: block;
+  margin-bottom: var(--space-12);
+  padding: var(--space-10) var(--space-14);
+  background: color-mix(in srgb, var(--accent) 10%, rgba(255,255,255,0.6));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--shadow-accent);
+}
+.hp-error {
+  display: block;
+  margin-top: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--danger-text);
+}
+.hp-confirm.hidden, .hp-error.hidden { display: none; }
 

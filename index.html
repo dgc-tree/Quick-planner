@@ -9,9 +9,9 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/ai-chat.css">
+  <link rel="stylesheet" href="css/tokens.css?v=0.4.4">
+  <link rel="stylesheet" href="css/styles.css?v=0.4.4">
+  <link rel="stylesheet" href="css/ai-chat.css?v=0.4.4">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body class="auth-gate">
@@ -30,8 +30,8 @@
         </button>
         <div id="sidebar-add-menu" class="sidebar-project-menu">
           <button class="sidebar-project-menu-item" id="sidebar-add-template-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            New project from templates
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;flex-shrink:0"><path d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            New project
           </button>
           <button class="sidebar-project-menu-item" id="sidebar-add-import-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;flex-shrink:0"><path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1M16 11l-4 4m0 0-4-4m4 4V3"/></svg>
@@ -223,7 +223,7 @@
 
   <div id="filter-chips" class="filter-chips-bar"></div>
 
-  <!-- Filter popover at body level — outside app-header's backdrop-filter stacking context -->
+  <!-- Filter popover at body level - outside app-header's backdrop-filter stacking context -->
   <div id="desktop-filter-popover" class="desktop-filter-popover hidden">
     <div class="filter-popover-grid">
       <div class="filter-group">
@@ -473,7 +473,7 @@
                 </div>
               </div>
 
-              <!-- QP AI (hosted) fields — hidden until funded -->
+              <!-- QP AI (hosted) fields - hidden until funded -->
               <div id="settings-ai-hosted-fields" class="hidden">
                 <p class="settings-field-hint" style="margin: 12px 0">Included with your account. AI queries are processed securely through our servers using Claude. No API key needed.</p>
                 <div id="settings-ai-hosted-status" class="settings-ai-status"></div>
@@ -578,7 +578,7 @@
   </main>
 
   <script>
-    // Prevent FOUC — apply saved theme before paint
+    // Prevent FOUC - apply saved theme before paint
     (function() {
       const saved = localStorage.getItem('qp-theme');
       if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
@@ -660,7 +660,7 @@
 
       <div id="import-fields" class="import-fields hidden">
         <input type="text" id="import-project-name" class="import-text-input" placeholder="Project name">
-        <input type="text" id="import-user-name" class="import-text-input" placeholder="Your first name (optional — for a personal touch)">
+        <input type="text" id="import-user-name" class="import-text-input" placeholder="Your first name (optional - for a personal touch)">
       </div>
 
       <div id="import-error" class="import-error hidden"></div>
