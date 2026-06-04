@@ -429,7 +429,18 @@ export function showOnboarding(onFinish) {
       dialog.querySelector('.ob-next').addEventListener('click', () => renderStep(3));
 
     } else if (n === 3) {
-      dialog.innerHTML = `
+      const tpl = selectedTemplateId ? TEMPLATES.find(t => t.id === selectedTemplateId) : null;
+      dialog.innerHTML = tpl ? `
+        <h2 class="ob-title">Your project is ready</h2>
+        <p class="ob-intro">Starting fresh with <strong>${tpl.label}</strong> sample tasks \u2014 edit or delete them any time.</p>
+        <p class="ob-import-label">Or replace with your own data (optional)</p>
+        <div class="ob-drop-wrap"></div>
+        <div class="ob-footer">
+          <button class="modal-btn modal-cancel ob-back">\u2190 Back</button>
+          ${dots(3)}
+          <button class="modal-btn modal-save ob-finish">Finish</button>
+        </div>
+      ` : `
         <h2 class="ob-title">Import data</h2>
         <p class="ob-intro">Optionally import a CSV file to load your own data.</p>
         <div class="ob-drop-wrap"></div>

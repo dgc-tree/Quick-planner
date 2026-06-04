@@ -27,6 +27,7 @@ import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
 import { initChat, onProjectSwitch as chatProjectSwitch, clearConversation, hideBubble as hideChatBubble, showBubble as showChatBubble, setTTSEnabled, setBriefingMode, getTTSEnabled, getBriefingMode, openPanel as openChatPanel } from './ai-chat.js';
 import { initDigest, getDigestFrequency, setDigestFrequency } from './digest.js';
+import { shouldShowHomePrompt, showHomePrompt } from './home-prompt.js';
 import { getProviderConfig, setProvider, setLocalConfig, testClaudeConnection, testLocalConnection, hasApiKey } from './ai-llm.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
@@ -523,7 +524,7 @@ function handleDeleteProject(id, name) {
       if (project) addProjectToBin(project);
       const remaining = projects.filter(p => p.id !== id);
       saveProjects(remaining);
-      // Use targeted DELETE, not full sync — full sync would delete any
+      // Use targeted DELETE, not full sync - full sync would delete any
       // server projects whose IDs aren't in the local payload (data loss risk).
       deleteProjectOnServer(id).catch(err => console.warn('[sync] delete project failed:', err.message));
       if (currentProjectId === id) {
@@ -568,14 +569,14 @@ async function initApp() {
       try { valid = await verifySession(); } catch { valid = false; }
       if (!valid) {
         if (!isLoggedIn()) {
-          // Token was confirmed invalid/expired by the server — back to login gate
+          // Token was confirmed invalid/expired by the server - back to login gate
           showLoading(false);
           document.body.classList.add('auth-gate');
           showAuthModal(async () => { await initApp(); }, { gate: true });
           return;
         }
         // Network error: couldn't reach the server but token still exists locally.
-        // Fall through and render from cached localStorage — sync is skipped.
+        // Fall through and render from cached localStorage - sync is skipped.
       } else {
         const synced = await syncFromServer();
         // After sync, validate active project still exists (may have gained shared projects)
@@ -624,10 +625,18 @@ async function initApp() {
     document.querySelector('main').scrollTop = 0;
   });
 
-  // Onboarding for first-time visitors — only if no projects exist yet
+  // Onboarding for first-time visitors - only if no projects exist yet
   if (shouldShowOnboarding() && !loadProjects().length) {
     showOnboarding((projectId) => {
       if (projectId && projectId !== 'sheet') switchProject(projectId);
+    });
+  } else if (shouldShowHomePrompt()) {
+    // Home prompt: shown once per session for returning users with projects
+    showHomePrompt({
+      onAddTasks: (names) => {
+        names.forEach(name => handleTaskCreate({ task: name, status: 'To Do' }));
+      },
+      onDismiss: () => {},
     });
   }
 
@@ -1441,7 +1450,7 @@ function setupImportModal() {
     confirmBtn.disabled = false;
   }
 
-  // Drop zone — click to browse
+  // Drop zone - click to browse
   dropzone.addEventListener('click', () => fileInput.click());
   const browseLink = dropzone.querySelector('.import-browse-link');
   if (browseLink) browseLink.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
@@ -1466,7 +1475,7 @@ function setupImportModal() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        importCSV(e.target.result); // validates — throws if bad
+        importCSV(e.target.result); // validates - throws if bad
         const name = file.name.replace(/\.csv$/i, '').replace(/_/g, ' ');
         onValidCSV(e.target.result, name);
       } catch (err) {
@@ -1476,7 +1485,7 @@ function setupImportModal() {
     reader.readAsText(file);
   }
 
-  // URL paste — validate on blur or enter
+  // URL paste - validate on blur or enter
   async function processUrl() {
     const url = urlInput.value.trim();
     if (!url) return;
@@ -1486,7 +1495,7 @@ function setupImportModal() {
       const csvUrl = sheetsUrlToCsvUrl(url);
       const res = await fetch(csvUrl);
       if (!res.ok) throw new Error(res.status === 403
-        ? "Can't access the sheet — make sure it's set to 'Anyone with the link can view'"
+        ? "Can't access the sheet - make sure it's set to 'Anyone with the link can view'"
         : `Fetch failed (${res.status})`);
       const text = await res.text();
       importCSV(text); // validate
@@ -1516,8 +1525,8 @@ function setupImportModal() {
     confirmBtn.disabled = true;
     cancelBtn.disabled = true;
     progressMsg.textContent = userName
-      ? `Thanks ${userName}, converting your tasks — this is going to be epic…`
-      : 'Converting your tasks — this is going to be epic…';
+      ? `Thanks ${userName}, converting your tasks - this is going to be epic…`
+      : 'Converting your tasks - this is going to be epic…';
     progressEl.classList.remove('hidden');
 
     // Small artificial delay for delight
@@ -1557,7 +1566,7 @@ function setupImportModal() {
   // Expose for sidebar popout
   window._openImportModal = openModal;
 
-  // Mobile import btn — opens modal directly
+  // Mobile import btn - opens modal directly
   const mobileImportBtn = $('#mobile-import-btn');
   if (mobileImportBtn) mobileImportBtn.addEventListener('click', () => {
     const menuBtn = $('#mobile-menu-btn');
@@ -1838,15 +1847,15 @@ function setupSettingsPanel() {
   if (providerCfg.apiKey && aiStatus) {
     const verified = localStorage.getItem('qp-ai-verified');
     if (verified === 'ok') {
-      setClaudeStatus('\u2713 Connected — key stored in this browser only', 'ok');
+      setClaudeStatus('\u2713 Connected - key stored in this browser only', 'ok');
     } else if (providerCfg.apiKey.startsWith('sk-ant-')) {
-      setClaudeStatus('Key saved — click Test connection to verify', 'info');
+      setClaudeStatus('Key saved - click Test connection to verify', 'info');
     } else {
       setClaudeStatus('Key should start with sk-ant-', 'err');
     }
   }
 
-  // Claude API key — auto-save on input (paste or type) with debounce
+  // Claude API key - auto-save on input (paste or type) with debounce
   let _aiKeySaveTimer = null;
   function saveApiKey() {
     const val = aiKeyInput.value.trim();
@@ -1856,7 +1865,7 @@ function setupSettingsPanel() {
       if (!val.startsWith('sk-ant-')) {
         setClaudeStatus('Key should start with sk-ant-', 'err');
       } else {
-        setClaudeStatus('Key saved — click Test connection to verify', 'info');
+        setClaudeStatus('Key saved - click Test connection to verify', 'info');
       }
     } else {
       localStorage.removeItem('qp-ai-key');
@@ -1876,7 +1885,7 @@ function setupSettingsPanel() {
     });
   }
 
-  // Claude test connection — button stays standard, feedback in status text only
+  // Claude test connection - button stays standard, feedback in status text only
   if (aiTestBtn) aiTestBtn.addEventListener('click', async () => {
     aiTestBtn.disabled = true;
     aiTestBtn.textContent = 'Testing\u2026';
@@ -1886,7 +1895,7 @@ function setupSettingsPanel() {
       if (result.ok) {
         setClaudeStatus(`\u2713 Connected (${result.models})`, 'ok');
         localStorage.setItem('qp-ai-verified', 'ok');
-        showToast('API key verified — advanced features unlocked', 'success');
+        showToast('API key verified - advanced features unlocked', 'success');
       } else {
         setClaudeStatus(result.message, 'err');
         localStorage.removeItem('qp-ai-verified');
@@ -2022,7 +2031,7 @@ function setupSettingsPanel() {
   }
 
   // (overlay restore on refresh is handled centrally by restoreOverlayOnLoad
-  // after init's render completes — this avoids a race where init's render
+  // after init's render completes - this avoids a race where init's render
   // hides the overlay we just restored)
 
   $('#sidebar-settings-btn').addEventListener('click', showSettings);
@@ -2339,7 +2348,7 @@ function setupSettingsPanel() {
 
   window._showArchive = showArchiveView;
 
-  // Logo / home tap — return to last main view from any overlay
+  // Logo / home tap - return to last main view from any overlay
   function goHome() {
     if (trashView && !trashView.classList.contains('hidden')) {
       hideTrashView();
@@ -2366,7 +2375,60 @@ document.addEventListener('DOMContentLoaded', () => {
   // Import modal
   setupImportModal();
 
-  // Sidebar + project button — popout with two options
+  // New project: ask for a name, create an empty project, switch to it immediately.
+  // No template picker, no colour step - those live in Settings.
+  function showNewProjectDialog(onCreated) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+
+    overlay.innerHTML = `
+      <div class="modal-dialog modal-dialog--sm" role="dialog" aria-modal="true" aria-labelledby="np-title">
+        <h2 class="modal-title" id="np-title" style="margin-bottom:var(--space-6)">New project</h2>
+        <p style="font-size:var(--text-sm);color:var(--content-secondary);margin-bottom:var(--space-20)">
+          You can update the theme and import data in Settings later.
+        </p>
+        <div class="modal-field">
+          <label for="np-name-input">Project name</label>
+          <input id="np-name-input" type="text" placeholder="e.g. Kitchen reno 2026" maxlength="80" autocomplete="off">
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:var(--space-8);margin-top:var(--space-24)">
+          <button class="modal-btn modal-cancel" id="np-cancel">Cancel</button>
+          <button class="modal-btn modal-save" id="np-create">Create project</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#np-name-input');
+    const createBtn = overlay.querySelector('#np-create');
+    const cancelBtn = overlay.querySelector('#np-cancel');
+
+    setTimeout(() => input.focus(), 50);
+
+    function close() { overlay.remove(); }
+
+    function create() {
+      const name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      const id = crypto.randomUUID();
+      const projects = loadProjects();
+      projects.push({ id, name, tasks: [] });
+      saveProjects(projects);
+      saveActiveProjectId(id);
+      close();
+      if (onCreated) onCreated(id);
+    }
+
+    createBtn.addEventListener('click', create);
+    cancelBtn.addEventListener('click', close);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') create();
+      if (e.key === 'Escape') close();
+    });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
+  // Sidebar + project button - popout with two options
   const sidebarAddBtn = $('#sidebar-import-btn');
   const sidebarAddMenu = $('#sidebar-add-menu');
   if (sidebarAddBtn && sidebarAddMenu) {
@@ -2388,9 +2450,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#sidebar-add-template-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       sidebarAddMenu.classList.remove('open');
-      showOnboarding((projectId) => {
-        if (projectId && projectId !== 'sheet') switchProject(projectId);
-      });
+      showNewProjectDialog((projectId) => switchProject(projectId));
     });
   }
 
@@ -2399,7 +2459,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllPopovers(); });
   window.addEventListener('scroll', closeAllPopovers, { passive: true });
 
-  // Add task — FAB (mobile) + header button (desktop)
+  // Add task - FAB (mobile) + header button (desktop)
   function handleAddTask() {
     const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '' };
     openEditModal(blankTask, getModalOptions(), ({ updatedFields }) => {
