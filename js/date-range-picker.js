@@ -1,4 +1,4 @@
-// Date Range Picker — Airbnb-style calendar popover
+// Date Range Picker - Airbnb-style calendar popover
 // Reusable component: openDateRangePicker({ anchor, startDate, endDate, onSave, onCancel })
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -136,7 +136,7 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
     } else {
       // Picking end
       if (date < selStart) {
-        // Clicked before start — swap
+        // Clicked before start - swap
         selEnd = selStart;
         selStart = date;
       } else {
@@ -351,12 +351,19 @@ export function openDateRangePicker({ anchor, startDate, endDate, onSave, onCanc
 
   // Close on click outside
   function onClickOutside(e) {
-    // After innerHTML re-render, the clicked element is orphaned from the DOM —
+    // After innerHTML re-render, the clicked element is orphaned from the DOM -
     // treat orphaned nodes as internal clicks (they were picker buttons)
     if (!document.body.contains(e.target)) return;
     if (!el.contains(e.target) && !anchor.contains(e.target)) {
+      // Commit whatever the user has selected so far rather than discarding.
+      // This handles clicking the modal Save button while the picker is open.
+      const result = { start: selStart || null, end: selEnd || null };
       closeDateRangePicker();
-      if (onCancel) onCancel();
+      if (result.start || result.end) {
+        if (onSave) onSave(result);
+      } else {
+        if (onCancel) onCancel();
+      }
     }
   }
 

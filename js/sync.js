@@ -1,5 +1,5 @@
 /**
- * Sync engine — pushes localStorage data to qp-api Worker when logged in.
+ * Sync engine - pushes localStorage data to qp-api Worker when logged in.
  * Offline-first: localStorage is always the immediate source of truth.
  * Server sync happens in the background after each save.
  */
@@ -53,7 +53,7 @@ export async function syncToServer() {
 
 /**
  * Pull all data from the server and replace localStorage.
- * Server is authoritative when logged in — local data is fully replaced.
+ * Server is authoritative when logged in - local data is fully replaced.
  */
 export async function syncFromServer() {
   if (isSandbox() || !isLoggedIn()) return false;
@@ -87,20 +87,21 @@ export async function syncFromServer() {
           notes: t.notes || '',
           updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
         };
-        // Archive fields: server is authoritative once the schema migration
-        // has run (column present). Before that, fall back to the local copy
-        // so the field survives a sync pull.
-        if ('archived' in t) {
+        // Archive fields: use last-writer-wins based on updatedAt.
+        // Server pull can arrive after a local archive mutation - if local is
+        // newer, the server is stale (push may still be in flight) so we keep
+        // the local archived state rather than resurrecting the task.
+        const localForArchive = localTasksById.get(t.id);
+        const serverMs = t.updated_at ? new Date(t.updated_at).getTime() : 0;
+        const localMs  = localForArchive?.updatedAt || 0;
+        if ('archived' in t && serverMs >= localMs) {
           merged.archived = !!t.archived;
           merged.archivedAt = t.archived_at ? new Date(t.archived_at).getTime() : null;
           merged.archiveReason = t.archive_reason || '';
-        } else {
-          const local = localTasksById.get(t.id);
-          if (local) {
-            if (local.archived !== undefined) merged.archived = local.archived;
-            if (local.archivedAt !== undefined) merged.archivedAt = local.archivedAt;
-            if (local.archiveReason !== undefined) merged.archiveReason = local.archiveReason;
-          }
+        } else if (localForArchive) {
+          if (localForArchive.archived !== undefined) merged.archived = localForArchive.archived;
+          if (localForArchive.archivedAt !== undefined) merged.archivedAt = localForArchive.archivedAt;
+          if (localForArchive.archiveReason !== undefined) merged.archiveReason = localForArchive.archiveReason;
         }
         // Other local-only fields the server schema still doesn't track.
         const local = localTasksById.get(t.id);
