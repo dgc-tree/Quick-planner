@@ -6,38 +6,42 @@ const checkedItems = new Map(); // taskId → previousStatus
 const assignedNames = Object.keys(ASSIGNED_COLORS);
 
 export function renderTodoList(container, tasks, callbacks = {}) {
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  const actionable = tasks.filter(t => {
-    if (!t.startDate) return false;
-    return t.startDate <= today;
+  const actionable = [...tasks];
+  actionable.sort((a, b) => {
+    const aDate = a.startDate || a.endDate;
+    const bDate = b.startDate || b.endDate;
+    if (!aDate && !bDate) return 0;
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    return aDate - bDate;
   });
-
-  actionable.sort((a, b) => (a.endDate || a.startDate) - (b.endDate || b.startDate));
 
   container.innerHTML = '';
 
   if (actionable.length === 0) {
-    container.innerHTML = '<div class="empty-state">No actionable tasks</div>';
+    container.innerHTML = '<div class="empty-state">No tasks</div>';
     return;
   }
 
-  // Group by end-date month
-  const monthKey = (d) => d ? `${d.getFullYear()}-${d.getMonth()}` : 'no-date';
-  const monthLabel = (d) => {
-    if (!d) return 'No due date';
-    return 'Due ' + d.toLocaleDateString('en-AU', { month: 'long' });
+  // Group by start-date month (fall back to end date, then undated)
+  const monthKey = (t) => {
+    const d = t.startDate || t.endDate;
+    return d ? `${d.getFullYear()}-${d.getMonth()}` : 'no-date';
+  };
+  const monthLabel = (t) => {
+    const d = t.startDate || t.endDate;
+    if (!d) return 'No date set';
+    return d.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
   };
   let currentMonth = null;
 
   for (const task of actionable) {
-    const key = monthKey(task.endDate);
+    const key = monthKey(task);
     if (key !== currentMonth) {
       currentMonth = key;
       const header = document.createElement('div');
       header.className = 'todo-month-header';
-      header.textContent = monthLabel(task.endDate);
+      header.textContent = monthLabel(task);
       container.appendChild(header);
     }
     if (task.status === 'Done' && !checkedItems.has(task.id)) {
