@@ -659,9 +659,15 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   // Cancel
   modalEl.querySelector('.modal-cancel').addEventListener('click', tryClose);
 
-  // Backdrop click
+  // Backdrop click — guard with pointerdown so ghost clicks don't close the modal.
+  // On iOS a tap on the FAB fires a synthetic click 300ms later at the original
+  // coordinates, which by then lands on the backdrop. The flag ensures only a
+  // real finger-down on the backdrop can trigger a close.
+  let _backdropIntent = false;
+  modalEl.addEventListener('pointerdown', (e) => { _backdropIntent = e.target === modalEl; });
   modalEl.addEventListener('click', (e) => {
-    if (e.target === modalEl) tryClose();
+    if (e.target === modalEl && _backdropIntent) tryClose();
+    _backdropIntent = false;
   });
 
   // Escape key
@@ -685,6 +691,9 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
     onSave({ originalTask: task.task, updatedFields });
   });
 
-  // Focus first input
-  setTimeout(() => modalEl.querySelector('input[name="task"]').focus(), 50);
+  // Focus first input — skip on touch devices to avoid triggering the iOS
+  // keyboard before the ghost-click window has passed, which can shift layout
+  // and make the modal appear to close.
+  const _isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  if (!_isTouch) setTimeout(() => modalEl.querySelector('input[name="task"]').focus(), 50);
 }

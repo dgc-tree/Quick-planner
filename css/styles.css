@@ -1,5 +1,7 @@
 /* === Reset & Base === */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Eliminate 300ms tap delay and iOS ghost-click on every interactive element */
+button, select, input[type="submit"], input[type="button"], input[type="reset"] { touch-action: manipulation; }
 
 :root {
   --font: 'DM Sans', system-ui, -apple-system, sans-serif;
@@ -3157,6 +3159,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   border-radius: var(--radius-md);
   padding: var(--space-8) var(--space-10);
   cursor: pointer;
+  touch-action: manipulation;
   flex-shrink: 0;
   overflow: hidden;
   white-space: nowrap;
