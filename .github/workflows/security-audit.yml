@@ -12,20 +12,88 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ── PR gate ────────────────────────────────────────────────────────────────
+  # Blocks merges only when a production dependency has a moderate+ advisory.
+  # Dev-only vulnerabilities (e.g. puppeteer transitive deps) are reported but
+  # do not fail the check — they don't reach the deployed app.
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Run npm audit
-        # Fails the job on moderate or higher advisories. Drop to --audit-level=high
-        # if moderate is too noisy.
-        run: npm audit --audit-level=moderate
-      - name: Notice on success
-        if: success()
-        run: echo "::notice::No moderate or higher npm advisories."
+
+      - name: Audit production dependencies
+        run: npm audit --audit-level=moderate --omit=dev
+
+      - name: Audit dev dependencies (informational)
+        if: always()
+        run: |
+          npm audit --audit-level=moderate 2>&1 \
+            | grep -E "vulnerabilities|Severity" \
+            | while read -r line; do
+                echo "::warning::Dev audit: $line"
+              done
+          # Always exit 0 — dev vulns are noise, not a blocker
+          exit 0
+
+  # ── Auto-fix ───────────────────────────────────────────────────────────────
+  # Runs on schedule and workflow_dispatch only. When npm audit finds fixable
+  # issues it applies the fix, commits the updated package-lock.json, and
+  # opens a PR so a human can review and merge.
+  auto-fix:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check for vulnerabilities
+        id: check
+        run: |
+          if npm audit --audit-level=moderate --omit=dev 2>/dev/null; then
+            echo "needs_fix=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_fix=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply npm audit fix
+        if: steps.check.outputs.needs_fix == 'true'
+        run: npm audit fix --force
+
+      - name: Open fix PR
+        if: steps.check.outputs.needs_fix == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="fix/auto-npm-audit-$(date +%Y%m%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add package-lock.json package.json
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "fix: npm audit fix — resolve security vulnerabilities"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "fix: resolve npm audit vulnerabilities ($(date +%Y-%m-%d))" \
+            --body "Automated weekly security audit found fixable vulnerabilities. This PR applies \`npm audit fix\` to resolve them. Review the \`package-lock.json\` diff and merge to keep the audit green." \
+            --base main \
+            --head "$BRANCH" \
+            --label dependencies

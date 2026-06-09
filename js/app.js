@@ -22,6 +22,7 @@ import {
   isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession,
   requestEmailChange, requestPasswordChange, validatePasswordLength, checkPasswordBreach,
   renderPasswordStrength, verifyToken, hasWeakPassword, loadZxcvbn, deleteProjectOnServer,
+  onSessionExpired,
 } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
@@ -100,7 +101,8 @@ function restoreOverlayOnLoad() {
 
 function restoreChatPanelOnLoad() {
   if (localStorage.getItem('qp-chat-open') === '1' && typeof window._openChatPanel === 'function') {
-    window._openChatPanel();
+    // Only restore on viewports wide enough to show the side panel without covering content
+    if (window.innerWidth >= 768) window._openChatPanel();
   }
 }
 
@@ -704,6 +706,13 @@ async function initApp() {
 async function init() {
   initAuthUI();
   setupAccountButtons();
+
+  // If the JWT expires while the user is actively using the app, surface the
+  // login gate rather than showing a cryptic error toast on save/sync.
+  onSessionExpired(() => {
+    document.body.classList.add('auth-gate');
+    showAuthModal(async () => { await initApp(); }, { gate: true });
+  });
 
   if (!isLoggedIn()) {
     // Gate: hide app, show login
