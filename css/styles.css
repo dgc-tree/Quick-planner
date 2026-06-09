@@ -2679,7 +2679,38 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
-/* Task name in header - standard field styling, flex to fill */
+/* Extra details collapsible — Trade, Cost, Contact, Notes */
+.modal-extra-toggle {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--content-secondary);
+  cursor: pointer;
+  padding: var(--space-4) 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.modal-extra-toggle::-webkit-details-marker { display: none; }
+.modal-extra-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.modal-extra-details[open] .modal-extra-chevron {
+  transform: rotate(180deg);
+}
+.modal-extra-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding-top: var(--space-12);
+}
+[data-theme="dark"] .modal-extra-toggle { color: var(--content-secondary); }
+
+/* Task name in header — standard field styling, flex to fill */
 .modal-field--task-header {
   flex: 1;
   min-width: 0;
@@ -3981,18 +4012,31 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     border-radius: 0;
     border: none;
     background: rgba(255,255,255,0.425);
-    padding: var(--space-20) var(--space-20) env(safe-area-inset-bottom, var(--space-20)) var(--space-24);
+    padding: env(safe-area-inset-top, var(--space-20)) var(--space-20) 0 var(--space-24);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
   }
+  .modal-form {
+    flex: 1;
+    min-height: 0;
+  }
+  /* Actions always visible at bottom — content scrolls above them */
+  .modal-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface-base);
+    border-top: 1px solid var(--border);
+    padding: var(--space-12) 0 env(safe-area-inset-bottom, var(--space-16));
+    margin-top: var(--space-8);
+  }
+  [data-theme="dark"] .modal-actions { background: var(--dark-surface); }
   .restore-body {
     max-height: none;
     flex: 1;
     overflow-y: auto;
   }
-  .modal-field--contact { display: none; }
 
   /* Hamburger button - icon only, top right of primary-nav */
   .mobile-menu-btn {

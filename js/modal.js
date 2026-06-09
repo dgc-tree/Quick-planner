@@ -154,27 +154,35 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
                 </div>
               </div>
             </div>
-            <div class="modal-row">
-              <label class="modal-field modal-field--toggle">
-                <span>Trade</span>
-                <span class="modal-toggle-wrap">
-                  <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
-                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                </span>
-              </label>
-              <div class="modal-field" style="flex:1">
-                <span>Cost</span>
-                <input type="text" name="cost" inputmode="decimal" placeholder="$0.00" value="${task.cost != null ? task.cost : ''}">
+            <details class="modal-extra-details"${task.tradeQuote || task.cost || task.notes || task.contact ? ' open' : ''}>
+              <summary class="modal-extra-toggle">
+                <svg class="modal-extra-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                Extra details
+              </summary>
+              <div class="modal-extra-content">
+                <div class="modal-row">
+                  <label class="modal-field modal-field--toggle">
+                    <span>Trade</span>
+                    <span class="modal-toggle-wrap">
+                      <input type="checkbox" name="tradeQuote" class="toggle-input"${task.tradeQuote ? ' checked' : ''}>
+                      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </span>
+                  </label>
+                  <div class="modal-field" style="flex:1">
+                    <span>Cost</span>
+                    <input type="text" name="cost" inputmode="decimal" placeholder="$0.00" value="${task.cost != null ? task.cost : ''}">
+                  </div>
+                  <div class="modal-field modal-field--contact" style="flex:2">
+                    <span>Contact</span>
+                    <input type="text" name="contact" placeholder="Name, phone or email" value="${esc(task.contact || '')}">
+                  </div>
+                </div>
+                <div class="modal-field">
+                  <span>Notes</span>
+                  <textarea name="notes" rows="3" placeholder="Details, specifications, payment terms...">${esc(task.notes || '')}</textarea>
+                </div>
               </div>
-              <div class="modal-field modal-field--contact" style="flex:2">
-                <span>Contact</span>
-                <input type="text" name="contact" placeholder="Name, phone or email" value="${esc(task.contact || '')}">
-              </div>
-            </div>
-            <div class="modal-field">
-              <span>Notes</span>
-              <textarea name="notes" rows="3" placeholder="Details, specifications, payment terms...">${esc(task.notes || '')}</textarea>
-            </div>
+            </details>
           </div>
           <div class="modal-layout-side">
             <div class="modal-field">
@@ -665,6 +673,7 @@ export function openEditModal(task, options, onSave, onRoomChange, actions = {})
   // real finger-down on the backdrop can trigger a close.
   let _backdropIntent = false;
   modalEl.addEventListener('pointerdown', (e) => { _backdropIntent = e.target === modalEl; });
+  modalEl.addEventListener('pointercancel', () => { _backdropIntent = false; });
   modalEl.addEventListener('click', (e) => {
     if (e.target === modalEl && _backdropIntent) tryClose();
     _backdropIntent = false;
