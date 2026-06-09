@@ -2901,6 +2901,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   padding: var(--space-10) 22px;
   border-radius: var(--radius-lg);
   cursor: pointer;
+  touch-action: manipulation;
   border: 1px solid var(--border);
   transition: all 0.2s ease;
 }
@@ -6511,6 +6512,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   font-size: var(--text-base);
   font-family: var(--font);
   cursor: pointer;
+  touch-action: manipulation;
   text-align: center;
 }
 .auth-skip:hover { color: var(--text-primary, #111827); }
