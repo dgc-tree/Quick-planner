@@ -2980,6 +2980,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, { passive: true });
 
+    // Keep padding accurate as header height changes (font swap, content updates)
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => requestAnimationFrame(updateHeaderPadding));
+      if (primaryNav) ro.observe(primaryNav);
+      ro.observe(header);
+    }
     mq.addEventListener('change', updateHeaderPadding);
     updateHeaderPadding();
     window.addEventListener('resize', updateHeaderPadding);
