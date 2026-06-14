@@ -899,6 +899,32 @@ body {
 .desktop-filter-btn:hover { color: var(--text); background: var(--hover-overlay); }
 .desktop-filter-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 [data-theme="dark"] .desktop-filter-btn.active { color: var(--accent-text); }
+.desktop-hide-done-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0 var(--space-10);
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.desktop-hide-done-btn:hover { color: var(--text); background: var(--hover-overlay); }
+.desktop-hide-done-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+[data-theme="dark"] .desktop-hide-done-btn.active { color: var(--accent-text); }
+.hide-done-eye-slash { display: none; }
+.desktop-hide-done-btn.active .hide-done-eye { display: none; }
+.desktop-hide-done-btn.active .hide-done-eye-slash { display: block; }
+.mobile-hide-done-btn.active .hide-done-eye { display: none; }
+.mobile-hide-done-btn.active .hide-done-eye-slash { display: block; }
 .desktop-filter-badge {
   position: absolute;
   top: 8px;
@@ -3726,7 +3752,8 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     flex-shrink: 0;
   }
   .mobile-search-btn,
-  .mobile-filter-btn {
+  .mobile-filter-btn,
+  .mobile-hide-done-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3739,7 +3766,9 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     color: var(--text-secondary);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
+  .mobile-hide-done-btn.active { color: var(--accent-text); }
 
   /* Full-screen search overlay */
   .mobile-search-overlay {

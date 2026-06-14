@@ -87,21 +87,23 @@ export async function syncFromServer() {
           notes: t.notes || '',
           updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
         };
-        // Archive fields: use last-writer-wins based on updatedAt.
-        // Server pull can arrive after a local archive mutation - if local is
-        // newer, the server is stale (push may still be in flight) so we keep
-        // the local archived state rather than resurrecting the task.
+        // Archive fields: local is always authoritative.
+        // The server ignores the archived field on push (it stores the field
+        // but the worker schema today never sets it server-side). As a result
+        // the server's updated_at timestamp can be newer than local while still
+        // carrying archived:false — a serverMs >= localMs comparison would
+        // incorrectly resurrect locally-archived tasks on every pull.
+        // Only fall back to the server value for tasks we have never seen locally
+        // (e.g. tasks synced from another device for the first time).
         const localForArchive = localTasksById.get(t.id);
-        const serverMs = t.updated_at ? new Date(t.updated_at).getTime() : 0;
-        const localMs  = localForArchive?.updatedAt || 0;
-        if ('archived' in t && serverMs >= localMs) {
-          merged.archived = !!t.archived;
-          merged.archivedAt = t.archived_at ? new Date(t.archived_at).getTime() : null;
-          merged.archiveReason = t.archive_reason || '';
-        } else if (localForArchive) {
+        if (localForArchive) {
           if (localForArchive.archived !== undefined) merged.archived = localForArchive.archived;
           if (localForArchive.archivedAt !== undefined) merged.archivedAt = localForArchive.archivedAt;
           if (localForArchive.archiveReason !== undefined) merged.archiveReason = localForArchive.archiveReason;
+        } else if ('archived' in t) {
+          merged.archived = !!t.archived;
+          merged.archivedAt = t.archived_at ? new Date(t.archived_at).getTime() : null;
+          merged.archiveReason = t.archive_reason || '';
         }
         // Other local-only fields the server schema still doesn't track.
         const local = localTasksById.get(t.id);
