@@ -35,8 +35,13 @@ export async function syncToServer() {
         end_date: t.endDate instanceof Date ? t.endDate.toISOString() : (t.endDate || null),
         dependencies: Array.isArray(t.dependencies) ? t.dependencies : [],
         notes: t.notes || '',
-        // Sent so a future server schema can store them; today's worker
-        // ignores unknown fields without erroring.
+        // SERVER SCHEMA STATUS — update this comment if the Worker changes:
+        // These three fields are sent in the push payload but the current Worker
+        // schema does NOT write them back (they are silently ignored on insert/update).
+        // As a result, syncFromServer() must NEVER trust the server as authoritative
+        // for these fields — local state always wins. See INCIDENTS.md Incident 12.
+        // If the Worker is updated to persist these fields, syncFromServer() merge
+        // logic for archived/archivedAt/archiveReason must be revisited.
         archived: !!t.archived,
         archived_at: t.archivedAt || null,
         archive_reason: t.archiveReason || '',
