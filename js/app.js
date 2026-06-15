@@ -2590,6 +2590,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileSearchInput = $('#mobile-search-input');
   const mobileSearchBtn = $('#mobile-search-btn');
   const mobileSearchClose = $('#mobile-search-close');
+  const mobileSearchClear = $('#mobile-search-clear');
   const mobileSearchResults = $('#mobile-search-results');
 
   function renderMobileSearchResults(q) {
@@ -2624,6 +2625,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openMobileSearch() {
     mobileSearchInput.value = filters.search;
     renderMobileSearchResults(filters.search);
+    if (mobileSearchClear) mobileSearchClear.classList.toggle('hidden', !filters.search);
     mobileSearchOverlay.classList.add('open');
     requestAnimationFrame(() => mobileSearchInput.focus());
   }
@@ -2639,10 +2641,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const q = e.target.value.trim();
       filters.search = q;
       renderMobileSearchResults(q);
+      if (mobileSearchClear) mobileSearchClear.classList.toggle('hidden', !q);
       // Mirror to desktop input for consistency
       const desktopInput = $('#search-tasks');
       if (desktopInput) desktopInput.value = q;
       render();
+    });
+  }
+  if (mobileSearchClear) {
+    // touchstart + preventDefault keeps the keyboard open while clearing
+    mobileSearchClear.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (mobileSearchInput) {
+        mobileSearchInput.value = '';
+        mobileSearchInput.dispatchEvent(new Event('input'));
+        mobileSearchInput.focus();
+      }
+    }, { passive: false });
+    // Fallback for non-touch (desktop testing)
+    mobileSearchClear.addEventListener('click', () => {
+      if (mobileSearchInput) {
+        mobileSearchInput.value = '';
+        mobileSearchInput.dispatchEvent(new Event('input'));
+        mobileSearchInput.focus();
+      }
     });
   }
   document.addEventListener('keydown', (e) => {
