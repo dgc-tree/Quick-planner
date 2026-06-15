@@ -6513,7 +6513,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   font-size: clamp(1.5rem, 2.5vw, 2rem);
   font-weight: var(--weight-extrabold);
   line-height: 1.1;
-  color: var(--text-primary, #111827);
+  color: var(--text);
   letter-spacing: -0.03em;
   margin-bottom: var(--space-12);
 }
@@ -6570,7 +6570,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 .auth-title {
   font-size: var(--text-xl);
   font-weight: var(--weight-bold);
-  color: var(--text-primary, #111827);
+  color: var(--text);
   margin-bottom: var(--space-4);
 }
 
@@ -6599,7 +6599,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   box-shadow: var(--input-shadow);
   font-size: var(--text-base);
   font-family: var(--font);
-  color: var(--text-primary, #111827);
+  color: var(--text);
   transition: border-color 0.15s, box-shadow 0.15s;
   margin-left: calc(-1 * var(--space-4));
   outline: none;
@@ -6613,6 +6613,13 @@ body.auth-gate #mobile-menu-overlay { display: none; }
 .auth-field input:focus {
   border-color: var(--accent, #2cb5a0);
   box-shadow: 0 0 0 3px rgba(44,181,160,0.15), inset 0 1px 2px rgba(0,0,0,0.06);
+}
+.auth-field input:-webkit-autofill,
+.auth-field input:-webkit-autofill:hover,
+.auth-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0px 1000px var(--input-bg) inset;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .auth-error {
@@ -6647,7 +6654,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   touch-action: manipulation;
   text-align: center;
 }
-.auth-skip:hover { color: var(--text-primary, #111827); }
+.auth-skip:hover { color: var(--text-secondary); }
 
 /* Landing entrance animation */
 @keyframes landing-slide-in {
@@ -6707,7 +6714,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   .auth-card-brand-name {
     font-size: var(--text-lg);
     font-weight: var(--weight-extrabold);
-    color: var(--text-primary, #111827);
+    color: var(--text);
     letter-spacing: -0.02em;
   }
   [data-theme="dark"] .auth-card-brand-name { color: var(--content-primary); }
