@@ -254,6 +254,54 @@ Archive state is device-local. Archiving on Device A does not propagate to Devic
 
 ---
 
+## Incident 13: Undefined CSS Token Fallbacks Bypassing the Design System
+**Date**: June 2026
+**Severity**: High — hardcoded colours silently overriding theme tokens for unknown duration
+**Discovered**: Auth form dark mode bug report (login text invisible on dark background)
+
+### What happened
+
+A user reported that login form text was invisible in dark mode. Investigation found the root cause was `var(--text-primary, #111827)` — a CSS variable reference with a hardcoded dark fallback. The token `--text-primary` does not exist in the design system; `--text` is the correct name. Because the token was undefined, the browser silently fell back to `#111827` (near-black), which is unreadable on dark backgrounds.
+
+A codebase sweep then found the same pattern in four places:
+
+| Token used | Correct token | Where |
+|---|---|---|
+| `--text-primary` | `--text` | Auth form inputs (×4), hover/focus states |
+| `--surface-subtle` | `--hover-overlay` | Dropdown hover state |
+| `--accent-dark` | `--accent` | Focus ring |
+| `--danger` (as text colour) | `--danger-text` | Danger text (×3) |
+| `--danger` (as background) | `--danger-solid` | Danger background (×1) |
+
+Every one of these had a hardcoded hex/rgba fallback that the browser silently used, completely bypassing the token system and producing wrong colours in dark mode and custom themes.
+
+### Why the existing guard didn't catch it
+
+`css-guard.js` checked for:
+1. Removal of `margin-left: -4px` alignment fix
+2. `var(--accent)` used for text colour (WCAG issue)
+3. New hardcoded `rgba()`/hex values in isolation
+
+It did **not** check: `var(--name, #hex)` where `--name` is not a defined token. A hardcoded fallback inside a `var()` looks like "safe, tokens-first" code — the guard saw a `var()` call and passed it. But the fallback was silently winning every time.
+
+### The trust gap
+
+The entire point of the design system is that changing `[data-theme="dark"]` changes everything. That guarantee breaks the moment any component uses an undefined token with a hardcoded fallback — and it breaks silently. There is no error, no warning, no visible diff. The only symptom is that a specific element looks wrong in a specific context, which may go unnoticed for months.
+
+This was not a one-off typo. Five distinct token names were wrong across the codebase, with no mechanism to catch any of them.
+
+### Rule added
+
+> **Verify tokens exist before using them**: Before writing `var(--name, fallback)` in CSS, confirm `--name` is defined in `styles.css (:root)` and `[data-theme="dark"]`. A hardcoded fallback for an undefined token is a silent override that breaks the theme system. If the token doesn't exist, define it — don't rely on the fallback.
+
+> **No undefined-token fallbacks**: The pattern `var(--token, #hardcoded)` is only safe when the token is guaranteed to be defined in all contexts. If a token might not exist in all themes or surface modes, define it first. `css-guard.js` now enforces this automatically by reading the defined token list and blocking any `var(--name, #color)` where `--name` is not present.
+
+### Automation added (css-guard.js)
+
+The guard now reads all token names defined in `styles.css` and `css/tokens.css`, then checks every `var(--name, #color)` / `var(--name, rgba(...))` in edited CSS files. If `--name` is not in the defined set, it blocks the edit with an explicit error pointing to the missing token.
+
+---
+
 ## Summary of All Rules
 
 | # | Rule | Triggered by |
@@ -272,3 +320,5 @@ Archive state is device-local. Archiving on Device A does not propagate to Devic
 | 12 | Don't trust negative searches — verify branch state | False "doesn't exist" (Incident 11) |
 | 13 | Field-level authority: establish which system owns each sync field before writing merge logic | Archive reappearing (Incident 12) |
 | 14 | Document server schema status per field in sync code | Archive reappearing × 3 (Incident 12) |
+| 15 | Verify tokens exist before using them: no `var(--undefined, #hex)` | Silent dark mode override (Incident 13) |
+| 16 | css-guard.js must check for undefined-token fallbacks, not just raw hex values | Silent dark mode override (Incident 13) |
