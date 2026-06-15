@@ -3856,11 +3856,18 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     white-space: nowrap;
     flex-shrink: 0;
   }
+  .mobile-search-count {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    padding: var(--space-10) var(--space-20) var(--space-4);
+  }
   .mobile-search-results {
     flex: 1;
     overflow-y: auto;
     padding: var(--space-8) 0 env(safe-area-inset-bottom, var(--space-16));
   }
+  .mobile-search-btn.active,
+  .mobile-filter-btn.active { color: var(--accent-text); }
   .mobile-search-result-row {
     display: flex;
     flex-direction: column;
@@ -5702,6 +5709,10 @@ dialog.import-modal::backdrop {
 .filter-chip-label {
   color: var(--content-secondary);
   font-weight: var(--weight-normal);
+}
+.filter-chip--search {
+  gap: var(--space-4);
+  font-style: italic;
 }
 .filter-chip-remove {
   display: inline-flex;

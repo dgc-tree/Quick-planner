@@ -1276,7 +1276,8 @@ function renderFilterChips() {
   if (!container) return;
   const activeFilters = ['room', 'category', 'assigned'].filter(k => filters[k]);
   const hasDateFilter = filters.dateFrom || filters.dateTo;
-  if (activeFilters.length === 0 && !hasDateFilter) {
+  const hasSearch = !!filters.search;
+  if (activeFilters.length === 0 && !hasDateFilter && !hasSearch) {
     container.classList.remove('has-chips');
     container.innerHTML = '';
     return;
@@ -1284,6 +1285,9 @@ function renderFilterChips() {
   container.classList.add('has-chips');
   const labels = { room: 'Room', category: 'Category', assigned: 'Assigned' };
   let html = '';
+  if (hasSearch) {
+    html += `<span class="filter-chip filter-chip--search"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> ${filters.search}<button class="filter-chip-remove" data-filter="search" title="Clear search" aria-label="Clear search">&times;</button></span>`;
+  }
   activeFilters.forEach(key => {
     html += `<span class="filter-chip"><span class="filter-chip-label">${labels[key]}:</span> ${filters[key]}<button class="filter-chip-remove" data-filter="${key}" title="Remove filter" aria-label="Remove ${labels[key]} filter">&times;</button></span>`;
   });
@@ -1293,7 +1297,7 @@ function renderFilterChips() {
   if (filters.dateTo) {
     html += `<span class="filter-chip"><span class="filter-chip-label">To:</span> ${fmtDateChip(filters.dateTo)}<button class="filter-chip-remove" data-filter="dateTo" title="Remove filter" aria-label="Remove To date filter">&times;</button></span>`;
   }
-  html += `<button class="filter-chips-clear">Clear filters</button>`;
+  html += `<button class="filter-chips-clear">Clear all</button>`;
   container.innerHTML = html;
 
   const dateFilterIdMap = { dateFrom: 'date-from', dateTo: 'date-to' };
@@ -1301,16 +1305,23 @@ function renderFilterChips() {
     btn.addEventListener('click', () => {
       const key = btn.dataset.filter;
       filters[key] = '';
-      const elKey = dateFilterIdMap[key] || key;
-      const d = $(`#filter-${elKey}`); if (d) d.value = '';
-      const m = $(`#m-filter-${elKey}`); if (m) m.value = '';
+      if (key === 'search') {
+        const desktopInput = $('#search-tasks');
+        if (desktopInput) desktopInput.value = '';
+        const mobileInput = $('#mobile-search-input');
+        if (mobileInput) mobileInput.value = '';
+      } else {
+        const elKey = dateFilterIdMap[key] || key;
+        const d = $(`#filter-${elKey}`); if (d) d.value = '';
+        const m = $(`#m-filter-${elKey}`); if (m) m.value = '';
+      }
       _updateFilterBadge();
       render();
     });
   });
   container.querySelector('.filter-chips-clear').addEventListener('click', () => {
     filters.room = ''; filters.category = ''; filters.assigned = '';
-    filters.dateFrom = ''; filters.dateTo = '';
+    filters.dateFrom = ''; filters.dateTo = ''; filters.search = '';
     ['room', 'category', 'assigned'].forEach(key => {
       const d = $(`#filter-${key}`); if (d) d.value = '';
       const m = $(`#m-filter-${key}`); if (m) m.value = '';
@@ -1319,6 +1330,8 @@ function renderFilterChips() {
     const dfTo = $('#filter-date-to'); if (dfTo) dfTo.value = '';
     const mdfFrom = $('#m-filter-date-from'); if (mdfFrom) mdfFrom.value = '';
     const mdfTo = $('#m-filter-date-to'); if (mdfTo) mdfTo.value = '';
+    const desktopInput = $('#search-tasks'); if (desktopInput) desktopInput.value = '';
+    const mobileInput = $('#mobile-search-input'); if (mobileInput) mobileInput.value = '';
     _updateFilterBadge();
     render();
   });
@@ -2582,6 +2595,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Search (desktop)
   $('#search-tasks').addEventListener('input', (e) => {
     filters.search = e.target.value.trim();
+    updateFilterBadge();
     render();
   });
 
@@ -2609,7 +2623,8 @@ document.addEventListener('DOMContentLoaded', () => {
       mobileSearchResults.innerHTML = `<div class="mobile-search-empty">No tasks match "<strong>${q}</strong>"</div>`;
       return;
     }
-    mobileSearchResults.innerHTML = '';
+    const total = allTasks.filter(t => !t.archived).length;
+    mobileSearchResults.innerHTML = `<div class="mobile-search-count">${matches.length} of ${total} tasks</div>`;
     matches.forEach(task => {
       const row = document.createElement('button');
       row.className = 'mobile-search-result-row';
@@ -2645,6 +2660,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Mirror to desktop input for consistency
       const desktopInput = $('#search-tasks');
       if (desktopInput) desktopInput.value = q;
+      updateFilterBadge();
       render();
     });
   }
@@ -2715,6 +2731,13 @@ document.addEventListener('DOMContentLoaded', () => {
       desktopFilterBadge.textContent = count;
       desktopFilterBadge.classList.toggle('hidden', count === 0);
     }
+    // Tint the mobile filter button when filters are active
+    if (mobileFilterBtn) mobileFilterBtn.classList.toggle('active', count > 0);
+    if (desktopFilterBtn) desktopFilterBtn.classList.toggle('active', count > 0);
+    // Tint the mobile search button when a search term is active
+    const searchActive = !!filters.search;
+    const mobileSearchBtnEl = $('#mobile-search-btn');
+    if (mobileSearchBtnEl) mobileSearchBtnEl.classList.toggle('active', searchActive);
   }
   _updateFilterBadge = updateFilterBadge;
 
