@@ -2505,12 +2505,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateHideDoneButtons() {
     const inTodo = currentView === 'todolist';
-    const mobilBtn = $('#mobile-hide-done-btn');
+    const navBtn = $('#nav-hide-done-btn');
     const deskBtn = $('#desktop-hide-done-btn');
-    if (mobilBtn) {
-      mobilBtn.classList.toggle('hidden', !inTodo);
-      mobilBtn.classList.toggle('active', _hideDone);
-      mobilBtn.setAttribute('aria-pressed', String(_hideDone));
+    if (navBtn) {
+      navBtn.classList.toggle('hidden', !inTodo);
+      navBtn.classList.toggle('active', _hideDone);
+      navBtn.setAttribute('aria-pressed', String(_hideDone));
+      const label = navBtn.querySelector('.nav-hide-done-label');
+      if (label) label.textContent = _hideDone ? 'Show done' : 'Hide done';
     }
     if (deskBtn) {
       deskBtn.classList.toggle('hidden', !inTodo);
@@ -2528,7 +2530,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHideDoneButtons();
     render();
   }
-  $('#mobile-hide-done-btn')?.addEventListener('click', toggleHideDone);
+  $('#nav-hide-done-btn')?.addEventListener('click', toggleHideDone);
   $('#desktop-hide-done-btn')?.addEventListener('click', toggleHideDone);
 
   function closeOverlayViews() {
