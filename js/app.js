@@ -43,6 +43,7 @@ let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
 let filters = { room: '', category: '', assigned: '', search: '', dateFrom: '', dateTo: '' };
 let currentProjectId = loadActiveProjectId();
+let _hideDone = localStorage.getItem('qp-hide-done') === '1';
 
 // Overlay view persistence (settings/trash/archive). Stored in localStorage so
 // it survives a full browser restart, not just a same-tab refresh.
@@ -1240,7 +1241,8 @@ function render() {
     });
   } else if (currentView === 'todolist') {
     todolistContainer.classList.remove('hidden');
-    renderTodoList(todolistContainer, filtered, {
+    const todoTasks = _hideDone ? filtered.filter(t => t.status !== 'Done') : filtered;
+    renderTodoList(todolistContainer, todoTasks, {
       onStatusChange: handleStatusChange,
       onTaskClick: handleTaskEdit,
       onContextMenu: (event, task) => {
@@ -2488,6 +2490,34 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
   $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
 
+  function updateHideDoneButtons() {
+    const inTodo = currentView === 'todolist';
+    const mobilBtn = $('#mobile-hide-done-btn');
+    const deskBtn = $('#desktop-hide-done-btn');
+    if (mobilBtn) {
+      mobilBtn.classList.toggle('hidden', !inTodo);
+      mobilBtn.classList.toggle('active', _hideDone);
+      mobilBtn.setAttribute('aria-pressed', String(_hideDone));
+    }
+    if (deskBtn) {
+      deskBtn.classList.toggle('hidden', !inTodo);
+      deskBtn.classList.toggle('active', _hideDone);
+      deskBtn.setAttribute('aria-pressed', String(_hideDone));
+      const label = deskBtn.querySelector('.hide-done-label');
+      if (label) label.textContent = _hideDone ? 'Show done' : 'Hide done';
+    }
+  }
+  updateHideDoneButtons();
+
+  function toggleHideDone() {
+    _hideDone = !_hideDone;
+    localStorage.setItem('qp-hide-done', _hideDone ? '1' : '0');
+    updateHideDoneButtons();
+    render();
+  }
+  $('#mobile-hide-done-btn')?.addEventListener('click', toggleHideDone);
+  $('#desktop-hide-done-btn')?.addEventListener('click', toggleHideDone);
+
   function closeOverlayViews() {
     $('#settings-view').classList.add('hidden');
     $('#trash-view').classList.add('hidden');
@@ -2508,6 +2538,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('qp-view', currentView);
       $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
       $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
+      updateHideDoneButtons();
       render();
       restorePersistedScrollForView(currentView);
     });
@@ -2980,6 +3011,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, { passive: true });
 
+    // Keep padding accurate as header height changes (font swap, content updates)
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => requestAnimationFrame(updateHeaderPadding));
+      if (primaryNav) ro.observe(primaryNav);
+      ro.observe(header);
+    }
     mq.addEventListener('change', updateHeaderPadding);
     updateHeaderPadding();
     window.addEventListener('resize', updateHeaderPadding);
