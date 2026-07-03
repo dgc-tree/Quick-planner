@@ -1028,10 +1028,22 @@ function _executeMutationInner(action) {
     };
   }
 
-  // Bulk set dependency - appends depName to each task's dependencies, creating the dep task first if needed
-  if (action.action === 'bulk_set_dependency' && Array.isArray(action.taskIds)) {
+  // Bulk set dependency - handles both explicit taskIds (local intent) and
+  // filterStatus (LLM path, which returns a status to filter by rather than IDs)
+  if (action.action === 'bulk_set_dependency') {
     const tasks = _onGetTasks ? _onGetTasks() : [];
     const depName = action.dependencyName || '';
+
+    // LLM path: resolve filterStatus to taskIds, excluding the dep task itself
+    if (!Array.isArray(action.taskIds) && action.filterStatus) {
+      const depTask = tasks.find(t => (t.task || '').toLowerCase() === depName.toLowerCase());
+      action.taskIds = tasks
+        .filter(t => t.status === action.filterStatus && t.id !== (depTask?.id || action.excludeTaskId))
+        .map(t => t.id);
+      action.label = `${action.filterStatus} tasks`;
+    }
+
+    if (!Array.isArray(action.taskIds)) return { confirmation: 'No tasks found to update.', undoData: null };
 
     // Create the dependency task if it doesn't exist yet
     if (action.createIfMissing) {

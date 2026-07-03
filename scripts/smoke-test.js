@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Smoke test — verifies Quick Planner loads without critical errors.
+ * Smoke test - verifies Quick Planner loads without critical errors.
  * Usage: node scripts/smoke-test.js [url]
  * Default URL: http://localhost:8000
  */
@@ -19,7 +19,9 @@ function fail(msg) {
 
 try {
   console.log(`Smoke testing: ${url}\n`);
-  browser = await puppeteer.launch({ headless: true });
+  // --no-sandbox is required in CI (runner is already sandboxed at OS level)
+  const ciArgs = process.env.CI ? ['--no-sandbox', '--disable-setuid-sandbox'] : [];
+  browser = await puppeteer.launch({ headless: true, args: ciArgs });
   const page = await browser.newPage();
 
   // Track console errors
@@ -90,7 +92,7 @@ try {
     );
     console.log('PASS: #loading is hidden (app initialised)');
   } catch {
-    fail('#loading never received .hidden class — app may not have initialised');
+    fail('#loading never received .hidden class - app may not have initialised');
   }
 
   // Check 6: Either onboarding shows OR kanban has content OR auth gate is active
