@@ -1272,9 +1272,36 @@ export function resolveIntent(message, context) {
     }
   }
 
-  // "link all [status] tasks to dependency [name]" / "add [name] as dependency for all [status] items"
-  // Also handles: "create [name] and set as dependency for all [status] tasks"
+  // Bulk dependency assignment - concept-based detection, not rigid phrasing.
+  // Signals: (1) a known task name in the message, (2) blocking/dependency language,
+  // (3) a target status. Works regardless of how the user words the request.
   {
+    const DEP_SIGNAL = /\b(?:block(?:ing|s|ed)?|depend(?:ency|encies|s|ing|ent)?|prerequisite|required\s+before|ensure|assign(?:ed)?\s+(?:as\s+)?(?:a\s+)?dep(?:endency)?)\b/i;
+    const SET_SIGNAL = /\b(?:set|add|link|assign|ensure|make\s+sure|give|have)\b/i;
+
+    if (DEP_SIGNAL.test(msg) && SET_SIGNAL.test(msg)) {
+      const taskMatch = findTask(msg, tasks);
+      if (taskMatch && taskMatch.confidence > 0.5) {
+        const depTask = taskMatch.task;
+        // Detect which status column to target (default: Blocked)
+        const statusHit = lower.match(/\b(blocked|to[\s-]?do|in[\s-]?progress|done)\b/i);
+        const targetStatus = statusHit ? normaliseStatus(statusHit[1]) : 'Blocked';
+        const targets = tasks.filter(t => t.status === targetStatus && t.id !== depTask.id);
+        if (targets.length > 0) {
+          return {
+            type: 'mutation',
+            action: 'bulk_set_dependency',
+            taskIds: targets.map(t => t.id),
+            dependencyName: depTask.task,
+            createIfMissing: false,
+            label: `${targetStatus} tasks`,
+          };
+        }
+        return { type: 'read', response: `No other ${targetStatus} tasks found to update.` };
+      }
+    }
+
+    // "create [name] and set as dependency for all [status] tasks"
     const createAndLink = lower.match(/^create\s+["']?(.+?)["']?\s+and\s+(?:set|add|link)\s+(?:it\s+)?as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(.+?)\s+(?:items?|tasks?)?\s*$/i);
     if (createAndLink) {
       const depName = createAndLink[1].trim();
@@ -1293,23 +1320,17 @@ export function resolveIntent(message, context) {
       }
     }
 
-    // Optional "except for [task]" extractor - strips it from the filter string
-    // and returns the excluded task name so we can filter it out of the results.
+    // Rigid patterns as fallback for unambiguous short commands
     function extractExcept(str) {
       const ex = str.match(/\s+except\s+(?:for\s+)?["']?(.+?)["']?\s*$/i);
       if (!ex) return { filter: str, exclude: null };
       return { filter: str.slice(0, ex.index).trim(), exclude: ex[1].trim() };
     }
 
-    // Patterns: (filterOrDep, depOrFilter) - direction detected below
     const depLinkPatterns = [
-      // "all [status] tasks need to be linked to / need to have X as a dependency"
       lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+need(?:s)?\s+to\s+(?:be\s+linked?\s+to\s+(?:dependency\s+)?|have\s+(?:a\s+)?dependency\s+(?:of\s+)?|have\s+)["']?(.+?)["']?(?:\s+as\s+(?:a\s+)?(?:dependency|dep))?\s*$/i),
-      // "link all [status] tasks to [name]"
       lower.match(/^link\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
-      // "set/add [name] as dependency for all [status] tasks"
       lower.match(/^(?:set|add)\s+["']?(.+?)["']?\s+as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s*$/i),
-      // "all [status] tasks depend on / are blocked by [name]"
       lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+(?:depend(?:s)?\s+on|(?:are\s+)?blocked\s+by)\s+["']?(.+?)["']?\s*$/i),
     ];
 
@@ -1325,12 +1346,8 @@ export function resolveIntent(message, context) {
       const result = filterTasks(filterStr, tasks);
       if (result && result.matched.length > 0) {
         let targets = result.matched;
-        if (exclude) {
-          targets = targets.filter(t => (t.task || '').toLowerCase() !== exclude.toLowerCase());
-        }
-        if (targets.length === 0) {
-          return { type: 'read', response: `No tasks to update after excluding "${exclude}".` };
-        }
+        if (exclude) targets = targets.filter(t => (t.task || '').toLowerCase() !== exclude.toLowerCase());
+        if (targets.length === 0) return { type: 'read', response: `No tasks to update after excluding "${exclude}".` };
         return {
           type: 'mutation',
           action: 'bulk_set_dependency',
