@@ -472,7 +472,11 @@ function buildAssignIntent(person, taskId, taskName, tasks, prevAssigned) {
  * @param {object} context - { tasks, project, user, today }
  */
 export function resolveIntent(message, context) {
-  const msg = message.trim();
+  // Normalise curly/smart quotes to straight equivalents so patterns match
+  // regardless of whether the user typed on mobile (auto-curly) or desktop.
+  const msg = message.trim()
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"');
   const lower = msg.toLowerCase();
   const { tasks } = context;
   const todayDate = today();

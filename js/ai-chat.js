@@ -322,8 +322,14 @@ async function processMessage(text) {
       return;
     }
     if (intent.type === 'mutation') {
-      const result = executeMutation(intent);
-      appendBubble('assistant', result.confirmation, { undoData: result.undoData });
+      try {
+        const result = executeMutation(intent);
+        const msg = result?.confirmation || 'Done.';
+        appendBubble('assistant', msg, { undoData: result?.undoData });
+      } catch (err) {
+        console.error('[chat] mutation error:', err);
+        appendBubble('assistant', 'Something went wrong - please try again.');
+      }
       return;
     }
     if (intent.type === 'flow') {
