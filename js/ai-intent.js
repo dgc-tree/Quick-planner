@@ -1280,13 +1280,11 @@ export function resolveIntent(message, context) {
         const existing = tasks.find(t => (t.task || '').toLowerCase() === depName.toLowerCase());
         return {
           type: 'mutation',
-          action: {
-            action: 'bulk_set_dependency',
-            taskIds: result.matched.map(t => t.id),
-            dependencyName: existing ? existing.task : depName,
-            createIfMissing: !existing,
-            label: result.label,
-          },
+          action: 'bulk_set_dependency',
+          taskIds: result.matched.map(t => t.id),
+          dependencyName: existing ? existing.task : depName,
+          createIfMissing: !existing,
+          label: result.label,
         };
       }
     }
@@ -1310,13 +1308,11 @@ export function resolveIntent(message, context) {
       if (result && result.matched.length > 0) {
         return {
           type: 'mutation',
-          action: {
-            action: 'bulk_set_dependency',
-            taskIds: result.matched.map(t => t.id),
-            dependencyName: depName,
-            createIfMissing: false,
-            label: result.label,
-          },
+          action: 'bulk_set_dependency',
+          taskIds: result.matched.map(t => t.id),
+          dependencyName: depName,
+          createIfMissing: false,
+          label: result.label,
         };
       }
       if (result && result.matched.length === 0) {
