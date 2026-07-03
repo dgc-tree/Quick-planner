@@ -1,0 +1,42 @@
+name: Post-deploy verification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # Cloudflare Pages deploys in ~60s. Poll until the site responds or
+      # we time out at 3 minutes. Fails the job if the site stays down.
+      - name: Wait for Cloudflare deploy
+        run: |
+          URL="https://planner.davegregurke.au"
+          echo "Waiting for $URL to be reachable..."
+          for i in $(seq 1 18); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
+              echo "Site responded with $STATUS after ${i}x10s"
+              break
+            fi
+            echo "Attempt $i: got $STATUS, retrying in 10s..."
+            sleep 10
+          done
+
+      - name: Smoke test (live)
+        run: node scripts/smoke-test.js https://planner.davegregurke.au
+
+      - name: Verify security headers (live)
+        run: bash scripts/verify-headers.sh https://planner.davegregurke.au

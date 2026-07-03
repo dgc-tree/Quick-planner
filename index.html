@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=0.4.4">
   <link rel="stylesheet" href="css/styles.css?v=0.4.4">
   <link rel="stylesheet" href="css/ai-chat.css?v=0.4.4">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="js/vendor/papaparse.min.js"></script>
 </head>
 <body class="auth-gate">
 
@@ -590,18 +590,7 @@
     </div>
   </main>
 
-  <script>
-    // Prevent FOUC - apply saved theme before paint
-    (function() {
-      const saved = localStorage.getItem('qp-theme');
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      const surface = localStorage.getItem('qp-surface');
-      if (surface) document.documentElement.setAttribute('data-surface', surface);
-      const v = localStorage.getItem('qp-view') || 'kanban';
-      const btn = document.querySelector('.view-btn[data-view="' + v + '"]');
-      if (btn) btn.classList.add('active');
-    })();
-  </script>
+  <script src="js/theme-init.js"></script>
   <div id="mobile-menu-overlay" class="mobile-menu-overlay">
     <nav class="mobile-menu-nav">
       <button class="mobile-menu-item mobile-account-item" id="mobile-account-btn">
