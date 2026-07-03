@@ -1268,6 +1268,72 @@ export function resolveIntent(message, context) {
     }
   }
 
+  // "link all [status] tasks to dependency [name]" / "add [name] as dependency for all [status] items"
+  // Also handles: "create [name] and set as dependency for all [status] tasks"
+  {
+    const createAndLink = lower.match(/^create\s+["']?(.+?)["']?\s+and\s+(?:set|add|link)\s+(?:it\s+)?as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(.+?)\s+(?:items?|tasks?)?\s*$/i);
+    if (createAndLink) {
+      const depName = createAndLink[1].trim();
+      const filterStr = createAndLink[2].trim();
+      const result = filterTasks(filterStr, tasks);
+      if (result && result.matched.length > 0) {
+        const existing = tasks.find(t => (t.task || '').toLowerCase() === depName.toLowerCase());
+        return {
+          type: 'clarify',
+          response: existing
+            ? `Link "${existing.task}" as a dependency on ${result.matched.length} ${result.label}. Proceed?`
+            : `Create "${depName}" and link it as a dependency on ${result.matched.length} ${result.label}. Proceed?`,
+          pendingAction: {
+            action: 'bulk_set_dependency',
+            taskIds: result.matched.map(t => t.id),
+            dependencyName: existing ? existing.task : depName,
+            createIfMissing: !existing,
+            label: result.label,
+          },
+        };
+      }
+    }
+
+    const depLinkPatterns = [
+      // "all [status] items/tasks need to be linked to dependency [name]"
+      lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+need(?:s)?\s+to\s+be\s+linked?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
+      // "link all [status] tasks to [name]"
+      lower.match(/^link\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
+      // "set [name] as dependency for all [status] tasks"
+      lower.match(/^(?:set|add)\s+["']?(.+?)["']?\s+as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s*$/i),
+      // "all [status] tasks depend on [name]" / "blocked tasks are blocked by [name]"
+      lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+(?:depend(?:s)?\s+on|(?:are\s+)?blocked\s+by)\s+["']?(.+?)["']?\s*$/i),
+    ];
+
+    for (const m of depLinkPatterns) {
+      if (!m) continue;
+      // Some patterns have (status, dep), some have (dep, status) - detect by checking which group maps to a status
+      let filterStr, depName;
+      const g1 = m[1].trim(), g2 = m[2].trim();
+      const g1IsStatus = !!normaliseStatus(g1.split(/\s+/)[0]) || /^(blocked|to.?do|in.?progress|done|all)$/i.test(g1.split(/\s+/).slice(-1)[0]);
+      if (g1IsStatus) { filterStr = g1; depName = g2; }
+      else            { depName = g1; filterStr = g2; }
+
+      const result = filterTasks(filterStr, tasks);
+      if (result && result.matched.length > 0) {
+        return {
+          type: 'clarify',
+          response: `Link "${depName}" as a dependency on ${result.matched.length} ${result.label}. Proceed?`,
+          pendingAction: {
+            action: 'bulk_set_dependency',
+            taskIds: result.matched.map(t => t.id),
+            dependencyName: depName,
+            createIfMissing: false,
+            label: result.label,
+          },
+        };
+      }
+      if (result && result.matched.length === 0) {
+        return { type: 'read', response: `No ${result.label} found to update.` };
+      }
+    }
+  }
+
   // "start fresh" / "clear everything" / "delete all tasks"
   if (/^(?:start\s+fresh|reset\s+(?:all\s+)?tasks?|clear\s+everything|delete\s+everything|remove\s+everything|wipe\s+(?:all\s+)?tasks?)$/i.test(lower) ||
       /^(?:delete|remove|trash|clear)\s+all\s+tasks?\s*$/i.test(lower)) {

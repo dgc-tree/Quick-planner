@@ -1,5 +1,5 @@
 /**
- * ai-chat.js — QP Chat orchestrator & UI controller
+ * ai-chat.js - QP Chat orchestrator & UI controller
  * The only AI module that touches the DOM.
  * Decision tree: local intent → Haiku → Sonnet
  */
@@ -57,7 +57,7 @@ export function initChat(callbacks) {
   _onGetTasks = callbacks.getTasks;
   _onProjectSwitch = callbacks.onProjectSwitch;
 
-  // Load settings — TTS defaults OFF (opt-in via settings toggle)
+  // Load settings - TTS defaults OFF (opt-in via settings toggle)
   _ttsEnabled = localStorage.getItem('qp-ai-tts') === '1';
   const savedMode = localStorage.getItem('qp-ai-briefing');
   // Migrate old values: 'today' → 'daily', 'week' → 'weekly'
@@ -73,7 +73,7 @@ export function initChat(callbacks) {
 }
 
 /**
- * Called when the active project changes — re-trigger briefing.
+ * Called when the active project changes - re-trigger briefing.
  */
 export function onProjectSwitch() {
   invalidateContextCache();
@@ -332,13 +332,13 @@ async function processMessage(text) {
     }
   }
 
-  // Step 2: No local match — try fuzzy task match or show helpful suggestions
+  // Step 2: No local match - try fuzzy task match or show helpful suggestions
   if (!hasApiKey()) {
     const fuzzy = findTask(text, tasks);
     if (fuzzy && fuzzy.confidence > 0.5) {
       const name = fuzzy.task.task || fuzzy.task.name;
       _lastMutatedTaskId = fuzzy.task.id;
-      appendBubble('assistant', `I found "${name}" — try:\n- "mark it as done"\n- "assign to [name]"\n- "show me ${name}"`);
+      appendBubble('assistant', `I found "${name}" - try:\n- "mark it as done"\n- "assign to [name]"\n- "show me ${name}"`);
     } else {
       appendBubble('assistant', 'I didn\'t catch that. Try:\n- "add task [name]"\n- "what\'s due this week?"\n- "mark [task] as done"\n- "help" for all commands');
     }
@@ -388,7 +388,7 @@ async function processMessage(text) {
     } else if (err.message === 'RATE_LIMITED') {
       appendBubble('assistant', "You've hit the API rate limit. Try again in a moment.");
     } else {
-      // Network/connection error — fall back to helpful local response
+      // Network/connection error - fall back to helpful local response
       const fuzzy = findTask(text, tasks);
       if (fuzzy && fuzzy.confidence > 0.5) {
         const name = fuzzy.task.task || fuzzy.task.name;
@@ -424,7 +424,7 @@ function draftSummary(draft) {
   if (draft.cost != null) parts.push(`cost: $${draft.cost}`);
   if (draft.contact) parts.push(`contact: ${draft.contact}`);
   if (draft.notes) parts.push(`notes: ${draft.notes}`);
-  return parts.length ? ' — ' + parts.join(', ') : '';
+  return parts.length ? ' - ' + parts.join(', ') : '';
 }
 
 function candidateList(candidates) {
@@ -445,7 +445,7 @@ function startFlow(intent) {
       return;
     }
     _conversationFlow = { type: 'add', stage: 'confirm-details', draft };
-    appendBubble('assistant', `Got it — "${draft.task}".\nWant to add dates, room, or other details? Or just add it?`);
+    appendBubble('assistant', `Got it - "${draft.task}".\nWant to add dates, room, or other details? Or just add it?`);
     return;
   }
 
@@ -466,7 +466,7 @@ function startFlow(intent) {
           names,
           confirmation: flow === 'archive'
             ? `Archived ${ids.length} tasks.`
-            : `Deleted ${ids.length} tasks — moved to bin.`,
+            : `Deleted ${ids.length} tasks - moved to bin.`,
         });
         appendBubble('assistant', result.confirmation, { undoData: result.undoData });
         return;
@@ -492,7 +492,7 @@ function startFlow(intent) {
       if (flow === 'delete') {
         // Reason given inline = implicit confirmation. Execute immediately.
         if (reason) {
-          const result = executeMutation({ action: 'delete', taskId: task.id, reason, confirmation: `Deleted "${name}" — moved to bin.` });
+          const result = executeMutation({ action: 'delete', taskId: task.id, reason, confirmation: `Deleted "${name}" - moved to bin.` });
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
         }
@@ -514,7 +514,7 @@ function startFlow(intent) {
     }
 
     if (candidates.length === 1) {
-      // Low confidence — confirm the match
+      // Low confidence - confirm the match
       const task = candidates[0].task;
       const name = task.task || task.name;
       _conversationFlow = { type: flow, stage: 'confirm-match', taskId: task.id, taskName: name, candidates, reason };
@@ -522,7 +522,7 @@ function startFlow(intent) {
       return;
     }
 
-    // Multiple matches — show numbered list
+    // Multiple matches - show numbered list
     _conversationFlow = { type: flow, stage: 'pick-task', candidates, reason };
     const multiHint = (flow === 'archive' || flow === 'delete')
       ? `\nWhich one? (or say "both" / "all" to apply to all)`
@@ -540,7 +540,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
     return;
   }
 
-  // Check if this is an unrelated new intent — if so, break out of flow
+  // Check if this is an unrelated new intent - if so, break out of flow
   const tasks = _onGetTasks ? _onGetTasks() : [];
   const context = { tasks, project: '', user: loadUserName(), today: new Date(), lastTaskId: _lastMutatedTaskId };
   const newIntent = resolveIntent(text, context);
@@ -562,7 +562,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
       }
       flow.draft.task = flow.draft.task.charAt(0).toUpperCase() + flow.draft.task.slice(1);
       flow.stage = 'confirm-details';
-      appendBubble('assistant', `Got it — "${flow.draft.task}".\nWant to add dates, room, or other details? Or just add it?`);
+      appendBubble('assistant', `Got it - "${flow.draft.task}".\nWant to add dates, room, or other details? Or just add it?`);
       return;
     }
 
@@ -575,16 +575,16 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         return;
       }
 
-      // User is adding more details — extract fields from their message
+      // User is adding more details - extract fields from their message
       const { fields } = extractFields(text);
       if (Object.keys(fields).length > 0) {
         Object.assign(flow.draft, fields);
         const summary = draftSummary(flow.draft);
-        appendBubble('assistant', `Updated — "${flow.draft.task}"${summary}.\nAnything else, or add it now?`);
+        appendBubble('assistant', `Updated - "${flow.draft.task}"${summary}.\nAnything else, or add it now?`);
         return;
       }
 
-      // Couldn't parse fields — maybe they said "yes" (meaning add it)
+      // Couldn't parse fields - maybe they said "yes" (meaning add it)
       if (YES_WORDS.includes(lower)) {
         const result = executeMutation({ action: 'add', fields: flow.draft, confirmation: `Added "${flow.draft.task}" to your planner${draftSummary(flow.draft)}.` });
         _conversationFlow = null;
@@ -592,7 +592,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         return;
       }
 
-      // Unrecognised — prompt again
+      // Unrecognised - prompt again
       appendBubble('assistant', 'I didn\'t catch that. You can say things like "room Kitchen, due June 15" or "just add it".');
       return;
     }
@@ -625,7 +625,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         appendBubble('assistant', `What would you like to change on "${flow.taskName}"?`);
         return;
       }
-      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}).`);
+      appendBubble('assistant', `Pick a number from the list (1-${flow.candidates.length}).`);
       return;
     }
 
@@ -664,7 +664,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
           taskId: flow.taskId,
           fields,
           taskName: flow.taskName,
-          confirmation: `Updated "${flow.taskName}" — ${parts.join(', ')}.`,
+          confirmation: `Updated "${flow.taskName}" - ${parts.join(', ')}.`,
         });
         _conversationFlow = null;
         appendBubble('assistant', result.confirmation, { undoData: result.undoData });
@@ -680,9 +680,9 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
   if (flow.type === 'delete') {
     if (flow.stage === 'confirm-match') {
       if (YES_WORDS.includes(lower)) {
-        // Reason was already given with the original message — skip prompt.
+        // Reason was already given with the original message - skip prompt.
         if (flow.reason) {
-          const result = executeMutation({ action: 'delete', taskId: flow.taskId, reason: flow.reason, confirmation: `Deleted "${flow.taskName}" — moved to bin.` });
+          const result = executeMutation({ action: 'delete', taskId: flow.taskId, reason: flow.reason, confirmation: `Deleted "${flow.taskName}" - moved to bin.` });
           _conversationFlow = null;
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
@@ -705,7 +705,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         const names = picks.map(i => flow.candidates[i - 1].task.task || flow.candidates[i - 1].task.name);
         flow.candidates = null;
         if (flow.reason) {
-          const result = executeMutation({ action: 'bulk_delete', taskIds: ids, reason: flow.reason, names, confirmation: `Deleted ${ids.length} tasks — moved to bin.` });
+          const result = executeMutation({ action: 'bulk_delete', taskIds: ids, reason: flow.reason, names, confirmation: `Deleted ${ids.length} tasks - moved to bin.` });
           _conversationFlow = null;
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
@@ -722,7 +722,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         flow.taskName = picked.task || picked.name;
         flow.candidates = null;
         if (flow.reason) {
-          const result = executeMutation({ action: 'delete', taskId: flow.taskId, reason: flow.reason, confirmation: `Deleted "${flow.taskName}" — moved to bin.` });
+          const result = executeMutation({ action: 'delete', taskId: flow.taskId, reason: flow.reason, confirmation: `Deleted "${flow.taskName}" - moved to bin.` });
           _conversationFlow = null;
           appendBubble('assistant', result.confirmation, { undoData: result.undoData });
           return;
@@ -731,7 +731,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         appendBubble('assistant', `Delete "${flow.taskName}"?\nIt'll be moved to trash for 30 days.`);
         return;
       }
-      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
+      appendBubble('assistant', `Pick a number from the list (1-${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
       return;
     }
 
@@ -742,7 +742,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
           taskIds: flow.taskIds,
           reason: flow.reason || '',
           names: flow.taskNames,
-          confirmation: `Deleted ${flow.taskIds.length} tasks — moved to bin.`,
+          confirmation: `Deleted ${flow.taskIds.length} tasks - moved to bin.`,
         });
         _conversationFlow = null;
         appendBubble('assistant', result.confirmation, { undoData: result.undoData });
@@ -763,7 +763,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
           action: 'delete',
           taskId: flow.taskId,
           reason: flow.reason || '',
-          confirmation: `Done — moved to bin.`,
+          confirmation: `Done - moved to bin.`,
         });
         _conversationFlow = null;
         appendBubble('assistant', result.confirmation, { undoData: result.undoData });
@@ -833,7 +833,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
         appendBubble('assistant', `Archive "${flow.taskName}"?\nIt'll be hidden from your views but kept indefinitely.`);
         return;
       }
-      appendBubble('assistant', `Pick a number from the list (1–${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
+      appendBubble('assistant', `Pick a number from the list (1-${flow.candidates.length}), or say "both" / "all" / "1 and 2".`);
       return;
     }
 
@@ -881,7 +881,7 @@ function handleFlowStep(text, lower, YES_WORDS, NO_WORDS) {
     }
   }
 
-  // Fallback — shouldn't reach here
+  // Fallback - shouldn't reach here
   _conversationFlow = null;
 }
 
@@ -898,12 +898,12 @@ function parsePickSelection(lower, total) {
   if (/\b(?:all(?:\s+of\s+(?:them|em))?|every(?:thing|\s+one)?)\b/.test(text)) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }
-  // "both" anywhere in the message — only valid when there are exactly 2
+  // "both" anywhere in the message - only valid when there are exactly 2
   if (/\bboth\b/.test(text)) {
     if (total === 2) return [1, 2];
     return null;
   }
-  // "1 and 2", "1, 2", "1 & 2", "1+2", "1 2" — only treat short replies as
+  // "1 and 2", "1, 2", "1 & 2", "1+2", "1 2" - only treat short replies as
   // a numeric pick to avoid grabbing digits inside a longer sentence.
   if (text.length <= 30) {
     const matches = text.match(/\d+/g);
@@ -1018,6 +1018,40 @@ function _executeMutationInner(action) {
     }
     return {
       confirmation: `Updated ${updated} ${action.label || 'tasks'}.`,
+      undoData: { action: 'bulk_update', items: prevStates },
+    };
+  }
+
+  // Bulk set dependency - appends depName to each task's dependencies, creating the dep task first if needed
+  if (action.action === 'bulk_set_dependency' && Array.isArray(action.taskIds)) {
+    const tasks = _onGetTasks ? _onGetTasks() : [];
+    const depName = action.dependencyName || '';
+
+    // Create the dependency task if it doesn't exist yet
+    if (action.createIfMissing) {
+      const exists = tasks.find(t => (t.task || '').toLowerCase() === depName.toLowerCase());
+      if (!exists && _onAddTask) _onAddTask({ task: depName, status: 'To Do' });
+    }
+
+    const prevStates = [];
+    let updated = 0;
+    for (const id of action.taskIds) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) continue;
+      const existing = Array.isArray(task.dependencies)
+        ? task.dependencies.join(', ')
+        : (task.dependencies || '');
+      prevStates.push({ taskId: id, fields: { dependencies: existing } });
+      const already = existing.toLowerCase().split(',').map(s => s.trim()).includes(depName.toLowerCase());
+      if (!already) {
+        const next = existing ? `${existing}, ${depName}` : depName;
+        if (_onUpdateTask) _onUpdateTask(id, { dependencies: next });
+        updated++;
+      }
+    }
+    const created = action.createIfMissing ? ` Created "${depName}".` : '';
+    return {
+      confirmation: `Linked "${depName}" as a dependency on ${updated} ${action.label || 'tasks'}.${created}`,
       undoData: { action: 'bulk_update', items: prevStates },
     };
   }
@@ -1180,7 +1214,7 @@ function setupVoice() {
     onResult(text) {
       _input.value = text;
       _micBtn.classList.remove('qp-chat-mic-active');
-      // Auto-send after voice input — flag as voice round trip for TTS response
+      // Auto-send after voice input - flag as voice round trip for TTS response
       setTimeout(() => sendMessage(true), 200);
     },
     onError(err) {
@@ -1252,12 +1286,12 @@ export function getBriefingMode() { return _briefingMode; }
 
 function saveConversation() {
   try {
-    // Only keep last 50 messages — persist to localStorage (survives tab close)
+    // Only keep last 50 messages - persist to localStorage (survives tab close)
     const toSave = _messages.slice(-50);
     localStorage.setItem('qp-ai-chat', JSON.stringify(toSave));
     // Also save a plain-text transcript for durability
     saveTranscript(toSave);
-  } catch { /* quota exceeded — ignore */ }
+  } catch { /* quota exceeded - ignore */ }
 }
 
 function loadConversation() {
