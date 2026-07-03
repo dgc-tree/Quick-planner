@@ -1,5 +1,5 @@
 /**
- * ai-llm.js — Multi-provider LLM client (Hosted / Claude API / OpenAI-compatible local)
+ * ai-llm.js - Multi-provider LLM client (Hosted / Claude API / OpenAI-compatible local)
  * Hosted = proxied through qp-api Worker (default for logged-in users).
  * Claude = user's own API key, direct to Anthropic.
  * Local = any OpenAI-compatible endpoint (Ollama, LM Studio, llama.cpp, vLLM).
@@ -60,8 +60,8 @@ You help users manage tasks using natural language. You can:
 - Answer questions about tasks (read-only queries)
 - Update task fields: name (field key: "task"), dueDate (field key: "endDate"), startDate, status, room, category, assigned
 - Add new tasks
-- Archive tasks (hidden from views, kept indefinitely — use this when the user says they decided against, cancelled, deferred, or want to keep for reference)
-- Delete tasks (moves to trash, removed after 30 days — use this when the user wants the task gone)
+- Archive tasks (hidden from views, kept indefinitely - use this when the user says they decided against, cancelled, deferred, or want to keep for reference)
+- Delete tasks (moves to trash, removed after 30 days - use this when the user wants the task gone)
 
 Prefer ARCHIVE over DELETE when the user expresses any of: "decided against", "no longer needed", "cancelled", "deferred", "keep for reference", "park". Reserve DELETE for explicit "delete", "remove", "trash", "permanently".
 
@@ -75,7 +75,7 @@ When performing a mutation, respond with ONLY a JSON block in this exact format,
 \`\`\`json
 {"action":"update","taskId":"<id>","fields":{"<key>":"<value>"}}
 \`\`\`
-Done — Task Name updated.
+Done - Task Name updated.
 
 For adding tasks:
 \`\`\`json
@@ -95,8 +95,16 @@ For deleting tasks:
 \`\`\`
 Deleted "Task Name".
 
+For setting a dependency on multiple tasks at once (e.g. "all Blocked tasks depend on X", "link X as a dependency for all Blocked items"):
+\`\`\`json
+{"action":"bulk_set_dependency","dependencyName":"<exact task name>","filterStatus":"<Blocked|To Do|In Progress|Done>","excludeTaskId":"<id of the dep task itself, to avoid self-referencing>"}
+\`\`\`
+Linked "X" as a dependency on N Blocked tasks.
+
+Use bulk_set_dependency whenever the user wants to assign one task as a blocker or prerequisite for a group of tasks filtered by status. The dependency name must exactly match the task name in the list. The system will look up task IDs automatically.
+
 If you are not confident which task the user means, ask for clarification before acting. Never guess.
-For read-only questions, just answer in plain text — no JSON block needed.
+For read-only questions, just answer in plain text - no JSON block needed.
 Keep responses short and direct.
 
 Current project: ${contextJson.project}
@@ -260,7 +268,7 @@ function parseActionBlock(text) {
       return parsed;
     }
   } catch {
-    // Invalid JSON — ignore
+    // Invalid JSON - ignore
   }
   return null;
 }
@@ -319,7 +327,7 @@ export async function testClaudeConnection() {
     });
 
     if (response.status === 401) return { ok: false, message: 'Invalid API key' };
-    if (response.status === 429) return { ok: true, message: 'Connected (rate limited — try again shortly)', models: 'Haiku + Sonnet' };
+    if (response.status === 429) return { ok: true, message: 'Connected (rate limited - try again shortly)', models: 'Haiku + Sonnet' };
     if (!response.ok) return { ok: false, message: `API error (${response.status})` };
 
     return { ok: true, message: 'Connected', models: 'Haiku + Sonnet' };
@@ -350,7 +358,7 @@ export async function testLocalConnection() {
       }),
     });
 
-    if (response.status === 401) return { ok: false, message: 'Unauthorised — check API key' };
+    if (response.status === 401) return { ok: false, message: 'Unauthorised - check API key' };
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       return { ok: false, message: err.error?.message || `Error (${response.status})` };
@@ -361,7 +369,7 @@ export async function testLocalConnection() {
     return { ok: true, message: 'Connected', models: usedModel };
   } catch (err) {
     if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      return { ok: false, message: 'Cannot reach endpoint — is Ollama/LM Studio running?' };
+      return { ok: false, message: 'Cannot reach endpoint - is Ollama/LM Studio running?' };
     }
     return { ok: false, message: `Connection failed: ${err.message}` };
   }

@@ -13,6 +13,19 @@
 
 ---
 
+## Required GitHub secrets
+
+These must be set at https://github.com/dgc-tree/Quick-planner/settings/secrets/actions
+
+| Secret | Used by | How to get |
+|--------|---------|------------|
+| `CLOUDFLARE_API_TOKEN` | `db-backup.yml` | Cloudflare dashboard > My Profile > API Tokens > Create Token > "Edit Cloudflare Workers" template, scope to this account |
+| `CLOUDFLARE_ACCOUNT_ID` | `db-backup.yml` | Cloudflare dashboard > right sidebar when on any Workers/Pages page |
+
+Without these, the weekly D1 backup workflow will fail. Everything else runs on `GITHUB_TOKEN` (automatic).
+
+---
+
 ## Deploy
 
 ### Frontend
