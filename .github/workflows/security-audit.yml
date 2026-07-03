@@ -2,7 +2,7 @@ name: Security audit
 
 on:
   schedule:
-    # Mondays 10:00 UTC (20:00 AEST) — weekly check
+    # Mondays 10:00 UTC (20:00 AEST) - weekly check
     - cron: '0 10 * * 1'
   pull_request:
     paths:
@@ -15,13 +15,13 @@ jobs:
   # ── PR gate ────────────────────────────────────────────────────────────────
   # Blocks merges only when a production dependency has a moderate+ advisory.
   # Dev-only vulnerabilities (e.g. puppeteer transitive deps) are reported but
-  # do not fail the check — they don't reach the deployed app.
+  # do not fail the check - they don't reach the deployed app.
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -40,7 +40,7 @@ jobs:
             | while read -r line; do
                 echo "::warning::Dev audit: $line"
               done
-          # Always exit 0 — dev vulns are noise, not a blocker
+          # Always exit 0 - dev vulns are noise, not a blocker
           exit 0
 
   # ── Auto-fix ───────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add package-lock.json package.json
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "fix: npm audit fix — resolve security vulnerabilities"
+          git commit -m "fix: npm audit fix - resolve security vulnerabilities"
           git push origin "$BRANCH"
           gh pr create \
             --title "fix: resolve npm audit vulnerabilities ($(date +%Y-%m-%d))" \
