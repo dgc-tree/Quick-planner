@@ -1,0 +1,40 @@
+name: Production monitor
+
+on:
+  schedule:
+    # Daily at 22:00 UTC (08:00 AEST) - catches overnight drift
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Uptime check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://planner.davegregurke.au)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ] || (echo "FAIL: site returned $STATUS" && exit 1)
+
+      - name: Security headers
+        run: bash scripts/verify-headers.sh https://planner.davegregurke.au
+
+      - name: Smoke test (live)
+        run: node scripts/smoke-test.js https://planner.davegregurke.au
+
+      - name: API health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://qp-api.davegregurke.workers.dev/health 2>/dev/null || echo "000")
+          echo "Worker API status: $STATUS"
+          # 401 is expected (auth required) - confirms the Worker is running
+          [ "$STATUS" = "401" ] || [ "$STATUS" = "200" ] || echo "::warning::Worker returned unexpected status $STATUS"
