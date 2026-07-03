@@ -1289,27 +1289,48 @@ export function resolveIntent(message, context) {
       }
     }
 
+    // Optional "except for [task]" extractor - strips it from the filter string
+    // and returns the excluded task name so we can filter it out of the results.
+    function extractExcept(str) {
+      const ex = str.match(/\s+except\s+(?:for\s+)?["']?(.+?)["']?\s*$/i);
+      if (!ex) return { filter: str, exclude: null };
+      return { filter: str.slice(0, ex.index).trim(), exclude: ex[1].trim() };
+    }
+
+    // Patterns: (filterOrDep, depOrFilter) - direction detected below
     const depLinkPatterns = [
-      lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+need(?:s)?\s+to\s+be\s+linked?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
+      // "all [status] tasks need to be linked to / need to have X as a dependency"
+      lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+need(?:s)?\s+to\s+(?:be\s+linked?\s+to\s+(?:dependency\s+)?|have\s+(?:a\s+)?dependency\s+(?:of\s+)?|have\s+)["']?(.+?)["']?(?:\s+as\s+(?:a\s+)?(?:dependency|dep))?\s*$/i),
+      // "link all [status] tasks to [name]"
       lower.match(/^link\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
+      // "set/add [name] as dependency for all [status] tasks"
       lower.match(/^(?:set|add)\s+["']?(.+?)["']?\s+as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s*$/i),
+      // "all [status] tasks depend on / are blocked by [name]"
       lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+(?:depend(?:s)?\s+on|(?:are\s+)?blocked\s+by)\s+["']?(.+?)["']?\s*$/i),
     ];
 
     for (const m of depLinkPatterns) {
       if (!m) continue;
-      let filterStr, depName;
+      let rawFilter, depName;
       const g1 = m[1].trim(), g2 = m[2].trim();
       const g1IsStatus = !!normaliseStatus(g1.split(/\s+/)[0]) || /^(blocked|to.?do|in.?progress|done|all)$/i.test(g1.split(/\s+/).slice(-1)[0]);
-      if (g1IsStatus) { filterStr = g1; depName = g2; }
-      else            { depName = g1; filterStr = g2; }
+      if (g1IsStatus) { rawFilter = g1; depName = g2; }
+      else            { depName = g1; rawFilter = g2; }
 
+      const { filter: filterStr, exclude } = extractExcept(rawFilter);
       const result = filterTasks(filterStr, tasks);
       if (result && result.matched.length > 0) {
+        let targets = result.matched;
+        if (exclude) {
+          targets = targets.filter(t => (t.task || '').toLowerCase() !== exclude.toLowerCase());
+        }
+        if (targets.length === 0) {
+          return { type: 'read', response: `No tasks to update after excluding "${exclude}".` };
+        }
         return {
           type: 'mutation',
           action: 'bulk_set_dependency',
-          taskIds: result.matched.map(t => t.id),
+          taskIds: targets.map(t => t.id),
           dependencyName: depName,
           createIfMissing: false,
           label: result.label,
