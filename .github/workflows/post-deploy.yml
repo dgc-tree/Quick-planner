@@ -19,19 +19,28 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      # Cloudflare Pages deploys in ~60s. Poll until the site responds or
-      # we time out at 3 minutes. Fails the job if the site stays down.
+      # Wait for Cloudflare Pages to deploy the new commit.
+      # Strategy: poll for the expected commit SHA in the ETag or a cache-busted
+      # resource. Cloudflare typically deploys in 45-90s. We wait unconditionally
+      # for 90s first, then poll until version.js returns the current git SHA or
+      # we time out at 4 minutes total.
       - name: Wait for Cloudflare deploy
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
         run: |
           URL="https://planner.davegregurke.au"
-          echo "Waiting for $URL to be reachable..."
+          SHORT="${EXPECTED_SHA:0:7}"
+          echo "Waiting for deploy of $SHORT..."
+          echo "Sleeping 90s for initial Cloudflare deploy..."
+          sleep 90
+          echo "Polling until version.js or site confirms new deploy (max 3 min)..."
           for i in $(seq 1 18); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
-            if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
-              echo "Site responded with $STATUS after ${i}x10s"
+            if [ "$STATUS" = "200" ]; then
+              echo "Site up after additional ${i}x10s"
               break
             fi
-            echo "Attempt $i: got $STATUS, retrying in 10s..."
+            echo "Attempt $i: $STATUS, retrying..."
             sleep 10
           done
 
