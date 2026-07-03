@@ -44,7 +44,7 @@ export function markVisited() {
 const BIN_KEY = 'qp-bin';
 const BIN_TTL_DAYS = 30;
 
-export function loadBin() {
+function loadBinAll() {
   try {
     const raw = localStorage.getItem(BIN_KEY);
     if (!raw) return [];
@@ -54,24 +54,55 @@ export function loadBin() {
   } catch { return []; }
 }
 
-export function addToBin(task, reason = '') {
-  const bin = loadBin();
+export function loadBin(projectId = null) {
+  const bin = loadBinAll();
+  if (projectId == null) return bin;
+  return bin.filter(e => e.projectId === projectId);
+}
+
+export function addToBin(task, reason = '', projectId = null) {
+  const bin = loadBinAll();
   const entry = {
     task: JSON.parse(JSON.stringify(task, (k, v) => v instanceof Date ? v.toISOString() : v)),
     deletedAt: Date.now(),
   };
   if (reason) entry.deleteReason = reason;
+  if (projectId) entry.projectId = projectId;
   bin.push(entry);
   localStorage.setItem(BIN_KEY, JSON.stringify(bin));
 }
 
-export function restoreFromBin(taskName) {
-  const bin = loadBin();
-  const idx = bin.findIndex(e => e.task.task === taskName);
+export function restoreFromBin(taskName, projectId = null) {
+  const bin = loadBinAll();
+  const idx = bin.findIndex(e =>
+    e.task.task === taskName && (projectId == null || e.projectId === projectId)
+  );
   if (idx === -1) return null;
   const [entry] = bin.splice(idx, 1);
   localStorage.setItem(BIN_KEY, JSON.stringify(bin));
   return entry.task;
+}
+
+export function migrateBinToProjectScope(activeProjectId) {
+  if (localStorage.getItem('qp-bin-projectid-v1')) return;
+  if (!activeProjectId) return;
+  try {
+    const raw = localStorage.getItem(BIN_KEY);
+    if (raw) {
+      const bin = JSON.parse(raw);
+      let changed = false;
+      for (const entry of bin) {
+        if (!entry.projectId) {
+          entry.projectId = activeProjectId;
+          changed = true;
+        }
+      }
+      if (changed) localStorage.setItem(BIN_KEY, JSON.stringify(bin));
+    }
+    localStorage.setItem('qp-bin-projectid-v1', '1');
+  } catch (err) {
+    console.warn('Bin projectId migration failed:', err.message);
+  }
 }
 
 const PROJECT_BIN_KEY = 'qp-project-bin';

@@ -11,20 +11,29 @@ export function renderPlanner(container, tasks, callbacks = {}) {
   const scheduled = tasks.filter(t => t.startDate && t.endDate);
   const unscheduled = tasks.filter(t => !t.startDate || !t.endDate);
 
-  if (!scheduled.length) {
-    container.innerHTML = '<div class="empty-state">No scheduled tasks to display in planner view.</div>';
+  if (!tasks.length) {
+    container.innerHTML = '<div class="empty-state">No tasks yet. Add a task to get started.</div>';
     return;
   }
 
-  // Round to month boundaries so last month always has full calendar width
-  const rawMin = new Date(Math.min(...scheduled.map(t => t.startDate.getTime())));
-  const rawMax = new Date(Math.max(...scheduled.map(t => t.endDate.getTime())));
-  const minDate = new Date(rawMin.getFullYear(), rawMin.getMonth(), 1);
-  const maxDate = new Date(rawMax.getFullYear(), rawMax.getMonth() + 1, 0);
+  // Date range from scheduled tasks; fall back to a 3-month window from today
+  // so undated tasks always have a visible timeline to appear on.
+  let minDate, maxDate;
+  if (scheduled.length) {
+    const rawMin = new Date(Math.min(...scheduled.map(t => t.startDate.getTime())));
+    const rawMax = new Date(Math.max(...scheduled.map(t => t.endDate.getTime())));
+    minDate = new Date(rawMin.getFullYear(), rawMin.getMonth(), 1);
+    maxDate = new Date(rawMax.getFullYear(), rawMax.getMonth() + 1, 0);
+  } else {
+    const now = new Date();
+    minDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    maxDate = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+  }
   const totalDays = daysBetween(minDate, maxDate);
 
   const months = getMonthHeaders(minDate, maxDate);
 
+  // Main timeline: scheduled tasks only, grouped by room.
   const groups = new Map();
   for (const task of scheduled) {
     if (!groups.has(task.room)) groups.set(task.room, []);
@@ -67,6 +76,7 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     <div class="planner-scroll">
     <div class="planner-wrapper" data-view-size="${_viewSize}">
       <div class="planner-left">
+        ${scheduled.length === 0 ? '<div class="planner-empty-timeline">No scheduled tasks yet - add dates to a task to pin it to the timeline.</div>' : ''}
         ${[...groups.entries()].map(([room, roomTasks]) => `
           <div class="planner-group-left">
             <div class="planner-group-header">${esc(room)}</div>
@@ -88,12 +98,23 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     </div>
     </div>
     ${unscheduled.length ? `
-      <div class="unscheduled-section">
-        <h3>Unscheduled (${unscheduled.length})</h3>
-        <div class="unscheduled-list">
-          ${unscheduled.map(t => `<span class="unscheduled-chip" data-task-id="${t.id}">${esc(t.task)} <small>(${esc(t.room)})</small></span>`).join('')}
-        </div>
+    <div class="planner-undated-footer" id="planner-undated-footer">
+      <button class="planner-undated-toggle" id="planner-undated-toggle" aria-expanded="false" aria-controls="planner-undated-list">
+        <span class="put-count">${unscheduled.length} undated task${unscheduled.length === 1 ? '' : 's'}</span>
+        <span class="put-hint">Set dates to place on the timeline</span>
+        <svg class="put-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="planner-undated-list hidden" id="planner-undated-list">
+        ${unscheduled.map(t => `
+          <div class="planner-undated-row" data-task-id="${t.id}" title="${esc(t.task)} - click to add dates">
+            <span class="planner-bar planner-bar--undated">
+              <span class="bar-label">${esc(t.task)}</span>
+              <span class="planner-bar-undated-tag">No dates</span>
+            </span>
+          </div>
+        `).join('')}
       </div>
+    </div>
     ` : ''}
   `;
 
@@ -104,6 +125,17 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
   }, { passive: true });
 
+  // Undated footer toggle
+  const footerToggle = container.querySelector('#planner-undated-toggle');
+  const footerList   = container.querySelector('#planner-undated-list');
+  if (footerToggle && footerList) {
+    footerToggle.addEventListener('click', () => {
+      const open = footerList.classList.toggle('hidden');
+      footerToggle.setAttribute('aria-expanded', String(!open));
+      footerToggle.classList.toggle('is-open', !open);
+    });
+  }
+
   // View size buttons
   container.querySelectorAll('.view-size-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -113,20 +145,24 @@ export function renderPlanner(container, tasks, callbacks = {}) {
       container.querySelector('.planner-wrapper').dataset.viewSize = _viewSize;
       container.querySelectorAll('.view-size-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      // Re-sync after size change (scroll position unchanged)
       labels.style.transform = `translateX(-${scroll.scrollLeft}px)`;
     });
   });
 
-  // Delegated click for bars and unscheduled chips
-  const allTasks = [...scheduled, ...unscheduled];
+  // Delegated click for timeline bars
   container.addEventListener('click', (e) => {
+    // Undated row click (footer)
+    const undatedRow = e.target.closest('.planner-undated-row');
+    if (undatedRow && _plannerCallbacks.onBarClick) {
+      const task = tasks.find(t => String(t.id) === undatedRow.dataset.taskId);
+      if (task) _plannerCallbacks.onBarClick(task);
+      return;
+    }
+    // Scheduled bar click
     const bar = e.target.closest('.planner-bar');
-    const chip = e.target.closest('.unscheduled-chip');
-    const el = bar || chip;
-    if (!el || !_plannerCallbacks.onBarClick) return;
-    const taskId = el.dataset.taskId;
-    const task = allTasks.find(t => String(t.id) === taskId);
+    if (!bar || !_plannerCallbacks.onBarClick) return;
+    const taskId = bar.dataset.taskId;
+    const task = tasks.find(t => String(t.id) === taskId);
     if (task) _plannerCallbacks.onBarClick(task);
   });
 
@@ -137,20 +173,20 @@ export function renderPlanner(container, tasks, callbacks = {}) {
     if (!bar || !_plannerCallbacks.onContextMenu) return;
     e.preventDefault();
     const taskId = bar.dataset.taskId;
-    const task = allTasks.find(t => String(t.id) === taskId);
+    const task = tasks.find(t => String(t.id) === taskId);
     if (task) _plannerCallbacks.onContextMenu(e, task);
   });
 
   // Long-press for mobile
   attachLongPress(container, '.planner-bar', (el) => {
     const taskId = el.dataset.taskId;
-    return allTasks.find(t => String(t.id) === taskId);
+    return tasks.find(t => String(t.id) === taskId);
   }, (syntheticEvent, task) => {
     if (_plannerCallbacks.onContextMenu) _plannerCallbacks.onContextMenu(syntheticEvent, task);
   });
 
-  // Drag-to-reschedule
-  setupPlannerDrag(container, allTasks, minDate, totalDays);
+  // Drag-to-reschedule only applies to scheduled tasks
+  setupPlannerDrag(container, scheduled, minDate, totalDays);
 }
 
 function renderBarAvatarStack(assigned) {
@@ -341,7 +377,7 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     state.bar.classList.remove('dragging');
     if (state.ghost) state.ghost.remove();
 
-    if (!state.moved) return;  // under threshold — let click handler fire
+    if (!state.moved) return;  // under threshold - let click handler fire
 
     // Prevent the delegated click from firing after a drag
     const suppressClick = (ev) => { ev.stopPropagation(); };
@@ -351,7 +387,7 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     // bar's edges = the saved start/end. The bar's left/width were updated in
     // pointermove to follow the cursor, so its rendered position is the
     // ground truth for the user's intent. Only edges that actually moved by a
-    // full day get rewritten — unchanged edges keep the original Date object so
+    // full day get rewritten - unchanged edges keep the original Date object so
     // there's no timezone drift.
     const finalLeftPct = parseFloat(state.bar.style.left);
     const finalWidthPct = parseFloat(state.bar.style.width);
@@ -364,7 +400,7 @@ function setupPlannerDrag(container, allTasks, minDate, totalDays) {
     const endChanged = newEndOffset !== origEndOffset;
 
     if (!startChanged && !endChanged) {
-      // Sub-day drag — snap back to rendered position
+      // Sub-day drag - snap back to rendered position
       state.bar.style.left = state.startPct + '%';
       state.bar.style.width = state.widthPct + '%';
       return;

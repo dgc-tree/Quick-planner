@@ -1,6 +1,6 @@
 {
   "name": "quick-planner",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,10 +11,9 @@
     "setup-hooks": "bash scripts/setup-hooks.sh",
     "smoke": "node scripts/smoke-test.js http://localhost:8000",
     "smoke:live": "node scripts/smoke-test.js https://planner.davegregurke.au",
-    "audit": "npm audit --audit-level=moderate"
+    "audit": "npm audit --audit-level=moderate --omit=dev"
   },
-  "dependencies": {
-    "culori": "^4.0.1",
-    "puppeteer": "^24.38.0"
+  "devDependencies": {
+    "puppeteer": "^25.1.0"
   }
 }

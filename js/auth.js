@@ -14,6 +14,8 @@ let _token = localStorage.getItem(TOKEN_KEY) || null;
 let _user = null;
 try { _user = JSON.parse(localStorage.getItem(USER_KEY)); } catch { _user = null; }
 let _sandbox = localStorage.getItem(SANDBOX_KEY) === '1';
+let _sessionExpiredHandler = null;
+export function onSessionExpired(fn) { _sessionExpiredHandler = fn; }
 
 export function getToken() { return _token; }
 export function getUser() { return _user; }
@@ -45,7 +47,20 @@ export async function apiCall(path, options = {}) {
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    // Token expired mid-session: clear auth and surface the login gate.
+    // Nulling the handler prevents multiple overlapping auth modals if
+    // several API calls fail simultaneously.
+    if (res.status === 401 && _token && !path.startsWith('/auth/') && _sessionExpiredHandler) {
+      const handler = _sessionExpiredHandler;
+      _sessionExpiredHandler = null;
+      setAuth(null, null);
+      handler();
+    }
+    throw err;
+  }
   return data;
 }
 
@@ -86,9 +101,13 @@ export async function verifySession() {
     _user = user;
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     return true;
-  } catch {
-    // Token expired or invalid
-    setAuth(null, null);
+  } catch (err) {
+    // Only wipe the token for confirmed server rejections (401/403).
+    // Network errors, timeouts, and 5xx responses should not log the user out —
+    // the token may still be valid; we just couldn't reach the server.
+    if (err.status === 401 || err.status === 403) {
+      setAuth(null, null);
+    }
     return false;
   }
 }

@@ -11,6 +11,7 @@ import { shouldShowOnboarding, showOnboarding, TEMPLATES } from './onboarding.js
 import {
   loadCustomColors, saveCustomColors, loadUserSwatches, saveUserSwatches, addToBin,
   loadBin, restoreFromBin, addProjectToBin, loadProjectBin, restoreProjectFromBin,
+  migrateBinToProjectScope,
   loadProjects, saveProjects, loadActiveProjectId, saveActiveProjectId, saveProjectTasks,
   loadUserName, saveUserName, exportBackup, runMigrations,
 } from './storage.js';
@@ -21,11 +22,13 @@ import {
   isLoggedIn, isSandbox, getUser, logout, showAuthModal, hideAuthModal, initAuthUI, verifySession,
   requestEmailChange, requestPasswordChange, validatePasswordLength, checkPasswordBreach,
   renderPasswordStrength, verifyToken, hasWeakPassword, loadZxcvbn, deleteProjectOnServer,
+  onSessionExpired,
 } from './auth.js';
 import { syncToServer, syncFromServer, initialSync } from './sync.js';
 import { initPeopleSection } from './people.js';
 import { initChat, onProjectSwitch as chatProjectSwitch, clearConversation, hideBubble as hideChatBubble, showBubble as showChatBubble, setTTSEnabled, setBriefingMode, getTTSEnabled, getBriefingMode, openPanel as openChatPanel } from './ai-chat.js';
 import { initDigest, getDigestFrequency, setDigestFrequency } from './digest.js';
+import { shouldShowHomePrompt, showHomePrompt } from './home-prompt.js';
 import { getProviderConfig, setProvider, setLocalConfig, testClaudeConnection, testLocalConnection, hasApiKey } from './ai-llm.js';
 // bg-effects: lazy-loaded so a failure never blocks data/rendering
 let _bgFx = { initBgEffects() {}, getConfig: () => ({ active: false }), setConfig() {} };
@@ -40,6 +43,98 @@ let allTasks = [];
 let currentView = localStorage.getItem('qp-view') || 'kanban';
 let filters = { room: '', category: '', assigned: '', search: '', dateFrom: '', dateTo: '' };
 let currentProjectId = loadActiveProjectId();
+let _hideDone = localStorage.getItem('qp-hide-done') === '1';
+
+// Overlay view persistence (settings/trash/archive). Stored in localStorage so
+// it survives a full browser restart, not just a same-tab refresh.
+const OVERLAY_VIEW_KEY = 'qp-overlay-view';
+function saveOverlayView(name) {
+  if (name) localStorage.setItem(OVERLAY_VIEW_KEY, name);
+  else localStorage.removeItem(OVERLAY_VIEW_KEY);
+}
+function loadOverlayView() {
+  return localStorage.getItem(OVERLAY_VIEW_KEY) || '';
+}
+
+// Scroll position persistence. Saved on `beforeunload` and on view changes,
+// keyed by the active view. Restored after the next render cycle.
+const SCROLL_KEY_PREFIX = 'qp-scroll-';
+function activeViewName() {
+  const overlay = loadOverlayView();
+  if (overlay) return overlay;
+  return currentView;
+}
+function snapshotScrollForView(view) {
+  const snap = { docY: window.scrollY || document.documentElement.scrollTop || 0 };
+  if (view === 'planner') {
+    const p = document.querySelector('.planner-scroll');
+    if (p) { snap.x = p.scrollLeft; snap.y = p.scrollTop; }
+  } else if (view === 'kanban') {
+    snap.cols = [...document.querySelectorAll('.kanban-cards')]
+      .map(c => ({ g: c.dataset.group, y: c.scrollTop }));
+  } else {
+    const sel = view === 'todolist' ? '#todolist-view'
+      : view === 'settings' ? '#settings-view'
+      : view === 'trash' ? '#trash-view'
+      : view === 'archive' ? '#archive-view' : null;
+    if (sel) {
+      const el = document.querySelector(sel);
+      if (el) snap.y = el.scrollTop;
+    }
+  }
+  return snap;
+}
+function persistScrollForActiveView() {
+  const view = activeViewName();
+  const snap = snapshotScrollForView(view);
+  try { localStorage.setItem(SCROLL_KEY_PREFIX + view, JSON.stringify(snap)); } catch {}
+}
+// Re-open the overlay (settings/trash/archive) and chat panel that were open
+// before the page was refreshed. Called once after init's first render
+// completes; running it earlier would race with init's own render() call,
+// which hides any open overlay.
+function restoreOverlayOnLoad() {
+  const overlay = loadOverlayView();
+  if (overlay === 'settings' && typeof window._showSettings === 'function') window._showSettings();
+  else if (overlay === 'trash' && typeof window._showTrash === 'function') window._showTrash();
+  else if (overlay === 'archive' && typeof window._showArchive === 'function') window._showArchive();
+}
+
+function restoreChatPanelOnLoad() {
+  if (localStorage.getItem('qp-chat-open') === '1' && typeof window._openChatPanel === 'function') {
+    // Only restore on viewports wide enough to show the side panel without covering content
+    if (window.innerWidth >= 768) window._openChatPanel();
+  }
+}
+
+function restorePersistedScrollForView(view) {
+  let snap;
+  try { snap = JSON.parse(localStorage.getItem(SCROLL_KEY_PREFIX + view) || 'null'); } catch {}
+  if (!snap) return;
+  // Two rAFs: layout completes after innerHTML rewrites, then scroll
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (snap.docY) window.scrollTo(0, snap.docY);
+    if (view === 'planner') {
+      const p = document.querySelector('.planner-scroll');
+      if (p) { p.scrollLeft = snap.x || 0; p.scrollTop = snap.y || 0; }
+    } else if (view === 'kanban' && Array.isArray(snap.cols)) {
+      for (const c of snap.cols) {
+        if (!c.g) continue;
+        const el = document.querySelector(`.kanban-cards[data-group="${CSS.escape(c.g)}"]`);
+        if (el) el.scrollTop = c.y || 0;
+      }
+    } else {
+      const sel = view === 'todolist' ? '#todolist-view'
+        : view === 'settings' ? '#settings-view'
+        : view === 'trash' ? '#trash-view'
+        : view === 'archive' ? '#archive-view' : null;
+      if (sel) {
+        const el = document.querySelector(sel);
+        if (el && snap.y) el.scrollTop = snap.y;
+      }
+    }
+  }));
+}
 let _updateFilterBadge = () => {};
 
 const $ = (sel) => document.querySelector(sel);
@@ -79,6 +174,10 @@ async function loadProjectData() {
     currentProjectId = fallback.id;
     saveActiveProjectId(currentProjectId);
   }
+
+  // One-time: stamp legacy trash entries with the current project so the
+  // per-project Trash filter doesn't hide them.
+  migrateBinToProjectScope(currentProjectId);
 
   const project = projects.find(p => p.id === currentProjectId);
   if (project) {
@@ -277,11 +376,13 @@ function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:360px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">${title}</h1>
-        <p class="modal-delete-body">${body}</p>
-        <div class="modal-delete-actions">
+    <div class="modal-dialog" role="dialog" style="max-width:400px">
+      <div class="modal-header">
+        <h2 class="modal-title">${title}</h2>
+      </div>
+      <p class="modal-dialog-desc">${body}</p>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
           <button class="modal-btn modal-cancel">Cancel</button>
           <button class="modal-btn modal-delete-confirm-btn">${confirmLabel || 'Confirm'}</button>
         </div>
@@ -293,6 +394,7 @@ function showConfirmDialog({ title, body, confirmLabel, onConfirm }) {
   overlay.querySelector('.modal-cancel').addEventListener('click', remove);
   overlay.querySelector('.modal-delete-confirm-btn').addEventListener('click', () => { remove(); onConfirm(); });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+  document.addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { remove(); document.removeEventListener('keydown', onKey); } });
 }
 
 function showReasonDialog({ title, body, placeholder, confirmLabel, destructive, onConfirm }) {
@@ -300,15 +402,17 @@ function showReasonDialog({ title, body, placeholder, confirmLabel, destructive,
   overlay.className = 'modal-overlay open';
   const confirmClass = destructive ? 'modal-delete-confirm-btn' : 'modal-save';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:420px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">${title}</h1>
-        ${body ? `<p class="modal-delete-body">${body}</p>` : ''}
-        <div class="modal-field" style="margin:16px 0 24px">
-          <label for="reason-input">Reason (optional)</label>
-          <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}" style="width:100%;resize:vertical;min-height:72px"></textarea>
-        </div>
-        <div class="modal-delete-actions">
+    <div class="modal-dialog" role="dialog" style="max-width:440px">
+      <div class="modal-header">
+        <h2 class="modal-title">${title}</h2>
+      </div>
+      ${body ? `<p class="modal-dialog-desc">${body}</p>` : ''}
+      <div class="modal-field">
+        <label for="reason-input">Reason (optional)</label>
+        <textarea id="reason-input" class="reason-input" rows="3" placeholder="${placeholder || 'Add context for later reference…'}"></textarea>
+      </div>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
           <button class="modal-btn modal-cancel">Cancel</button>
           <button class="modal-btn ${confirmClass}">${confirmLabel || 'Confirm'}</button>
         </div>
@@ -327,6 +431,7 @@ function showReasonDialog({ title, body, placeholder, confirmLabel, destructive,
     onConfirm(reason);
   });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+  document.addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { remove(); document.removeEventListener('keydown', onKey); } });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -354,14 +459,16 @@ function handleDuplicateProject(id, name) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.innerHTML = `
-    <div class="modal-dialog" role="dialog" style="max-width:360px">
-      <div class="modal-delete-confirm" style="position:relative;background:none;box-shadow:none;padding:32px 24px">
-        <h1 class="modal-delete-title">Duplicate project</h1>
-        <div class="modal-field" style="margin:16px 0 24px">
-          <label>Project name</label>
-          <input type="text" class="dup-name-input" value="${defaultName.replace(/"/g, '&quot;')}" />
-        </div>
-        <div class="modal-delete-actions">
+    <div class="modal-dialog" role="dialog" style="max-width:400px">
+      <div class="modal-header">
+        <h2 class="modal-title">Duplicate project</h2>
+      </div>
+      <div class="modal-field">
+        <label>Project name</label>
+        <input type="text" class="dup-name-input" value="${defaultName.replace(/"/g, '&quot;')}" />
+      </div>
+      <div class="modal-actions">
+        <div class="modal-actions-right">
           <button class="modal-btn modal-cancel">Cancel</button>
           <button class="modal-btn modal-save dup-save-btn">Save</button>
         </div>
@@ -420,7 +527,7 @@ function handleDeleteProject(id, name) {
       if (project) addProjectToBin(project);
       const remaining = projects.filter(p => p.id !== id);
       saveProjects(remaining);
-      // Use targeted DELETE, not full sync — full sync would delete any
+      // Use targeted DELETE, not full sync - full sync would delete any
       // server projects whose IDs aren't in the local payload (data loss risk).
       deleteProjectOnServer(id).catch(err => console.warn('[sync] delete project failed:', err.message));
       if (currentProjectId === id) {
@@ -464,19 +571,24 @@ async function initApp() {
       let valid = false;
       try { valid = await verifySession(); } catch { valid = false; }
       if (!valid) {
-        // Token expired or invalid — back to login gate
-        showLoading(false);
-        document.body.classList.add('auth-gate');
-        showAuthModal(async () => { await initApp(); }, { gate: true });
-        return;
-      }
-      const synced = await syncFromServer();
-      // After sync, validate active project still exists (may have gained shared projects)
-      if (synced) {
-        const projects = loadProjects();
-        if (projects.length && !projects.find(p => p.id === currentProjectId)) {
-          currentProjectId = projects[0].id;
-          saveActiveProjectId(currentProjectId);
+        if (!isLoggedIn()) {
+          // Token was confirmed invalid/expired by the server - back to login gate
+          showLoading(false);
+          document.body.classList.add('auth-gate');
+          showAuthModal(async () => { await initApp(); }, { gate: true });
+          return;
+        }
+        // Network error: couldn't reach the server but token still exists locally.
+        // Fall through and render from cached localStorage - sync is skipped.
+      } else {
+        const synced = await syncFromServer();
+        // After sync, validate active project still exists (may have gained shared projects)
+        if (synced) {
+          const projects = loadProjects();
+          if (projects.length && !projects.find(p => p.id === currentProjectId)) {
+            currentProjectId = projects[0].id;
+            saveActiveProjectId(currentProjectId);
+          }
         }
       }
     }
@@ -494,6 +606,10 @@ async function initApp() {
     updateSummary();
     setupFilters();
     render();
+    // Restore main-view scroll first; overlay restore (next) will overwrite
+    // it if an overlay was open before refresh.
+    restorePersistedScrollForView(currentView);
+    restoreOverlayOnLoad();
   } catch (err) {
     showError(err.message);
   }
@@ -512,10 +628,18 @@ async function initApp() {
     document.querySelector('main').scrollTop = 0;
   });
 
-  // Onboarding for first-time visitors — only if no projects exist yet
+  // Onboarding for first-time visitors - only if no projects exist yet
   if (shouldShowOnboarding() && !loadProjects().length) {
     showOnboarding((projectId) => {
       if (projectId && projectId !== 'sheet') switchProject(projectId);
+    });
+  } else if (shouldShowHomePrompt()) {
+    // Home prompt: shown once per session for returning users with projects
+    showHomePrompt({
+      onAddTasks: (names) => {
+        names.forEach(name => handleTaskCreate({ task: name, status: 'To Do' }));
+      },
+      onDismiss: () => {},
     });
   }
 
@@ -524,7 +648,8 @@ async function initApp() {
   const versionEl = document.getElementById('settings-version');
   if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
 
-  // QP Chat assistant — LOCAL DEV ONLY (comment out before pushing to live)
+  window._openChatPanel = openChatPanel;
+
   initChat({
     // Hide archived tasks from the chat: read queries (overdue, summary,
     // tasks-for) and intent matching all operate on the live set. Restore
@@ -575,11 +700,20 @@ async function initApp() {
       if (task) handleTaskArchive(task, { skipPrompt: true, reason: opts.reason || '' });
     },
   });
+  // Restore chat panel after initChat() has injected the UI into the DOM
+  restoreChatPanelOnLoad();
 }
 
 async function init() {
   initAuthUI();
   setupAccountButtons();
+
+  // If the JWT expires while the user is actively using the app, surface the
+  // login gate rather than showing a cryptic error toast on save/sync.
+  onSessionExpired(() => {
+    document.body.classList.add('auth-gate');
+    showAuthModal(async () => { await initApp(); }, { gate: true });
+  });
 
   if (!isLoggedIn()) {
     // Gate: hide app, show login
@@ -916,7 +1050,8 @@ function handleTaskDelete(task, opts = {}) {
 }
 
 function _commitTaskDelete(task, reason) {
-  addToBin(task, reason);
+  const projectId = currentProjectId;
+  addToBin(task, reason, projectId);
   const idx = allTasks.findIndex(t => t === task);
   if (idx !== -1) allTasks.splice(idx, 1);
   setupFilters();
@@ -926,7 +1061,7 @@ function _commitTaskDelete(task, reason) {
   showActionToast(`Deleted "${taskName}"`, {
     actionLabel: 'Undo',
     onAction: () => {
-      const restored = restoreFromBin(taskName);
+      const restored = restoreFromBin(taskName, projectId);
       if (!restored) return;
       ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
       allTasks.push(restored);
@@ -1106,7 +1241,8 @@ function render() {
     });
   } else if (currentView === 'todolist') {
     todolistContainer.classList.remove('hidden');
-    renderTodoList(todolistContainer, filtered, {
+    const todoTasks = _hideDone ? filtered.filter(t => t.status !== 'Done') : filtered;
+    renderTodoList(todolistContainer, todoTasks, {
       onStatusChange: handleStatusChange,
       onTaskClick: handleTaskEdit,
       onContextMenu: (event, task) => {
@@ -1140,7 +1276,8 @@ function renderFilterChips() {
   if (!container) return;
   const activeFilters = ['room', 'category', 'assigned'].filter(k => filters[k]);
   const hasDateFilter = filters.dateFrom || filters.dateTo;
-  if (activeFilters.length === 0 && !hasDateFilter) {
+  const hasSearch = !!filters.search;
+  if (activeFilters.length === 0 && !hasDateFilter && !hasSearch) {
     container.classList.remove('has-chips');
     container.innerHTML = '';
     return;
@@ -1148,6 +1285,9 @@ function renderFilterChips() {
   container.classList.add('has-chips');
   const labels = { room: 'Room', category: 'Category', assigned: 'Assigned' };
   let html = '';
+  if (hasSearch) {
+    html += `<span class="filter-chip filter-chip--search"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> ${filters.search}<button class="filter-chip-remove" data-filter="search" title="Clear search" aria-label="Clear search">&times;</button></span>`;
+  }
   activeFilters.forEach(key => {
     html += `<span class="filter-chip"><span class="filter-chip-label">${labels[key]}:</span> ${filters[key]}<button class="filter-chip-remove" data-filter="${key}" title="Remove filter" aria-label="Remove ${labels[key]} filter">&times;</button></span>`;
   });
@@ -1157,7 +1297,7 @@ function renderFilterChips() {
   if (filters.dateTo) {
     html += `<span class="filter-chip"><span class="filter-chip-label">To:</span> ${fmtDateChip(filters.dateTo)}<button class="filter-chip-remove" data-filter="dateTo" title="Remove filter" aria-label="Remove To date filter">&times;</button></span>`;
   }
-  html += `<button class="filter-chips-clear">Clear filters</button>`;
+  html += `<button class="filter-chips-clear">Clear all</button>`;
   container.innerHTML = html;
 
   const dateFilterIdMap = { dateFrom: 'date-from', dateTo: 'date-to' };
@@ -1165,16 +1305,23 @@ function renderFilterChips() {
     btn.addEventListener('click', () => {
       const key = btn.dataset.filter;
       filters[key] = '';
-      const elKey = dateFilterIdMap[key] || key;
-      const d = $(`#filter-${elKey}`); if (d) d.value = '';
-      const m = $(`#m-filter-${elKey}`); if (m) m.value = '';
+      if (key === 'search') {
+        const desktopInput = $('#search-tasks');
+        if (desktopInput) desktopInput.value = '';
+        const mobileInput = $('#mobile-search-input');
+        if (mobileInput) mobileInput.value = '';
+      } else {
+        const elKey = dateFilterIdMap[key] || key;
+        const d = $(`#filter-${elKey}`); if (d) d.value = '';
+        const m = $(`#m-filter-${elKey}`); if (m) m.value = '';
+      }
       _updateFilterBadge();
       render();
     });
   });
   container.querySelector('.filter-chips-clear').addEventListener('click', () => {
     filters.room = ''; filters.category = ''; filters.assigned = '';
-    filters.dateFrom = ''; filters.dateTo = '';
+    filters.dateFrom = ''; filters.dateTo = ''; filters.search = '';
     ['room', 'category', 'assigned'].forEach(key => {
       const d = $(`#filter-${key}`); if (d) d.value = '';
       const m = $(`#m-filter-${key}`); if (m) m.value = '';
@@ -1183,6 +1330,8 @@ function renderFilterChips() {
     const dfTo = $('#filter-date-to'); if (dfTo) dfTo.value = '';
     const mdfFrom = $('#m-filter-date-from'); if (mdfFrom) mdfFrom.value = '';
     const mdfTo = $('#m-filter-date-to'); if (mdfTo) mdfTo.value = '';
+    const desktopInput = $('#search-tasks'); if (desktopInput) desktopInput.value = '';
+    const mobileInput = $('#mobile-search-input'); if (mobileInput) mobileInput.value = '';
     _updateFilterBadge();
     render();
   });
@@ -1325,7 +1474,7 @@ function setupImportModal() {
     confirmBtn.disabled = false;
   }
 
-  // Drop zone — click to browse
+  // Drop zone - click to browse
   dropzone.addEventListener('click', () => fileInput.click());
   const browseLink = dropzone.querySelector('.import-browse-link');
   if (browseLink) browseLink.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
@@ -1350,7 +1499,7 @@ function setupImportModal() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        importCSV(e.target.result); // validates — throws if bad
+        importCSV(e.target.result); // validates - throws if bad
         const name = file.name.replace(/\.csv$/i, '').replace(/_/g, ' ');
         onValidCSV(e.target.result, name);
       } catch (err) {
@@ -1360,7 +1509,7 @@ function setupImportModal() {
     reader.readAsText(file);
   }
 
-  // URL paste — validate on blur or enter
+  // URL paste - validate on blur or enter
   async function processUrl() {
     const url = urlInput.value.trim();
     if (!url) return;
@@ -1370,7 +1519,7 @@ function setupImportModal() {
       const csvUrl = sheetsUrlToCsvUrl(url);
       const res = await fetch(csvUrl);
       if (!res.ok) throw new Error(res.status === 403
-        ? "Can't access the sheet — make sure it's set to 'Anyone with the link can view'"
+        ? "Can't access the sheet - make sure it's set to 'Anyone with the link can view'"
         : `Fetch failed (${res.status})`);
       const text = await res.text();
       importCSV(text); // validate
@@ -1400,8 +1549,8 @@ function setupImportModal() {
     confirmBtn.disabled = true;
     cancelBtn.disabled = true;
     progressMsg.textContent = userName
-      ? `Thanks ${userName}, converting your tasks — this is going to be epic…`
-      : 'Converting your tasks — this is going to be epic…';
+      ? `Thanks ${userName}, converting your tasks - this is going to be epic…`
+      : 'Converting your tasks - this is going to be epic…';
     progressEl.classList.remove('hidden');
 
     // Small artificial delay for delight
@@ -1441,7 +1590,7 @@ function setupImportModal() {
   // Expose for sidebar popout
   window._openImportModal = openModal;
 
-  // Mobile import btn — opens modal directly
+  // Mobile import btn - opens modal directly
   const mobileImportBtn = $('#mobile-import-btn');
   if (mobileImportBtn) mobileImportBtn.addEventListener('click', () => {
     const menuBtn = $('#mobile-menu-btn');
@@ -1722,15 +1871,15 @@ function setupSettingsPanel() {
   if (providerCfg.apiKey && aiStatus) {
     const verified = localStorage.getItem('qp-ai-verified');
     if (verified === 'ok') {
-      setClaudeStatus('\u2713 Connected — key stored in this browser only', 'ok');
+      setClaudeStatus('\u2713 Connected - key stored in this browser only', 'ok');
     } else if (providerCfg.apiKey.startsWith('sk-ant-')) {
-      setClaudeStatus('Key saved — click Test connection to verify', 'info');
+      setClaudeStatus('Key saved - click Test connection to verify', 'info');
     } else {
       setClaudeStatus('Key should start with sk-ant-', 'err');
     }
   }
 
-  // Claude API key — auto-save on input (paste or type) with debounce
+  // Claude API key - auto-save on input (paste or type) with debounce
   let _aiKeySaveTimer = null;
   function saveApiKey() {
     const val = aiKeyInput.value.trim();
@@ -1740,7 +1889,7 @@ function setupSettingsPanel() {
       if (!val.startsWith('sk-ant-')) {
         setClaudeStatus('Key should start with sk-ant-', 'err');
       } else {
-        setClaudeStatus('Key saved — click Test connection to verify', 'info');
+        setClaudeStatus('Key saved - click Test connection to verify', 'info');
       }
     } else {
       localStorage.removeItem('qp-ai-key');
@@ -1760,7 +1909,7 @@ function setupSettingsPanel() {
     });
   }
 
-  // Claude test connection — button stays standard, feedback in status text only
+  // Claude test connection - button stays standard, feedback in status text only
   if (aiTestBtn) aiTestBtn.addEventListener('click', async () => {
     aiTestBtn.disabled = true;
     aiTestBtn.textContent = 'Testing\u2026';
@@ -1770,7 +1919,7 @@ function setupSettingsPanel() {
       if (result.ok) {
         setClaudeStatus(`\u2713 Connected (${result.models})`, 'ok');
         localStorage.setItem('qp-ai-verified', 'ok');
-        showToast('API key verified — advanced features unlocked', 'success');
+        showToast('API key verified - advanced features unlocked', 'success');
       } else {
         setClaudeStatus(result.message, 'err');
         localStorage.removeItem('qp-ai-verified');
@@ -1887,9 +2036,10 @@ function setupSettingsPanel() {
     document.querySelector('main').classList.add('settings-open');
     // Reset to General tab
     switchSettingsTab('general');
-    sessionStorage.setItem('qp-view', 'settings');
+    saveOverlayView('settings');
     // Refresh people section
     if (_people) _people.load();
+    restorePersistedScrollForView('settings');
   }
 
   function hideSettings() {
@@ -1897,16 +2047,16 @@ function setupSettingsPanel() {
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
     saveCustomColors(colors);
-    sessionStorage.removeItem('qp-view');
+    saveOverlayView('');
     // Restore previous view
     currentView = previousView;
     render();
+    restorePersistedScrollForView(currentView);
   }
 
-  // Restore settings view if it was open before refresh
-  if (sessionStorage.getItem('qp-view') === 'settings') {
-    showSettings();
-  }
+  // (overlay restore on refresh is handled centrally by restoreOverlayOnLoad
+  // after init's render completes - this avoids a race where init's render
+  // hides the overlay we just restored)
 
   $('#sidebar-settings-btn').addEventListener('click', showSettings);
   $('#settings-back').addEventListener('click', hideSettings);
@@ -1939,7 +2089,7 @@ function setupSettingsPanel() {
   }
 
   function renderTrashList(filter = '') {
-    const taskBin = loadBin();
+    const taskBin = loadBin(currentProjectId);
     const projectBin = loadProjectBin();
     const q = filter.toLowerCase();
     const filteredTasks = q ? taskBin.filter(e => e.task.task?.toLowerCase().includes(q) || e.task.room?.toLowerCase().includes(q)) : taskBin;
@@ -2064,7 +2214,7 @@ function setupSettingsPanel() {
     trashList.querySelectorAll('.trash-restore-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = decodeURIComponent(btn.dataset.name);
-        const restored = restoreFromBin(name);
+        const restored = restoreFromBin(name, currentProjectId);
         if (restored) {
           ['startDate', 'endDate'].forEach(k => { if (restored[k]) restored[k] = new Date(restored[k]); });
           allTasks.push(restored);
@@ -2084,7 +2234,7 @@ function setupSettingsPanel() {
           body: 'This task cannot be recovered.',
           confirmLabel: 'Delete',
           onConfirm: () => {
-            restoreFromBin(name);
+            restoreFromBin(name, currentProjectId);
             renderTrashList(trashSearch.value);
           },
         });
@@ -2095,17 +2245,22 @@ function setupSettingsPanel() {
   function showTrashView() {
     hideAllViews();
     trashView.classList.remove('hidden');
-    trashView.scrollTop = 0;
+    const titleEl = trashView.querySelector('.settings-page-title');
+    if (titleEl) titleEl.textContent = `Trash · ${getProjectName() || 'Project'}`;
     trashSearch.value = '';
     renderTrashList();
+    saveOverlayView('trash');
+    restorePersistedScrollForView('trash');
   }
 
   function hideTrashView() {
     trashView.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
+    saveOverlayView('');
     currentView = previousView;
     render();
+    restorePersistedScrollForView(currentView);
   }
 
   trashSearch.addEventListener('input', () => renderTrashList(trashSearch.value));
@@ -2193,17 +2348,22 @@ function setupSettingsPanel() {
   function showArchiveView() {
     hideAllViews();
     archiveView.classList.remove('hidden');
-    archiveView.scrollTop = 0;
+    const titleEl = archiveView.querySelector('.settings-page-title');
+    if (titleEl) titleEl.textContent = `Archive · ${getProjectName() || 'Project'}`;
     archiveSearch.value = '';
     renderArchiveList();
+    saveOverlayView('archive');
+    restorePersistedScrollForView('archive');
   }
 
   function hideArchiveView() {
     archiveView.classList.add('hidden');
     $('.app-header').classList.remove('hidden');
     document.querySelector('main').classList.remove('settings-open');
+    saveOverlayView('');
     currentView = previousView;
     render();
+    restorePersistedScrollForView(currentView);
   }
 
   archiveSearch.addEventListener('input', () => renderArchiveList(archiveSearch.value));
@@ -2212,7 +2372,7 @@ function setupSettingsPanel() {
 
   window._showArchive = showArchiveView;
 
-  // Logo / home tap — return to last main view from any overlay
+  // Logo / home tap - return to last main view from any overlay
   function goHome() {
     if (trashView && !trashView.classList.contains('hidden')) {
       hideTrashView();
@@ -2239,7 +2399,60 @@ document.addEventListener('DOMContentLoaded', () => {
   // Import modal
   setupImportModal();
 
-  // Sidebar + project button — popout with two options
+  // New project: ask for a name, create an empty project, switch to it immediately.
+  // No template picker, no colour step - those live in Settings.
+  function showNewProjectDialog(onCreated) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+
+    overlay.innerHTML = `
+      <div class="modal-dialog modal-dialog--sm" role="dialog" aria-modal="true" aria-labelledby="np-title">
+        <h2 class="modal-title" id="np-title" style="margin-bottom:var(--space-6)">New project</h2>
+        <p style="font-size:var(--text-sm);color:var(--content-secondary);margin-bottom:var(--space-20)">
+          You can update the theme and import data in Settings later.
+        </p>
+        <div class="modal-field">
+          <label for="np-name-input">Project name</label>
+          <input id="np-name-input" type="text" placeholder="e.g. Kitchen reno 2026" maxlength="80" autocomplete="off">
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:var(--space-8);margin-top:var(--space-24)">
+          <button class="modal-btn modal-cancel" id="np-cancel">Cancel</button>
+          <button class="modal-btn modal-save" id="np-create">Create project</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#np-name-input');
+    const createBtn = overlay.querySelector('#np-create');
+    const cancelBtn = overlay.querySelector('#np-cancel');
+
+    setTimeout(() => input.focus(), 50);
+
+    function close() { overlay.remove(); }
+
+    function create() {
+      const name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      const id = crypto.randomUUID();
+      const projects = loadProjects();
+      projects.push({ id, name, tasks: [] });
+      saveProjects(projects);
+      saveActiveProjectId(id);
+      close();
+      if (onCreated) onCreated(id);
+    }
+
+    createBtn.addEventListener('click', create);
+    cancelBtn.addEventListener('click', close);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') create();
+      if (e.key === 'Escape') close();
+    });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
+  // Sidebar + project button - popout with two options
   const sidebarAddBtn = $('#sidebar-import-btn');
   const sidebarAddMenu = $('#sidebar-add-menu');
   if (sidebarAddBtn && sidebarAddMenu) {
@@ -2261,9 +2474,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#sidebar-add-template-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       sidebarAddMenu.classList.remove('open');
-      showOnboarding((projectId) => {
-        if (projectId && projectId !== 'sheet') switchProject(projectId);
-      });
+      showNewProjectDialog((projectId) => switchProject(projectId));
     });
   }
 
@@ -2272,7 +2483,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllPopovers(); });
   window.addEventListener('scroll', closeAllPopovers, { passive: true });
 
-  // Add task — FAB (mobile) + header button (desktop)
+  // Add task - FAB (mobile) + header button (desktop)
   function handleAddTask() {
     const blankTask = { id: null, task: '', room: '', category: '', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '' };
     openEditModal(blankTask, getModalOptions(), ({ updatedFields }) => {
@@ -2292,6 +2503,36 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
   $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
 
+  function updateHideDoneButtons() {
+    const inTodo = currentView === 'todolist';
+    const navBtn = $('#nav-hide-done-btn');
+    const deskBtn = $('#desktop-hide-done-btn');
+    if (navBtn) {
+      navBtn.classList.toggle('hidden', !inTodo);
+      navBtn.classList.toggle('active', _hideDone);
+      navBtn.setAttribute('aria-pressed', String(_hideDone));
+      const label = navBtn.querySelector('.nav-hide-done-label');
+      if (label) label.textContent = _hideDone ? 'Show done' : 'Hide done';
+    }
+    if (deskBtn) {
+      deskBtn.classList.toggle('hidden', !inTodo);
+      deskBtn.classList.toggle('active', _hideDone);
+      deskBtn.setAttribute('aria-pressed', String(_hideDone));
+      const label = deskBtn.querySelector('.hide-done-label');
+      if (label) label.textContent = _hideDone ? 'Show done' : 'Hide done';
+    }
+  }
+  updateHideDoneButtons();
+
+  function toggleHideDone() {
+    _hideDone = !_hideDone;
+    localStorage.setItem('qp-hide-done', _hideDone ? '1' : '0');
+    updateHideDoneButtons();
+    render();
+  }
+  $('#nav-hide-done-btn')?.addEventListener('click', toggleHideDone);
+  $('#desktop-hide-done-btn')?.addEventListener('click', toggleHideDone);
+
   function closeOverlayViews() {
     $('#settings-view').classList.add('hidden');
     $('#trash-view').classList.add('hidden');
@@ -2302,6 +2543,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      // Snapshot the current view's scroll before switching so a return trip
+      // lands where the user left it.
+      persistScrollForActiveView();
       closeOverlayViews();
       document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -2309,10 +2553,19 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('qp-view', currentView);
       $('#group-by-wrap').classList.toggle('hidden', currentView !== 'kanban');
       $('#view-size-wrap').classList.toggle('hidden', currentView !== 'planner');
-      window.scrollTo(0, 0);
-      document.querySelector('main').scrollTop = 0;
+      updateHideDoneButtons();
       render();
+      restorePersistedScrollForView(currentView);
     });
+  });
+
+  // Persist scroll on full page unload so a refresh returns the user to the
+  // same place. Per-view changes are persisted at click time above.
+  window.addEventListener('beforeunload', persistScrollForActiveView);
+  // Also persist when the page is hidden (mobile background, tab switch) since
+  // beforeunload doesn't always fire on mobile browsers.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') persistScrollForActiveView();
   });
 
   // Filters
@@ -2344,6 +2597,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Search (desktop)
   $('#search-tasks').addEventListener('input', (e) => {
     filters.search = e.target.value.trim();
+    updateFilterBadge();
     render();
   });
 
@@ -2352,6 +2606,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileSearchInput = $('#mobile-search-input');
   const mobileSearchBtn = $('#mobile-search-btn');
   const mobileSearchClose = $('#mobile-search-close');
+  const mobileSearchClear = $('#mobile-search-clear');
   const mobileSearchResults = $('#mobile-search-results');
 
   function renderMobileSearchResults(q) {
@@ -2370,7 +2625,8 @@ document.addEventListener('DOMContentLoaded', () => {
       mobileSearchResults.innerHTML = `<div class="mobile-search-empty">No tasks match "<strong>${q}</strong>"</div>`;
       return;
     }
-    mobileSearchResults.innerHTML = '';
+    const total = allTasks.filter(t => !t.archived).length;
+    mobileSearchResults.innerHTML = `<div class="mobile-search-count">${matches.length} of ${total} tasks</div>`;
     matches.forEach(task => {
       const row = document.createElement('button');
       row.className = 'mobile-search-result-row';
@@ -2386,6 +2642,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openMobileSearch() {
     mobileSearchInput.value = filters.search;
     renderMobileSearchResults(filters.search);
+    if (mobileSearchClear) mobileSearchClear.classList.toggle('hidden', !filters.search);
     mobileSearchOverlay.classList.add('open');
     requestAnimationFrame(() => mobileSearchInput.focus());
   }
@@ -2401,10 +2658,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const q = e.target.value.trim();
       filters.search = q;
       renderMobileSearchResults(q);
+      if (mobileSearchClear) mobileSearchClear.classList.toggle('hidden', !q);
       // Mirror to desktop input for consistency
       const desktopInput = $('#search-tasks');
       if (desktopInput) desktopInput.value = q;
+      updateFilterBadge();
       render();
+    });
+  }
+  if (mobileSearchClear) {
+    // touchstart + preventDefault keeps the keyboard open while clearing
+    mobileSearchClear.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (mobileSearchInput) {
+        mobileSearchInput.value = '';
+        mobileSearchInput.dispatchEvent(new Event('input'));
+        mobileSearchInput.focus();
+      }
+    }, { passive: false });
+    // Fallback for non-touch (desktop testing)
+    mobileSearchClear.addEventListener('click', () => {
+      if (mobileSearchInput) {
+        mobileSearchInput.value = '';
+        mobileSearchInput.dispatchEvent(new Event('input'));
+        mobileSearchInput.focus();
+      }
     });
   }
   document.addEventListener('keydown', (e) => {
@@ -2455,6 +2733,13 @@ document.addEventListener('DOMContentLoaded', () => {
       desktopFilterBadge.textContent = count;
       desktopFilterBadge.classList.toggle('hidden', count === 0);
     }
+    // Tint the mobile filter button when filters are active
+    if (mobileFilterBtn) mobileFilterBtn.classList.toggle('active', count > 0);
+    if (desktopFilterBtn) desktopFilterBtn.classList.toggle('active', count > 0);
+    // Tint the mobile search button when a search term is active
+    const searchActive = !!filters.search;
+    const mobileSearchBtnEl = $('#mobile-search-btn');
+    if (mobileSearchBtnEl) mobileSearchBtnEl.classList.toggle('active', searchActive);
   }
   _updateFilterBadge = updateFilterBadge;
 
@@ -2773,6 +3058,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, { passive: true });
 
+    // Keep padding accurate as header height changes (font swap, content updates)
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => requestAnimationFrame(updateHeaderPadding));
+      if (primaryNav) ro.observe(primaryNav);
+      ro.observe(header);
+    }
     mq.addEventListener('change', updateHeaderPadding);
     updateHeaderPadding();
     window.addEventListener('resize', updateHeaderPadding);

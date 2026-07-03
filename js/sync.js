@@ -1,5 +1,5 @@
 /**
- * Sync engine — pushes localStorage data to qp-api Worker when logged in.
+ * Sync engine - pushes localStorage data to qp-api Worker when logged in.
  * Offline-first: localStorage is always the immediate source of truth.
  * Server sync happens in the background after each save.
  */
@@ -35,8 +35,13 @@ export async function syncToServer() {
         end_date: t.endDate instanceof Date ? t.endDate.toISOString() : (t.endDate || null),
         dependencies: Array.isArray(t.dependencies) ? t.dependencies : [],
         notes: t.notes || '',
-        // Sent so a future server schema can store them; today's worker
-        // ignores unknown fields without erroring.
+        // SERVER SCHEMA STATUS — update this comment if the Worker changes:
+        // These three fields are sent in the push payload but the current Worker
+        // schema does NOT write them back (they are silently ignored on insert/update).
+        // As a result, syncFromServer() must NEVER trust the server as authoritative
+        // for these fields — local state always wins. See INCIDENTS.md Incident 12.
+        // If the Worker is updated to persist these fields, syncFromServer() merge
+        // logic for archived/archivedAt/archiveReason must be revisited.
         archived: !!t.archived,
         archived_at: t.archivedAt || null,
         archive_reason: t.archiveReason || '',
@@ -53,7 +58,7 @@ export async function syncToServer() {
 
 /**
  * Pull all data from the server and replace localStorage.
- * Server is authoritative when logged in — local data is fully replaced.
+ * Server is authoritative when logged in - local data is fully replaced.
  */
 export async function syncFromServer() {
   if (isSandbox() || !isLoggedIn()) return false;
@@ -87,20 +92,23 @@ export async function syncFromServer() {
           notes: t.notes || '',
           updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
         };
-        // Archive fields: server is authoritative once the schema migration
-        // has run (column present). Before that, fall back to the local copy
-        // so the field survives a sync pull.
-        if ('archived' in t) {
+        // Archive fields: local is always authoritative.
+        // The server ignores the archived field on push (it stores the field
+        // but the worker schema today never sets it server-side). As a result
+        // the server's updated_at timestamp can be newer than local while still
+        // carrying archived:false — a serverMs >= localMs comparison would
+        // incorrectly resurrect locally-archived tasks on every pull.
+        // Only fall back to the server value for tasks we have never seen locally
+        // (e.g. tasks synced from another device for the first time).
+        const localForArchive = localTasksById.get(t.id);
+        if (localForArchive) {
+          if (localForArchive.archived !== undefined) merged.archived = localForArchive.archived;
+          if (localForArchive.archivedAt !== undefined) merged.archivedAt = localForArchive.archivedAt;
+          if (localForArchive.archiveReason !== undefined) merged.archiveReason = localForArchive.archiveReason;
+        } else if ('archived' in t) {
           merged.archived = !!t.archived;
           merged.archivedAt = t.archived_at ? new Date(t.archived_at).getTime() : null;
           merged.archiveReason = t.archive_reason || '';
-        } else {
-          const local = localTasksById.get(t.id);
-          if (local) {
-            if (local.archived !== undefined) merged.archived = local.archived;
-            if (local.archivedAt !== undefined) merged.archivedAt = local.archivedAt;
-            if (local.archiveReason !== undefined) merged.archiveReason = local.archiveReason;
-          }
         }
         // Other local-only fields the server schema still doesn't track.
         const local = localTasksById.get(t.id);

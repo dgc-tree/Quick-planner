@@ -31,6 +31,8 @@ Mandatory pre-push reading: the prevention checklist in the project memory file 
 
 Key structural rules: stage all imports, safe localStorage defaults, no native OS controls in custom UI, trace CSS ancestor chain before positioning, tokens reference vars not hex, one action = one trigger, measure dimensions with arithmetic before writing CSS, grep for same anti-pattern across codebase, test mobile at 375px alongside desktop.
 
+**Sync field authority rule**: Before writing any `syncFromServer()` merge logic, explicitly answer: *which system owns this field?* Never use a server timestamp to arbitrate a field the server doesn't write. In `sync.js`, every field sent to the server but not persisted by the current Worker is marked with a `SERVER SCHEMA STATUS` comment — read it before touching merge logic. See INCIDENTS.md Incident 12 for the three-round archive bug this rule prevents.
+
 ## Commit & Deploy
 This repo deploys directly via Cloudflare Pages from the `main` branch (~1 minute auto-deploy).
 - **Live URL**: `planner.davegregurke.au` (Cloudflare Pages project: `quick-planner`)

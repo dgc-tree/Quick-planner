@@ -1,5 +1,5 @@
 /**
- * ai-intent.js — Local pattern matcher + fuzzy task resolver
+ * ai-intent.js - Local pattern matcher + fuzzy task resolver
  * Handles ~65% of user queries with zero API calls.
  */
 
@@ -34,10 +34,10 @@ function stripReason(rawName, trailing = '') {
     const t = trailing.trim();
     const m = t.match(REASON_RE);
     if (m) reason = m[1].trim();
-    else if (t) reason = t.replace(/^[-—:,]\s*/, '').trim();
+    else if (t) reason = t.replace(/^[--:,]\s*/, '').trim();
   }
   // Strip punctuation around the captured reason
-  reason = reason.replace(/^[\s—\-:,]+/, '').replace(/[\s.!?]+$/, '');
+  reason = reason.replace(/^[\s-\-:,]+/, '').replace(/[\s.!?]+$/, '');
   return { name, reason };
 }
 
@@ -105,7 +105,7 @@ export function parseDate(str) {
     }
   }
 
-  // Bare day name — "friday" → this or next occurrence
+  // Bare day name - "friday" → this or next occurrence
   const bareDay = DAY_NAMES.indexOf(s);
   if (bareDay !== -1) {
     const d = today();
@@ -214,7 +214,7 @@ function scoreTask(query, task) {
   if (name.includes(q) || q.includes(name)) return 0.95;
   // Word overlap
   const overlap = wordOverlapScore(q, name);
-  if (overlap >= 0.6) return 0.5 + overlap * 0.35; // 0.71–0.85
+  if (overlap >= 0.6) return 0.5 + overlap * 0.35; // 0.71-0.85
   // Levenshtein
   const dist = levenshtein(q, name);
   const maxLen = Math.max(q.length, name.length);
@@ -294,7 +294,7 @@ export function extractFields(text) {
   }
 
   if (splits.length === 0) {
-    // No field keywords found — entire text is the task name
+    // No field keywords found - entire text is the task name
     if (!taskName) taskName = remaining.replace(/,\s*$/, '').trim();
     return { taskName: capitaliseName(taskName), fields };
   }
@@ -339,6 +339,12 @@ function filterTasks(filterStr, tasks) {
 
   if (!f || f === 'everything' || f === 'all') {
     return { matched: tasks, label: 'all tasks' };
+  }
+
+  // "unassigned" / "unassigned items" → tasks with no assignee
+  if (/^(?:unassigned(?:\s+(?:items?|tasks?|ones?))?|(?:items?|tasks?)\s+with\s+no\s+(?:one|assignee)|no\s+(?:one\s+)?assigned)$/.test(f)) {
+    const matched = tasks.filter(t => !t.assigned || t.assigned.length === 0);
+    return { matched, label: 'unassigned tasks' };
   }
 
   // By status
@@ -442,7 +448,7 @@ function buildAssignIntent(person, taskId, taskName, tasks, prevAssigned) {
       confirmation: `Assigned "${taskName}" to ${resolved}.`,
     };
   }
-  // Unknown member — prompt
+  // Unknown member - prompt
   const members = getKnownMembers(tasks);
   const hint = members.length ? ` Known members: ${members.join(', ')}.` : '';
   return {
@@ -521,10 +527,10 @@ export function resolveIntent(message, context) {
 
   // ─── Read queries ─────────────────────────────────────────────────
 
-  // "what's happening today?" / "what's on today?" — alias for due today
+  // "what's happening today?" / "what's on today?" - alias for due today
   if (/^what(?:'s| is)\s+(?:happening|on|up)\s+today\??$/i.test(msg)) return resolveIntent("what's due today", context);
 
-  // "what's on this week?" — alias for due this week
+  // "what's on this week?" - alias for due this week
   if (/^what(?:'s| is)\s+(?:happening|on|up)\s+this\s+week\??$/i.test(msg)) return resolveIntent("what's due this week", context);
 
   // "what's due today"
@@ -573,7 +579,7 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: `${remaining.length} tasks remaining:\n${list}${more}` };
   }
 
-  // "anything urgent?" / "anything due soon?" — overdue + due within 3 days
+  // "anything urgent?" / "anything due soon?" - overdue + due within 3 days
   if (/^(?:anything\s+(?:urgent|due\s+soon|pressing|critical)|what(?:'s| is)\s+urgent|urgent\s*tasks?)\s*\??$/i.test(msg)) {
     const soonDate = new Date(todayDate); soonDate.setDate(soonDate.getDate() + 3);
     const urgent = tasks.filter(t => {
@@ -661,7 +667,7 @@ export function resolveIntent(message, context) {
     const ago = Date.now() - oldest.updatedAt;
     const days = Math.floor(ago / 86400000);
     const label = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
-    return { type: 'read', response: `Oldest open task: "${oldest.task || oldest.name}" (${oldest.status}) — last updated ${label}` };
+    return { type: 'read', response: `Oldest open task: "${oldest.task || oldest.name}" (${oldest.status}) - last updated ${label}` };
   }
 
   // "how much have we spent?" / "spent so far" / "cost of done tasks"
@@ -696,7 +702,7 @@ export function resolveIntent(message, context) {
     return { type: 'read', response: `Overdue:\n${list}` };
   }
 
-  // "how many tasks in/for [month]" — month-qualified count (must come before generic "how many tasks")
+  // "how many tasks in/for [month]" - month-qualified count (must come before generic "how many tasks")
   {
     const howManyMonth = lower.match(/^how\s+many\s+\w+\s+(?:in|for|due\s+in|due\s+for)\s+(\w+)\s*\??$/);
     if (howManyMonth) {
@@ -732,7 +738,7 @@ export function resolveIntent(message, context) {
     if (inProgress) parts.push(`${inProgress} in progress`);
     if (toDo) parts.push(`${toDo} to do`);
     if (blocked) parts.push(`${blocked} blocked`);
-    if (parts.length) response += ` — ${parts.join(', ')}`;
+    if (parts.length) response += ` - ${parts.join(', ')}`;
     return { type: 'read', response };
   }
 
@@ -829,7 +835,7 @@ export function resolveIntent(message, context) {
     const pct = total ? Math.round((done / total) * 100) : 0;
     const totalCost = tasks.reduce((sum, t) => sum + (t.cost || 0), 0);
 
-    let resp = `${total} tasks — ${pct}% complete`;
+    let resp = `${total} tasks - ${pct}% complete`;
     const parts = [];
     if (done) parts.push(`${done} done`);
     if (inProg) parts.push(`${inProg} in progress`);
@@ -843,7 +849,7 @@ export function resolveIntent(message, context) {
 
   // ─── Who's doing what / assigned queries ────────────────────────
   // "what's assigned to [person]" / "[person]'s tasks" / "tasks for [person]"
-  // Skip if the message is a mutation phrase ("X can be archived/deleted") —
+  // Skip if the message is a mutation phrase ("X can be archived/deleted") -
   // those should fall through to the archive/delete intent below.
   if (!/\b(?:can|should)\s+be\s+(?:archived|deleted|removed|trashed)\b/.test(lower)) {
     const assignedQuery = lower.match(/(?:what(?:'s| is)\s+assigned\s+to|tasks?\s+(?:for|assigned\s+to)|show\s+(?:me\s+)?(.+?)(?:'s)\s+tasks?|(.+?)(?:'s)\s+tasks?)\s*(.+?)?\s*\??$/);
@@ -999,7 +1005,7 @@ export function resolveIntent(message, context) {
       else if (ago < 86400000) timeLabel = `${Math.floor(ago / 3600000)}h ago`;
       else if (ago < 604800000) timeLabel = `${Math.floor(ago / 86400000)}d ago`;
       else timeLabel = fmtDateHuman(new Date(t.updatedAt));
-      return `- ${t.task || t.name} (${t.status}) — ${timeLabel}`;
+      return `- ${t.task || t.name} (${t.status}) - ${timeLabel}`;
     }).join('\n');
     return { type: 'read', response: `Recent changes:\n${list}` };
   }
@@ -1045,7 +1051,7 @@ export function resolveIntent(message, context) {
   // ─── Last-resort month extraction ────────────────────────────────
   // If ANY recognised month name appears in the message, treat it as a month query.
   // Catches typos ("takss in may"), conversational ("but just in may"), bare months ("march").
-  // Skip if message contains mutation verbs — those should go to the LLM.
+  // Skip if message contains mutation verbs - those should go to the LLM.
   {
     const hasMutationVerb = /\b(change|update|set|move|reschedule|assign|mark|rename|delete|remove|add|create|new|push|shift|delay|complete|finish|start|begin|resume|block|unblock|pause|close|done)\b/i.test(lower);
     if (!hasMutationVerb) {
@@ -1227,30 +1233,148 @@ export function resolveIntent(message, context) {
 
   // "assign all [filter] to [person]"
   {
-    const bulkAssign = lower.match(/^assign\s+(?:all\s+)?(.+?)\s+to\s+(.+)$/);
+    // "assign/change/reassign/update all [filter] to [the user/person] [name]"
+    const bulkAssign = lower.match(/^(?:assign|reassign|change|update)\s+(?:all\s+)?(.+?)\s+to\s+(?:the\s+(?:user|person|member)\s+)?(.+)$/);
     if (bulkAssign) {
       const filterStr = bulkAssign[1];
+      // Strip trailing "assigned" noise and assignment-field words from filter
+      const cleanFilter = filterStr.replace(/\s*(?:assigned?|assignee)\s*$/, '').trim();
       const person = bulkAssign[2].trim();
+      // Guard: only treat as assignment if filter or verb signals it
+      // (avoids clashing with date/status mutations that also use "change X to Y")
+      const isAssignIntent =
+        /^(?:assign|reassign)/.test(lower) ||
+        /(?:user|person|member)/.test(lower) ||
+        cleanFilter.includes('unassigned');
+      if (isAssignIntent) {
+        const result = filterTasks(cleanFilter, tasks);
+        if (result && result.matched.length > 0) {
+          const resolvedName = normaliseAssignee(person, tasks) || person.replace(/\b\w/g, c => c.toUpperCase());
+          return {
+            type: 'clarify',
+            response: `This will assign ${result.matched.length} ${result.label} to ${resolvedName}. Proceed?`,
+            pendingAction: {
+              action: 'bulk_update',
+              taskIds: result.matched.map(t => t.id),
+              fields: { assigned: [resolvedName] },
+              label: result.label,
+            },
+          };
+        }
+        if (result && result.matched.length === 0) {
+          return { type: 'read', response: `No ${result.label} found.` };
+        }
+      }
+    }
+  }
+
+  // "link all [status] tasks to dependency [name]" / "add [name] as dependency for all [status] items"
+  // Also handles: "create [name] and set as dependency for all [status] tasks"
+  {
+    const createAndLink = lower.match(/^create\s+["']?(.+?)["']?\s+and\s+(?:set|add|link)\s+(?:it\s+)?as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(.+?)\s+(?:items?|tasks?)?\s*$/i);
+    if (createAndLink) {
+      const depName = createAndLink[1].trim();
+      const filterStr = createAndLink[2].trim();
       const result = filterTasks(filterStr, tasks);
-      if (result && result.matched.length > 1) {
+      if (result && result.matched.length > 0) {
+        const existing = tasks.find(t => (t.task || '').toLowerCase() === depName.toLowerCase());
         return {
           type: 'clarify',
-          response: `This will assign ${result.matched.length} ${result.label} to ${person}. Proceed?`,
+          response: existing
+            ? `Link "${existing.task}" as a dependency on ${result.matched.length} ${result.label}. Proceed?`
+            : `Create "${depName}" and link it as a dependency on ${result.matched.length} ${result.label}. Proceed?`,
           pendingAction: {
-            action: 'bulk_update',
+            action: 'bulk_set_dependency',
             taskIds: result.matched.map(t => t.id),
-            fields: { assigned: [normaliseAssignee(person, tasks) || person.replace(/\b\w/g, c => c.toUpperCase())] },
+            dependencyName: existing ? existing.task : depName,
+            createIfMissing: !existing,
             label: result.label,
           },
         };
       }
-      // Single match falls through to single-task handler
+    }
+
+    const depLinkPatterns = [
+      // "all [status] items/tasks need to be linked to dependency [name]"
+      lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+need(?:s)?\s+to\s+be\s+linked?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
+      // "link all [status] tasks to [name]"
+      lower.match(/^link\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
+      // "set [name] as dependency for all [status] tasks"
+      lower.match(/^(?:set|add)\s+["']?(.+?)["']?\s+as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s*$/i),
+      // "all [status] tasks depend on [name]" / "blocked tasks are blocked by [name]"
+      lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+(?:depend(?:s)?\s+on|(?:are\s+)?blocked\s+by)\s+["']?(.+?)["']?\s*$/i),
+    ];
+
+    for (const m of depLinkPatterns) {
+      if (!m) continue;
+      // Some patterns have (status, dep), some have (dep, status) - detect by checking which group maps to a status
+      let filterStr, depName;
+      const g1 = m[1].trim(), g2 = m[2].trim();
+      const g1IsStatus = !!normaliseStatus(g1.split(/\s+/)[0]) || /^(blocked|to.?do|in.?progress|done|all)$/i.test(g1.split(/\s+/).slice(-1)[0]);
+      if (g1IsStatus) { filterStr = g1; depName = g2; }
+      else            { depName = g1; filterStr = g2; }
+
+      const result = filterTasks(filterStr, tasks);
+      if (result && result.matched.length > 0) {
+        return {
+          type: 'clarify',
+          response: `Link "${depName}" as a dependency on ${result.matched.length} ${result.label}. Proceed?`,
+          pendingAction: {
+            action: 'bulk_set_dependency',
+            taskIds: result.matched.map(t => t.id),
+            dependencyName: depName,
+            createIfMissing: false,
+            label: result.label,
+          },
+        };
+      }
+      if (result && result.matched.length === 0) {
+        return { type: 'read', response: `No ${result.label} found to update.` };
+      }
     }
   }
 
-  // "delete/remove all [filter]"
+  // "start fresh" / "clear everything" / "delete all tasks"
+  if (/^(?:start\s+fresh|reset\s+(?:all\s+)?tasks?|clear\s+everything|delete\s+everything|remove\s+everything|wipe\s+(?:all\s+)?tasks?)$/i.test(lower) ||
+      /^(?:delete|remove|trash|clear)\s+all\s+tasks?\s*$/i.test(lower)) {
+    if (tasks.length === 0) return { type: 'read', response: 'No tasks to delete.' };
+    return {
+      type: 'clarify',
+      response: `This will move all ${tasks.length} tasks to the bin. Proceed?`,
+      pendingAction: {
+        action: 'bulk_delete',
+        taskIds: tasks.map(t => t.id),
+        label: 'all tasks',
+      },
+    };
+  }
+
+  // "delete/clear all tasks except [task name]"
   {
-    const bulkDelete = lower.match(/^(?:delete|remove|trash)\s+(?:all\s+)?(.+)$/);
+    const exceptMatch = lower.match(/^(?:delete|remove|trash|clear)\s+(?:all\s+)?(?:tasks?\s+)?except\s+(?:for\s+)?(.+)$/);
+    if (exceptMatch) {
+      const keepQuery = exceptMatch[1].trim();
+      const keepResult = findTask(keepQuery, tasks);
+      if (keepResult) {
+        const toDelete = tasks.filter(t => t.id !== keepResult.id);
+        if (toDelete.length === 0) return { type: 'read', response: `Only "${keepResult.task}" exists - nothing else to delete.` };
+        return {
+          type: 'clarify',
+          response: `Keep "${keepResult.task}" and move the other ${toDelete.length} task${toDelete.length === 1 ? '' : 's'} to the bin. Proceed?`,
+          pendingAction: {
+            action: 'bulk_delete',
+            taskIds: toDelete.map(t => t.id),
+            label: `all tasks except "${keepResult.task}"`,
+          },
+        };
+      }
+      return { type: 'read', response: `I couldn't find a task called "${keepQuery}" to keep. Which task should I preserve?` };
+    }
+  }
+
+  // "delete/remove/clear all [filter]"
+  {
+    const bulkDelete = lower.match(/^(?:delete|remove|trash|clear)\s+(?:all\s+)?(.+)$/);
     if (bulkDelete) {
       const result = filterTasks(bulkDelete[1], tasks);
       if (result && result.matched.length > 1) {
@@ -1318,7 +1442,7 @@ export function resolveIntent(message, context) {
     };
   }
 
-  // "delete [task]" / "remove [task]" / "archive [task]" — confirm via flow,
+  // "delete [task]" / "remove [task]" / "archive [task]" - confirm via flow,
   // unless the user gave a reason inline ("because X", "since X", "as X"),
   // which counts as confirmation: we record the reason and skip the prompt.
   // "both X" / "all X" → multi-target intent: apply to every match.
@@ -1554,8 +1678,8 @@ export function resolveIntent(message, context) {
     }
   }
 
-  // "add/create/new task [name] [field details]" — direct add when name given, flow when not
-  const addMatch = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s*[,:\-–]?\s*(.+)/i)
+  // "add/create/new task [name] [field details]" - direct add when name given, flow when not
+  const addMatch = lower.match(/^(?:add|create|new)\s+(?:a\s+)?task\s*[,:\--]?\s*(.+)/i)
     || lower.match(/^(?:add|create|new)\s+(?:a\s+)?(?:task\s+)?(?:for|called|named)\s+(.+)/i);
   if (addMatch) {
     const { taskName, fields } = extractFields(addMatch[1]);
@@ -1564,7 +1688,7 @@ export function resolveIntent(message, context) {
       fields.assigned = resolved.length ? resolved : fields.assigned.map(n => n.replace(/\b\w/g, c => c.toUpperCase()));
     }
     if (taskName) {
-      // Name provided — create immediately, no confirmation needed
+      // Name provided - create immediately, no confirmation needed
       return {
         type: 'mutation',
         action: 'add',
@@ -1579,12 +1703,12 @@ export function resolveIntent(message, context) {
     };
   }
 
-  // Bare "add a task" / "new task" / "create task" — enter flow (no name)
+  // Bare "add a task" / "new task" / "create task" - enter flow (no name)
   if (/^(?:add|create|new)\s+(?:a\s+)?task\s*$/.test(lower)) {
     return { type: 'flow', flow: 'add', draft: { task: '', status: 'To Do' } };
   }
 
-  // "edit/update/change [task]" — enter conversational edit flow
+  // "edit/update/change [task]" - enter conversational edit flow
   const editMatch = lower.match(/^(?:edit|update|change|modify)\s+(?:the\s+)?(.+?)(?:\s+task)?$/);
   if (editMatch) {
     const taskQuery = editMatch[1].replace(/\b(?:the|task)\b/gi, '').trim();
@@ -1668,7 +1792,7 @@ export function generateBriefing(tasks, userName, mode = 'daily') {
 
   if (parts.length === 0) return null;
 
-  return `${greeting} ${name} — you've got ${parts.join(', ')}. Want a rundown?`;
+  return `${greeting} ${name} - you've got ${parts.join(', ')}. Want a rundown?`;
 }
 
 function getGreeting() {

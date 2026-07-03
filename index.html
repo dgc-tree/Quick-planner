@@ -9,9 +9,9 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/ai-chat.css">
+  <link rel="stylesheet" href="css/tokens.css?v=0.4.4">
+  <link rel="stylesheet" href="css/styles.css?v=0.4.4">
+  <link rel="stylesheet" href="css/ai-chat.css?v=0.4.4">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body class="auth-gate">
@@ -30,8 +30,8 @@
         </button>
         <div id="sidebar-add-menu" class="sidebar-project-menu">
           <button class="sidebar-project-menu-item" id="sidebar-add-template-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            New project from templates
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;flex-shrink:0"><path d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            New project
           </button>
           <button class="sidebar-project-menu-item" id="sidebar-add-import-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;flex-shrink:0"><path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1M16 11l-4 4m0 0-4-4m4 4V3"/></svg>
@@ -113,6 +113,11 @@
 
   <nav class="primary-nav">
     <span class="mobile-logo">Qp</span>
+    <button id="nav-hide-done-btn" class="nav-hide-done-btn hidden" aria-label="Toggle hide done tasks" aria-pressed="false">
+      <svg class="hide-done-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+      <svg class="hide-done-eye-slash" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>
+      <span class="nav-hide-done-label">Hide done</span>
+    </button>
     <button id="mobile-menu-btn" class="mobile-menu-btn" title="Open menu" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu-overlay">
       <span class="hamburger-icon">
         <span></span><span></span><span></span>
@@ -125,6 +130,9 @@
       <div class="mobile-search-input-wrap">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="mobile-search-input" type="search" placeholder="Search tasks…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button id="mobile-search-clear" class="mobile-search-clear hidden" aria-label="Clear search" type="button">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <button id="mobile-search-close" class="mobile-search-close">Cancel</button>
     </div>
@@ -205,6 +213,11 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
               <span id="desktop-filter-badge" class="desktop-filter-badge hidden">0</span>
             </button>
+            <button id="desktop-hide-done-btn" class="desktop-hide-done-btn hidden" title="Hide done tasks" aria-label="Toggle hide done tasks" aria-pressed="false">
+              <svg class="hide-done-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+              <svg class="hide-done-eye-slash" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>
+              <span class="hide-done-label">Hide done</span>
+            </button>
           </div>
         </div><!-- /.search-filter-group -->
 
@@ -223,7 +236,7 @@
 
   <div id="filter-chips" class="filter-chips-bar"></div>
 
-  <!-- Filter popover at body level — outside app-header's backdrop-filter stacking context -->
+  <!-- Filter popover at body level - outside app-header's backdrop-filter stacking context -->
   <div id="desktop-filter-popover" class="desktop-filter-popover hidden">
     <div class="filter-popover-grid">
       <div class="filter-group">
@@ -473,7 +486,7 @@
                 </div>
               </div>
 
-              <!-- QP AI (hosted) fields — hidden until funded -->
+              <!-- QP AI (hosted) fields - hidden until funded -->
               <div id="settings-ai-hosted-fields" class="hidden">
                 <p class="settings-field-hint" style="margin: 12px 0">Included with your account. AI queries are processed securely through our servers using Claude. No API key needed.</p>
                 <div id="settings-ai-hosted-status" class="settings-ai-status"></div>
@@ -578,7 +591,7 @@
   </main>
 
   <script>
-    // Prevent FOUC — apply saved theme before paint
+    // Prevent FOUC - apply saved theme before paint
     (function() {
       const saved = localStorage.getItem('qp-theme');
       if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
@@ -660,7 +673,7 @@
 
       <div id="import-fields" class="import-fields hidden">
         <input type="text" id="import-project-name" class="import-text-input" placeholder="Project name">
-        <input type="text" id="import-user-name" class="import-text-input" placeholder="Your first name (optional — for a personal touch)">
+        <input type="text" id="import-user-name" class="import-text-input" placeholder="Your first name (optional - for a personal touch)">
       </div>
 
       <div id="import-error" class="import-error hidden"></div>
