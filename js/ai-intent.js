@@ -1279,11 +1279,8 @@ export function resolveIntent(message, context) {
       if (result && result.matched.length > 0) {
         const existing = tasks.find(t => (t.task || '').toLowerCase() === depName.toLowerCase());
         return {
-          type: 'clarify',
-          response: existing
-            ? `Link "${existing.task}" as a dependency on ${result.matched.length} ${result.label}. Proceed?`
-            : `Create "${depName}" and link it as a dependency on ${result.matched.length} ${result.label}. Proceed?`,
-          pendingAction: {
+          type: 'mutation',
+          action: {
             action: 'bulk_set_dependency',
             taskIds: result.matched.map(t => t.id),
             dependencyName: existing ? existing.task : depName,
@@ -1295,19 +1292,14 @@ export function resolveIntent(message, context) {
     }
 
     const depLinkPatterns = [
-      // "all [status] items/tasks need to be linked to dependency [name]"
       lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+need(?:s)?\s+to\s+be\s+linked?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
-      // "link all [status] tasks to [name]"
       lower.match(/^link\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+to\s+(?:dependency\s+)?["']?(.+?)["']?\s*$/i),
-      // "set [name] as dependency for all [status] tasks"
       lower.match(/^(?:set|add)\s+["']?(.+?)["']?\s+as\s+(?:a\s+)?dependency\s+(?:for|on)\s+all\s+(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s*$/i),
-      // "all [status] tasks depend on [name]" / "blocked tasks are blocked by [name]"
       lower.match(/^(?:all\s+)?(?:active\s+)?(?:items?|tasks?)\s+(?:in\s+)?["']?(.+?)["']?\s+(?:depend(?:s)?\s+on|(?:are\s+)?blocked\s+by)\s+["']?(.+?)["']?\s*$/i),
     ];
 
     for (const m of depLinkPatterns) {
       if (!m) continue;
-      // Some patterns have (status, dep), some have (dep, status) - detect by checking which group maps to a status
       let filterStr, depName;
       const g1 = m[1].trim(), g2 = m[2].trim();
       const g1IsStatus = !!normaliseStatus(g1.split(/\s+/)[0]) || /^(blocked|to.?do|in.?progress|done|all)$/i.test(g1.split(/\s+/).slice(-1)[0]);
@@ -1317,9 +1309,8 @@ export function resolveIntent(message, context) {
       const result = filterTasks(filterStr, tasks);
       if (result && result.matched.length > 0) {
         return {
-          type: 'clarify',
-          response: `Link "${depName}" as a dependency on ${result.matched.length} ${result.label}. Proceed?`,
-          pendingAction: {
+          type: 'mutation',
+          action: {
             action: 'bulk_set_dependency',
             taskIds: result.matched.map(t => t.id),
             dependencyName: depName,
