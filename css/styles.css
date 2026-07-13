@@ -6397,7 +6397,7 @@ dialog.import-modal::backdrop {
   display: block;
   width: 100%;
   padding: var(--space-8) var(--space-10);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: var(--weight-medium);
   color: var(--content-primary);
   background: none;
