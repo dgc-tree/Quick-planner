@@ -903,15 +903,16 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-6);
-  padding: 0 var(--space-10);
-  height: 100%;
+  margin-left: var(--space-8);
+  padding: var(--space-8) var(--space-10);
   border: none;
+  border-left: 1px solid var(--border-outer);
+  border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: var(--weight-medium);
   cursor: pointer;
-  border-radius: var(--radius-sm);
   white-space: nowrap;
   transition: color 0.15s ease, background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
@@ -920,11 +921,14 @@ body {
 .desktop-hide-done-btn:hover { color: var(--text); background: var(--hover-overlay); }
 .desktop-hide-done-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 [data-theme="dark"] .desktop-hide-done-btn.active { color: var(--accent-text); }
-.hide-done-eye-slash { display: none; }
-.desktop-hide-done-btn.active .hide-done-eye { display: none; }
-.desktop-hide-done-btn.active .hide-done-eye-slash { display: block; }
-.mobile-hide-done-btn.active .hide-done-eye { display: none; }
-.mobile-hide-done-btn.active .hide-done-eye-slash { display: block; }
+/* Icon reflects the action a click will take, not the current state:
+   "Hide done" (inactive) shows the slashed eye, "Show done" (active)
+   shows the open eye - matching the show/hide-password convention. */
+.hide-done-eye { display: none; }
+.desktop-hide-done-btn.active .hide-done-eye-slash { display: none; }
+.desktop-hide-done-btn.active .hide-done-eye { display: block; }
+.nav-hide-done-btn.active .hide-done-eye-slash { display: none; }
+.nav-hide-done-btn.active .hide-done-eye { display: block; }
 .desktop-filter-badge {
   position: absolute;
   top: 8px;
@@ -3744,6 +3748,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   .toolbar-search { display: none; }
   .desktop-filter-btn { display: none; }
   .desktop-filter-wrap { display: none; }
+  .desktop-hide-done-btn { display: none; }
   .header-add-btn { display: none; }
 
   /* Mobile toolbar right = only mobile icon buttons */
