@@ -6579,7 +6579,7 @@ body.auth-gate #mobile-menu-overlay { display: none; }
   font-size: var(--text-xl);
   font-weight: var(--weight-bold);
   color: var(--text);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .auth-subtitle {
