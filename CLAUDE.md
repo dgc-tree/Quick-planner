@@ -1,4 +1,4 @@
-# Quick Planner — Project Rules
+# Quick Planner - Project Rules
 
 ## CSS Workflow
 - **Read before writing**: Read the full rule + dark mode override + mobile media query before editing any CSS. For layout bugs, read body → main → container chain AND every sibling that shares the same layout context (header, tabs, content). Map the complete box model (padding, margin, max-width, position) of ALL related elements in one pass before writing a single line. Never guess at cascade. **Grep for the selector across ALL CSS files** - a property set at line 6 can be overridden at line 460 in a media query. Fixing one without the other is a no-op on mobile.
@@ -7,7 +7,7 @@
 - **Verify visually before merging**: Every CSS change must be checked on localhost. Hover/focus/active states must be manually triggered. Never merge visual changes sight-unseen.
 - **Mobile alongside, not after**: Test every visual change at 375px before committing. If it doesn't work on mobile, the feature isn't done.
 - **Batch compliance fixes**: When fixing a token/WCAG/style violation, grep the codebase for the same pattern. Fix all instances in one commit.
-- **Token-driven modes**: The `--blur` token drives all `backdrop-filter` values via `blur(var(--blur))` or `blur(calc(var(--blur) * N))`. Flat surface mode sets `--blur: 0px` — one line cascades to every component. Never add hardcoded `blur(Npx)` values; always use `calc(var(--blur) * factor)`. Same principle applies to any new visual mode: override the token, not the components.
+- **Token-driven modes**: The `--blur` token drives all `backdrop-filter` values via `blur(var(--blur))` or `blur(calc(var(--blur) * N))`. Flat surface mode sets `--blur: 0px` - one line cascades to every component. Never add hardcoded `blur(Npx)` values; always use `calc(var(--blur) * factor)`. Same principle applies to any new visual mode: override the token, not the components.
 - **Token pipeline: seed → ramp → theme → CSS.** When changing the default accent colour: update the seed in `tokens/base.colors.json`, then check the theme JSONs (`themes/light.colors.json`, `themes/dark.colors.json`) reference the correct ramp step or literal hex, then run `node scripts/build-tokens.js` to regenerate `css/tokens.css`. Also grep the codebase for any hardcoded hex from the old ramp. The baked tokens are the first-load defaults for users with no saved theme.
 - **Design system tokens (styles.css :root).** Type: `--text-xs` through `--text-2xl` (7 steps). Weight: `--weight-normal` through `--weight-extrabold` (5 steps). Radius: `--radius-sm` through `--radius-full` (5 steps). Spacing: `--space-2` through `--space-96` (verbatim px values) + semantic aliases `--space-xxs` through `--space-xxl`. Mobile scales all text 1.2x via `html { font-size: 16.8px }` at the 768px breakpoint.
 - **Dark mode requires `--dark-*` defaults.** The `[data-theme="dark"]` block in styles.css MUST define `--dark-surface`, `--dark-card`, `--dark-card-hover`, `--dark-surface-deep`, `--dark-surface-deepest`, `--dark-border` using the neutral ramp. The theme customiser overrides these with accent-tinted values when a user picks a custom colour. Without defaults, 22+ `var(--dark-*)` references resolve to transparent.
@@ -15,13 +15,13 @@
 
 ## Automation
 Three Claude Code hooks run automatically (`.claude/hooks/`):
-- **css-guard.js** — blocks CSS edits that use hardcoded rgba/hex instead of semantic tokens
-- **pre-commit-check.js** — advisory check reminding to visually verify CSS changes on localhost
-- **session-start.sh** — alerts when `origin/main` is ahead of the local branch
+- **css-guard.js** - blocks CSS edits that use hardcoded rgba/hex instead of semantic tokens
+- **pre-commit-check.js** - advisory check reminding to visually verify CSS changes on localhost
+- **session-start.sh** - alerts when `origin/main` is ahead of the local branch
 
 Two custom commands (`.claude/commands/`):
-- **`/audit-css`** — sweeps the entire codebase for CSS compliance violations (tokens, WCAG, hardcoded values). Fixes all instances in one pass.
-- **`/pre-push`** — runs the full engineering discipline prevention checklist before pushing. Executable version of the engineering-discipline.md checklist.
+- **`/audit-css`** - sweeps the entire codebase for CSS compliance violations (tokens, WCAG, hardcoded values). Fixes all instances in one pass.
+- **`/pre-push`** - runs the full engineering discipline prevention checklist before pushing. Executable version of the engineering-discipline.md checklist.
 
 ## Security
 Security and data integrity log: [SECURITY.md](SECURITY.md). Monthly checklist + changelog of incidents (data loss, schema drift, auth issues). Run `npm run audit` before every release. Dependabot opens weekly dep PRs. Add a changelog entry for every schema change, sync field, auth tweak, or secret rotation.
@@ -31,14 +31,22 @@ Mandatory pre-push reading: the prevention checklist in the project memory file 
 
 Key structural rules: stage all imports, safe localStorage defaults, no native OS controls in custom UI, trace CSS ancestor chain before positioning, tokens reference vars not hex, one action = one trigger, measure dimensions with arithmetic before writing CSS, grep for same anti-pattern across codebase, test mobile at 375px alongside desktop.
 
-**Sync field authority rule**: Before writing any `syncFromServer()` merge logic, explicitly answer: *which system owns this field?* Never use a server timestamp to arbitrate a field the server doesn't write. In `sync.js`, every field sent to the server but not persisted by the current Worker is marked with a `SERVER SCHEMA STATUS` comment — read it before touching merge logic. See INCIDENTS.md Incident 12 for the three-round archive bug this rule prevents.
+**Sync field authority rule**: Before writing any `syncFromServer()` merge logic, explicitly answer: *which system owns this field?* Never use a server timestamp to arbitrate a field the server doesn't write. In `sync.js`, every field sent to the server but not persisted by the current Worker is marked with a `SERVER SCHEMA STATUS` comment - read it before touching merge logic. See INCIDENTS.md Incident 12 for the three-round archive bug this rule prevents.
 
 ## Commit & Deploy
 This repo deploys directly via Cloudflare Pages from the `main` branch (~1 minute auto-deploy).
 - **Live URL**: `planner.davegregurke.au` (Cloudflare Pages project: `quick-planner`)
 - **Old URL**: `davegregurke.au/pd2/` redirects via 301 to the new subdomain
 
-### Branch naming — one branch per task
+### Two work modes - pick one before starting
+- **Discrete task (default)**: a single well-defined fix or feature. Follow the full cycle below - branch, commit, push, PR, merge - immediately, same-turn. Use this unless iteration mode is clearly signalled.
+- **Iteration / bug-bash session**: rapid visual QA, pixel-pushing, or back-and-forth refinement of one area (e.g. reviewing a live screen and calling out issues one at a time, or multiple small tweaks to the same feature in a row). Signals: phrases like "iterate", "bug bash", "don't publish yet", "I'll tell you when to ship", or a screenshot-driven review thread like this one.
+  - Work on **one branch for the whole session** (`claude/fix/<short-desc>-<sessionId>`), committing each change once it's verified on localhost. Do **not** open a PR or merge after each commit.
+  - Push the branch after each commit anyway - it's cheap, and Cloudflare Pages auto-generates a preview URL per branch (`<hash>.quick-planner.pages.dev`, check the Cloudflare Pages dashboard or the push output for the exact link) so changes are reviewable live without touching `main` or production.
+  - Only open the PR and merge when the user says to publish, ship, go live, or an agreed milestone is reached. That single merge is the one deploy - and the one PR reads as a clean changelog entry instead of five.
+  - If the user pivots to an unrelated discrete task mid-session, finish or explicitly park the current iteration branch first, then start fresh per the discrete-task rules below.
+
+### Branch naming - one branch per task
 Each task gets its own branch and PR. Never reuse a branch for unrelated work. This keeps the merged PR list readable as a project changelog.
 
 - **Format**: `claude/<category>/<short-description>-<sessionId>`
@@ -49,7 +57,7 @@ Each task gets its own branch and PR. Never reuse a branch for unrelated work. T
   - `claude/style/dark-mode-cards-pQ3r1`
 - **PR title** = plain English summary of the task (under 70 chars)
 - **PR label** = must match the branch category. Use exactly one of: `bug`, `feature`, `style`, `docs`, `refactor`
-- **Result**: merged PR history reads like a done column on a kanban board — filterable by label
+- **Result**: merged PR history reads like a done column on a kanban board - filterable by label
 
 ### Deploy process (follow every time)
 The environment restricts pushes to `claude/` branches only. You **cannot** push to `main` directly. When the user says "commit and push" or expects changes to go live:
@@ -57,7 +65,7 @@ The environment restricts pushes to `claude/` branches only. You **cannot** push
 1. **Commit** to the current `claude/` feature branch
 2. **Push** the feature branch: `git push -u origin claude/<branch-name>`
 3. **Rebase** onto `origin/main` first if the branch was previously merged (otherwise GitHub shows "nothing to compare"): `git fetch origin main && git rebase origin/main && git push --force-with-lease`
-4. **Create a PR** immediately — do not stop at "pushed to branch" and wait for the user to ask. Use the GitHub API via `curl`:
+4. **Create a PR** immediately - do not stop at "pushed to branch" and wait for the user to ask. Use the GitHub API via `curl`:
    ```
    curl -s -X POST https://api.github.com/repos/dgc-tree/Quick-planner/pulls \
      -H "Accept: application/vnd.github+json" \
@@ -68,23 +76,23 @@ The environment restricts pushes to `claude/` branches only. You **cannot** push
 5. **Never** stop at step 2 and say "done". The user expects live deployment. Pushing to a feature branch alone does nothing.
 
 ### What NOT to do
-- Don't attempt `git push origin main` — it will 403 every time
-- Don't try multiple auth workarounds when the first one fails — go straight to giving the user the compare URL
+- Don't attempt `git push origin main` - it will 403 every time
+- Don't try multiple auth workarounds when the first one fails - go straight to giving the user the compare URL
 - Don't tell the user "you'll need to merge yourself" without giving the direct link
-- Don't make the user ask twice for a PR — offer it immediately after the push is blocked
+- Don't make the user ask twice for a PR - offer it immediately after the push is blocked
 
 ### Git Hygiene
-- Never `git stash` on a branch you'll push — stash commits leak into history.
+- Never `git stash` on a branch you'll push - stash commits leak into history.
 - After a revert, verify with `git log --oneline -5` it appears exactly once.
 - Before pushing, run `git log --oneline -10` to sanity-check the commit list.
-- ~15 duplicate PR commits from squash-merge are normal GitHub behaviour — no action needed.
+- ~15 duplicate PR commits from squash-merge are normal GitHub behaviour - no action needed.
 
 ### Incident (March 2026)
 Session pushed 13 commits to the feature branch but never merged to `main` or created a PR. When asked to go live, attempted to push to `main` (403), then spent multiple rounds trying different auth methods for the GitHub API, asking the user to do it manually, and giving broken instructions. The user had to ask 4 times before getting a working link. Root cause: no documented process for the `claude/` branch constraint. All of this should have been one smooth step.
 
 ## Communication
 - Be concise. Don't restate changes back. Don't explain CSS theory.
-- Don't pad responses with summaries of what was done — the diff speaks for itself.
+- Don't pad responses with summaries of what was done - the diff speaks for itself.
 
 ---
 
@@ -114,24 +122,24 @@ Session pushed 13 commits to the feature branch but never merged to `main` or cr
 - If blocked, ask rather than guess
 
 ## 5. Migration Discipline
-- When replacing a system (e.g. swapping a data source, removing an integration), **tear down the old system in the same step** — delete dead code, remove imports, clean up call sites
+- When replacing a system (e.g. swapping a data source, removing an integration), **tear down the old system in the same step** - delete dead code, remove imports, clean up call sites
 - Never leave orphaned integration code wired into live error paths; it will break
 - Treat migration as: build the new thing → verify it works → rip out the old thing. All three steps, same session
 - **Red-team every migration**: after removing code, grep for all references to the old system across JS, HTML, and CSS. Check both read and write paths. A half-removed integration is worse than one left fully in place
 - **Data migration rule**: when moving data from an external source to local storage, the migration order is: (1) fetch and write all data to the new store, (2) verify the new store loads correctly, (3) only then remove the old data source. Never remove a read path before confirming the data exists in the new location
-- **Incident (March 2025)**: When the project moved off Google Sheets to localStorage, the data was never actually cloned to localStorage first. The sheet write side (`sheet-writer.js`) was removed, then the read side (`fetchSheetData`) was removed, without ever persisting the sheet data locally. This caused: (1) false error toast on every create/edit, (2) new tasks silently lost on refresh, (3) all existing Renos project data disappeared because the only data source was deleted without migrating. Root cause: migration steps were done out of order — teardown happened before data transfer.
+- **Incident (March 2025)**: When the project moved off Google Sheets to localStorage, the data was never actually cloned to localStorage first. The sheet write side (`sheet-writer.js`) was removed, then the read side (`fetchSheetData`) was removed, without ever persisting the sheet data locally. This caused: (1) false error toast on every create/edit, (2) new tasks silently lost on refresh, (3) all existing Renos project data disappeared because the only data source was deleted without migrating. Root cause: migration steps were done out of order - teardown happened before data transfer.
 
-## 6. Bug Triage — Ask Before Assuming
+## 6. Bug Triage - Ask Before Assuming
 - When a bug involves an external integration (API, sheet sync, third-party service), **ask the user whether that integration is still in use** before debugging it
-- Don't patch plumbing the user has already abandoned — remove dead code instead
+- Don't patch plumbing the user has already abandoned - remove dead code instead
 - Prefer deletion over repair when the feature is no longer needed
-- **Integration decision step**: Before touching any integration, first determine: is it staying or going? If going, follow Migration Discipline (section 5). Don't make a different decision each session — check project memory for prior decisions before acting.
+- **Integration decision step**: Before touching any integration, first determine: is it staying or going? If going, follow Migration Discipline (section 5). Don't make a different decision each session - check project memory for prior decisions before acting.
 
 ## 7. Figma Design System Builds
 - **Extract exact CSS values before building any Figma component.** Read padding, font-size, border-radius, colours, and shadows from `css/styles.css` and `css/tokens.css` with line numbers. Never guess proportions.
 - **Use actual SVG icons from `index.html`, not text placeholders.** Grep for `viewBox` to find every icon's path data. Use `figma.createNodeFromSvg()` with the real paths. The app uses Heroicons (24×24 viewBox, stroke-based).
 - **The token architecture is OKLCH-based.** User picks a seed colour → `ramp-generator.js` produces 13 steps via OKLCH lightness interpolation → `build-tokens.js` generates CSS → `theme-customizer.js` regenerates at runtime. Any Figma token documentation must explain this pipeline, not just list hex values.
-- **Always show Light and Dark variants side by side.** The app has a full dark theme driven by `[data-theme="dark"]`. Every component in the design system must be shown in both themes. Free Figma plan limits modes to 1 — use paired frames (light bg + dark bg) as the workaround.
+- **Always show Light and Dark variants side by side.** The app has a full dark theme driven by `[data-theme="dark"]`. Every component in the design system must be shown in both themes. Free Figma plan limits modes to 1 - use paired frames (light bg + dark bg) as the workaround.
 - **The mascot is a gorilla** at `images/mascot-trash.png`. It appears on the auth/login screen and onboarding. Never omit it from design system documentation.
 
 # ── END: Claude Guidelines ──
