@@ -899,7 +899,7 @@ body {
 .desktop-filter-btn:hover { color: var(--text); background: var(--hover-overlay); }
 .desktop-filter-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 [data-theme="dark"] .desktop-filter-btn.active { color: var(--accent-text); }
-.desktop-hide-done-btn {
+.hide-done-btn {
   display: flex;
   align-items: center;
   gap: var(--space-6);
@@ -918,17 +918,15 @@ body {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.desktop-hide-done-btn:hover { color: var(--text); background: var(--hover-overlay); }
-.desktop-hide-done-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-[data-theme="dark"] .desktop-hide-done-btn.active { color: var(--accent-text); }
+.hide-done-btn:hover { color: var(--text); background: var(--hover-overlay); }
+.hide-done-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+[data-theme="dark"] .hide-done-btn.active { color: var(--accent-text); }
 /* Icon reflects the action a click will take, not the current state:
    "Hide done" (inactive) shows the slashed eye, "Show done" (active)
    shows the open eye - matching the show/hide-password convention. */
 .hide-done-eye { display: none; }
-.desktop-hide-done-btn.active .hide-done-eye-slash { display: none; }
-.desktop-hide-done-btn.active .hide-done-eye { display: block; }
-.nav-hide-done-btn.active .hide-done-eye-slash { display: none; }
-.nav-hide-done-btn.active .hide-done-eye { display: block; }
+.hide-done-btn.active .hide-done-eye-slash { display: none; }
+.hide-done-btn.active .hide-done-eye { display: block; }
 .desktop-filter-badge {
   position: absolute;
   top: 8px;
@@ -1053,7 +1051,6 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .mobile-filter-btn { display: none; }
 .mobile-filter-overlay { display: none; }
 .mobile-toolbar-icons { display: none; }
-.nav-hide-done-btn { display: none; }
 
 /* === Sync Controls === */
 .sync-controls {
@@ -3748,7 +3745,6 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
   .toolbar-search { display: none; }
   .desktop-filter-btn { display: none; }
   .desktop-filter-wrap { display: none; }
-  .desktop-hide-done-btn { display: none; }
   .header-add-btn { display: none; }
 
   /* Mobile toolbar right = only mobile icon buttons */
@@ -3773,32 +3769,15 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
-  .nav-hide-done-btn:not(.hidden) {
-    display: flex;
+  /* Icon-only on mobile - stays put next to the To-do tab without
+     competing with it for the row's flex space. */
+  .hide-done-btn {
+    flex-shrink: 0;
+    margin-left: 0;
+    padding: var(--space-8);
+    border-left: none;
   }
-  .nav-hide-done-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-8);
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    font-family: var(--font);
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    padding: 0;
-  }
-  .nav-hide-done-btn.active {
-    color: var(--accent-text);
-  }
-  .nav-hide-done-btn .hide-done-label { pointer-events: none; }
+  .hide-done-btn .hide-done-label { display: none; }
 
   /* Full-screen search overlay */
   .mobile-search-overlay {
