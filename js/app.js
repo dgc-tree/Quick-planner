@@ -1035,11 +1035,21 @@ function handleStatusChange(task, newStatus) {
 }
 
 function handleTaskMarkDone(task) {
+  const previousStatus = task.status;
   task.status = 'Done';
   task.updatedAt = Date.now();
   persistTaskChange();
   renderPreservingScroll();
-  showToast('Marked as done', 'success');
+  showActionToast('Marked as done', {
+    actionLabel: 'Undo',
+    onAction: () => {
+      task.status = previousStatus;
+      task.updatedAt = Date.now();
+      persistTaskChange();
+      renderPreservingScroll();
+      showToast('Undone', 'success');
+    },
+  });
 }
 
 function handleTaskDelete(task, opts = {}) {
