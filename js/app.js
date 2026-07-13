@@ -1034,6 +1034,14 @@ function handleStatusChange(task, newStatus) {
   persistTaskChange();
 }
 
+function handleTaskMarkDone(task) {
+  task.status = 'Done';
+  task.updatedAt = Date.now();
+  persistTaskChange();
+  renderPreservingScroll();
+  showToast('Marked as done', 'success');
+}
+
 function handleTaskDelete(task, opts = {}) {
   if (opts.skipPrompt) {
     _commitTaskDelete(task, opts.reason || '');
@@ -1212,6 +1220,7 @@ function render() {
       onContextMenu: (event, task) => {
         showContextMenu(event, task, {
           onEdit: () => handleTaskEdit(task),
+          onMarkDone: () => handleTaskMarkDone(task),
           onDelete: () => handleTaskDelete(task),
           onDuplicate: () => handleTaskDuplicate(task),
           onArchive: () => handleTaskArchive(task),
@@ -1225,6 +1234,7 @@ function render() {
       onContextMenu: (event, task) => {
         showContextMenu(event, task, {
           onEdit: () => handleTaskEdit(task),
+          onMarkDone: () => handleTaskMarkDone(task),
           onDelete: () => handleTaskDelete(task),
           onDuplicate: () => handleTaskDuplicate(task),
           onArchive: () => handleTaskArchive(task),
@@ -1248,6 +1258,7 @@ function render() {
       onContextMenu: (event, task) => {
         showContextMenu(event, task, {
           onEdit: () => handleTaskEdit(task),
+          onMarkDone: () => handleTaskMarkDone(task),
           onDelete: () => handleTaskDelete(task),
           onDuplicate: () => handleTaskDuplicate(task),
           onArchive: () => handleTaskArchive(task),

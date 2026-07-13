@@ -2706,7 +2706,7 @@ main.settings-open { overflow: hidden; padding: 0; }
   flex: 1;
 }
 
-/* Extra details collapsible — Trade, Cost, Contact, Notes */
+/* Extra details collapsible - Trade, Cost, Contact, Notes */
 .modal-extra-toggle {
   list-style: none;
   display: flex;
@@ -2737,7 +2737,7 @@ main.settings-open { overflow: hidden; padding: 0; }
 }
 [data-theme="dark"] .modal-extra-toggle { color: var(--content-secondary); }
 
-/* Task name in header — standard field styling, flex to fill */
+/* Task name in header - standard field styling, flex to fill */
 .modal-field--task-header {
   flex: 1;
   min-width: 0;
@@ -4103,7 +4103,7 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
     flex: 1;
     min-height: 0;
   }
-  /* Actions always visible at bottom — content scrolls above them */
+  /* Actions always visible at bottom - content scrolls above them */
   .modal-actions {
     position: sticky;
     bottom: 0;
@@ -5843,7 +5843,15 @@ dialog.import-modal::backdrop {
   flex-shrink: 0;
 }
 
-/* Touch targets for long-press */
+/* Touch targets for long-press - prevent text selection / iOS callout
+   from firing during the long-press that opens the context menu */
+.kanban-card,
+.todo-item,
+.planner-bar {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .kanban-card,
 .todo-item {
   touch-action: manipulation;
