@@ -902,7 +902,7 @@ body {
 .hide-done-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-8);
   margin-left: var(--space-8);
   padding: var(--space-8) var(--space-10);
   border: none;
@@ -910,17 +910,19 @@ body {
   border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
+  font-family: var(--font);
   font-size: var(--text-base);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s ease, background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.hide-done-btn:hover { color: var(--text); background: var(--hover-overlay); }
-.hide-done-btn.active { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-[data-theme="dark"] .hide-done-btn.active { color: var(--accent-text); }
+.hide-done-btn:hover { color: var(--text); }
+.hide-done-btn.active { color: var(--accent-text); }
 /* Icon reflects the action a click will take, not the current state:
    "Hide done" (inactive) shows the slashed eye, "Show done" (active)
    shows the open eye - matching the show/hide-password convention. */
