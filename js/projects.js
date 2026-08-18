@@ -1,6 +1,6 @@
 import { normaliseRows } from './data.js';
 
-const REQUIRED_COLS = ['Room', 'Task', 'Status', 'Category', 'Start date', 'End date', 'Assigned', 'Dependencies'];
+export const REQUIRED_COLS = ['Room', 'Task', 'Status', 'Category', 'Start date', 'End date', 'Assigned', 'Dependencies'];
 const EXPORT_COLS = ['Room', 'Task', 'Status', 'Category', 'Start date', 'End date', 'Assigned', 'Dependencies', 'Notes', 'Cost', 'Contact'];
 
 /**
@@ -24,6 +24,41 @@ export function importCSV(text) {
   }
 
   return normaliseRows(data);
+}
+
+/**
+ * Parse CSV text without validating column names. Returns the raw headers
+ * and row objects (keyed by the file's own headers) for a manual mapping UI.
+ * Throws on unparseable or empty input.
+ */
+export function parseCSVPreview(text) {
+  const { data, meta, errors } = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+  if (errors.length && data.length === 0) {
+    throw new Error('Could not parse the file. Make sure it\'s a valid CSV.');
+  }
+  if (data.length === 0 || !meta.fields || meta.fields.length === 0) {
+    throw new Error('The file appears to be empty.');
+  }
+
+  return { headers: meta.fields, rows: data };
+}
+
+/**
+ * Turn raw row objects (keyed by a source file's own headers) into the
+ * normalised task array, using a user-confirmed column mapping.
+ * mapping: { 'Room': sourceHeader|null, 'Task': sourceHeader, ... } for each of REQUIRED_COLS.
+ */
+export function mapRowsToTasks(rows, mapping) {
+  const remapped = rows.map(row => {
+    const obj = {};
+    REQUIRED_COLS.forEach(field => {
+      const sourceHeader = mapping[field];
+      obj[field] = sourceHeader ? (row[sourceHeader] || '') : '';
+    });
+    return obj;
+  });
+  return normaliseRows(remapped);
 }
 
 /**
