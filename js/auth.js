@@ -1,7 +1,9 @@
 /**
- * Auth module — email/password auth against qp-api Worker.
+ * Auth module - email/password auth against qp-api Worker.
  * Stores JWT in localStorage. Exports reactive auth state.
  */
+
+import { saveProjects, saveActiveProjectId } from './storage.js';
 
 const API_BASE = 'https://qp-api.davegregurke.workers.dev';
 const TOKEN_KEY = 'qp-auth-token';
@@ -103,7 +105,7 @@ export async function verifySession() {
     return true;
   } catch (err) {
     // Only wipe the token for confirmed server rejections (401/403).
-    // Network errors, timeouts, and 5xx responses should not log the user out —
+    // Network errors, timeouts, and 5xx responses should not log the user out -
     // the token may still be valid; we just couldn't reach the server.
     if (err.status === 401 || err.status === 403) {
       setAuth(null, null);
@@ -183,7 +185,7 @@ export function getPasswordScore(password) {
     const colours = ['#ef4444', '#ef4444', '#f59e0b', '#22c55e', '#16a34a'];
     return { score: result.score, label: labels[result.score], colour: colours[result.score] };
   }
-  // Fallback if zxcvbn not loaded yet — simple length heuristic
+  // Fallback if zxcvbn not loaded yet - simple length heuristic
   const len = password.length;
   if (len < 15) return { score: 0, label: 'Too short', colour: '#ef4444' };
   if (len < 20) return { score: 2, label: 'Fair', colour: '#f59e0b' };
@@ -221,7 +223,7 @@ export function showAuthModal(onSuccess, { gate = false } = {}) {
     page.classList.remove('landing-animate');
     requestAnimationFrame(() => page.classList.add('landing-animate'));
   }
-  // In gate mode, hide close/skip — user must log in
+  // In gate mode, hide close/skip - user must log in
   const closeBtn = document.getElementById('auth-close');
   const skipBtn = document.getElementById('auth-skip');
   if (closeBtn) closeBtn.style.display = gate ? 'none' : '';
@@ -332,6 +334,12 @@ export function initAuthUI() {
     submitBtn.disabled = true;
     submitBtn.textContent = isSignup ? 'Creating...' : 'Logging in...';
 
+    // Switching between two real accounts in the same browser (e.g. testing a
+    // second account without logging out first) must not carry the previous
+    // account's local project cache into the new one - it would otherwise get
+    // pushed to the new account's server storage on the next sync.
+    const switchingIdentity = !!_token && !_sandbox;
+
     try {
       if (email.toLowerCase() === 'sandbox') {
         loginSandbox();
@@ -345,6 +353,10 @@ export function initAuthUI() {
         await signup(email, password, name);
       } else {
         await login(email, password);
+      }
+      if (switchingIdentity) {
+        saveProjects([]);
+        saveActiveProjectId(null);
       }
       hideAuthModal();
       // Clear invite URL params so they don't persist on refresh
