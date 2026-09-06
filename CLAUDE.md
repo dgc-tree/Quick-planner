@@ -26,6 +26,18 @@ Two custom commands (`.claude/commands/`):
 ## Security
 Security and data integrity log: [SECURITY.md](SECURITY.md). Monthly checklist + changelog of incidents (data loss, schema drift, auth issues). Run `npm run audit` before every release. Dependabot opens weekly dep PRs. Add a changelog entry for every schema change, sync field, auth tweak, or secret rotation.
 
+### This repo is PUBLIC - security work is disclosure
+Anything pushed here is world readable, permanently: branch names, PR titles, commit messages and issue text. A branch name and a PR's head ref survive on the PR page even after the branch is deleted, and cannot be edited afterwards.
+
+While a hole is unfixed, never write what it is or where. That means:
+- **Neutral names.** `claude/fix/sync-authz-x1y2`, never `.../account-switch-data-leak-x1y2`. Do not name the flaw, the impact, or the affected endpoint.
+- **Terse commit messages until deployed.** "add ownership check to sync handler", not a description of what an attacker could do with its absence.
+- **Never open a public issue describing an unpatched flaw.** Track it privately until the fix is live.
+
+**Order of operations for any Worker security fix:** deploy first with `wrangler deploy` (it reads local files and does not need GitHub), confirm it is live, and only then push and merge. Once deployed, full detail in the commit body is fine and useful - it now describes something that no longer exists.
+
+Both mistakes above were made in this repo in Sept 2026: a public issue detailing an unpatched IDOR, and a branch named `account-switch-data-leak`.
+
 ## Engineering Discipline
 Mandatory pre-push reading: the prevention checklist in the project memory file `engineering-discipline.md` (22 documented errors + 27-item checklist). Run `/pre-push` before every push to execute it automatically.
 
