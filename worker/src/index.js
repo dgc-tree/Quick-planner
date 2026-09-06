@@ -145,7 +145,7 @@ async function isPasswordBreached(password) {
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
       headers: { 'Add-Padding': 'true' },
     });
-    if (!res.ok) return false; // fail open — don't block user if API is down
+    if (!res.ok) return false; // fail open - don't block user if API is down
     const text = await res.text();
     return text.split('\n').some(line => line.startsWith(suffix));
   } catch {
@@ -427,12 +427,39 @@ async function handleSyncTasks(request, user, env, projectId) {
 // ── Full sync (all projects + tasks in one call) ────────────────────────────
 
 async function handleFullSync(request, user, env) {
-  const { projects } = await request.json();
-  if (!Array.isArray(projects)) return err('projects array required');
+  const { projects: payload } = await request.json();
+  if (!Array.isArray(payload)) return err('projects array required');
+
+  // AUTHORISATION - do not remove.
+  // This handler upserts projects and DELETEs tasks by project_id. Without an
+  // ownership check any authenticated user could pass an arbitrary project id
+  // and rename, overwrite or wipe another user's project (the per-project
+  // endpoints handleSyncTasks/handleDeleteProject already guard this way).
+  // A project id that does not exist yet is allowed through: that is a new
+  // project and the caller becomes its owner.
+  const payloadIds = payload.map(p => p.id).filter(Boolean);
+  const allowedIds = new Set();
+  const knownIds = new Set();
+  if (payloadIds.length > 0) {
+    const ph = payloadIds.map(() => '?').join(',');
+    const { results: known } = await env.DB.prepare(
+      `SELECT p.id, p.user_id, pm.user_id AS member_id
+       FROM projects p
+       LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
+       WHERE p.id IN (${ph})`
+    ).bind(user.sub, ...payloadIds).all();
+    for (const row of known) {
+      knownIds.add(row.id);
+      if (row.user_id === user.sub || row.member_id === user.sub) allowedIds.add(row.id);
+    }
+  }
+
+  const projects = payload.filter(p => !p.id || !knownIds.has(p.id) || allowedIds.has(p.id));
+  const rejected = payload.length - projects.length;
 
   const stmts = [];
 
-  // Upsert only — do NOT delete server projects missing from the payload.
+  // Upsert only - do NOT delete server projects missing from the payload.
   // Project deletion is handled by DELETE /projects/:id to avoid wiping
   // server data the client doesn't know about (e.g. data from other devices).
 
@@ -533,7 +560,7 @@ async function handleFullSync(request, user, env) {
     await env.DB.batch(stmts.slice(i, i + 100));
   }
 
-  return json({ ok: true, projects: projects.length });
+  return json({ ok: true, projects: projects.length, rejected });
 }
 
 async function handleFullPull(user, env) {
@@ -803,7 +830,7 @@ async function handleInviteMember(request, user, env, projectId) {
     'INSERT INTO project_invites (id, project_id, email, role, invited_by) VALUES (?, ?, ?, ?, ?)'
   ).bind(id, projectId, normalEmail, assignRole, user.sub).run();
 
-  // Send invite email — link includes invite context for UX copy
+  // Send invite email - link includes invite context for UX copy
   const project = await env.DB.prepare('SELECT name FROM projects WHERE id = ?').bind(projectId).first();
   const appUrl = env.APP_URL || 'https://planner.davegregurke.au';
   const inviteUrl = `${appUrl}?invite=${id}&project=${encodeURIComponent(project?.name || '')}`;
