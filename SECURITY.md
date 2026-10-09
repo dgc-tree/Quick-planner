@@ -71,4 +71,9 @@ If either is removed or stops running, manual review reverts to "weekly during t
 
 ## Reporting a vulnerability
 
-Email davegregurke@gmail.com with subject `[Quick Planner Security]`. No public issues for security reports.
+Do not open a public issue or pull request for a security problem.
+
+1. **Preferred: report it privately on GitHub.** Open the [Security tab](https://github.com/dgc-tree/Quick-planner/security) and click "Report a vulnerability", or go straight to the [private report form](https://github.com/dgc-tree/Quick-planner/security/advisories/new). Only the maintainer can see the report.
+2. **Or email** davegregurke@gmail.com with subject `[Quick Planner Security]`.
+
+Include what you found, the steps to reproduce it and what someone could do with it.
