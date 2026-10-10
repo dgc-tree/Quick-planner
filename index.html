@@ -677,19 +677,56 @@
   <!-- Auth / Landing page -->
   <div id="auth-overlay" class="auth-overlay hidden">
     <div class="landing-page">
-      <div class="landing-hero">
-        <img src="images/mascot-trash.png" alt="Quick Planner mascot" class="landing-mascot">
-        <div class="landing-copy">
-          <h1 class="landing-headline">Quick Planner</h1>
-          <p class="landing-tagline">Plan anything. See everything.</p>
-        </div>
-      </div>
       <div class="landing-auth">
-        <div class="auth-card">
-          <div class="auth-card-brand">
-            <img src="images/mascot-trash.png" alt="" class="auth-card-mascot">
-            <span class="auth-card-brand-name">Quick Planner</span>
+        <div class="landing-brand">
+          <!-- Layers cut from images/mascot-trash.png by scripts/build-mascot-layers.py. Moves in css/styles.css "Mascot". -->
+          <svg class="mascot" viewBox="100 76 824 856" aria-hidden="true" focusable="false">
+            <defs>
+              <clipPath id="mascot-eye-l"><path d="M477 339H544A33.5 27.5 0 0 1 477 339Z"/></clipPath>
+              <clipPath id="mascot-eye-r"><path d="M600 339H650A25 25.5 0 0 1 600 339Z"/></clipPath>
+              <!-- The far hand, seen from the back: knuckles above the head, loose fingers hanging onto it -->
+              <g id="mascot-paw" fill="none" stroke-linecap="round">
+                <!-- Outline of the whole hand first, 12 wide like the arm, then one fill over it, so no lines cross the hand -->
+                <path d="M548 112L532 160M576 122L568 178M604 124L606 180M632 118L642 164" stroke="#0f1917" stroke-width="54"/>
+                <ellipse cx="594" cy="98" rx="62" ry="41" transform="rotate(-6 594 98)" fill="#0f1917" stroke="#0f1917" stroke-width="24"/>
+                <path d="M548 112L532 160M576 122L568 178M604 124L606 180M632 118L642 164" stroke="#f3f6ec" stroke-width="30"/>
+                <ellipse cx="594" cy="98" rx="62" ry="41" transform="rotate(-6 594 98)" fill="#f3f6ec"/>
+              </g>
+            </defs>
+            <image href="images/mascot/base.webp" width="1024" height="1024"/>
+            <g class="mascot-arm"><g class="mascot-arm-scratch" fill="none" stroke-linecap="round">
+              <path d="M585 440L765 265" stroke="#0f1917" stroke-width="86"/>
+              <path d="M585 440L765 265" stroke="#575d5d" stroke-width="62"/>
+              <g class="mascot-forearm">
+                <path d="M765 265L640 114" stroke="#0f1917" stroke-width="86"/>
+                <path d="M765 265L640 114" stroke="#575d5d" stroke-width="62"/>
+                <use href="#mascot-paw"/>
+              </g>
+            </g></g>
+            <image href="images/mascot/head.webp" width="1024" height="1024"/>
+            <g clip-path="url(#mascot-eye-l)" fill="#0f1917"><ellipse class="mascot-pupil" cx="511.5" cy="339" rx="15.5" ry="11"/><rect class="mascot-lid" x="470" y="339" width="80" height="32"/></g>
+            <g clip-path="url(#mascot-eye-r)" fill="#0f1917"><ellipse class="mascot-pupil" cx="627.5" cy="339" rx="12.5" ry="9"/><rect class="mascot-lid" x="594" y="339" width="62" height="32"/></g>
+            <!-- The same paw again, in front of the head, shown only while it rests there -->
+            <g class="mascot-arm mascot-paw-front"><g class="mascot-arm-scratch"><g class="mascot-forearm"><use href="#mascot-paw"/></g></g></g>
+            <path class="mascot-mouth-open" d="M512 452Q574 428 636 452Q574 528 512 452Z" fill="#0f1917"/>
+            <g class="mascot-hand">
+              <image href="images/mascot/hand.webp" width="1024" height="1024"/>
+              <image class="mascot-tip" href="images/mascot/tip.webp" width="1024" height="1024"/>
+              <image class="mascot-fingers" href="images/mascot/fingers.webp" width="1024" height="1024"/>
+            </g>
+            <g class="mascot-tongue" stroke="#0f1917" stroke-linecap="round">
+              <!-- Top edge runs along the lip line and sits under it -->
+              <path d="M519 454L516 467A18.5 18.5 0 0 0 552 459L555 446Z" fill="#e4827b" stroke-width="7" stroke-linejoin="round"/>
+              <path d="M535 458L533 466" fill="none" stroke-width="5"/>
+            </g>
+            <image class="mascot-mouth" href="images/mascot/mouth.webp" width="1024" height="1024"/>
+          </svg>
+          <div class="landing-copy">
+            <h1 class="landing-headline">Quick Planner</h1>
+            <p class="landing-tagline">Plan anything. See everything.</p>
           </div>
+        </div>
+        <div class="auth-card">
           <button id="auth-close" class="auth-close" title="Close" aria-label="Close">&times;</button>
           <h2 id="auth-title" class="auth-title">Welcome back</h2>
           <p class="auth-subtitle">Sign in to sync your projects across devices</p>
@@ -725,6 +762,84 @@
           </form>
           <p class="auth-free">Start now for free. No credit card.</p>
           <button id="auth-skip" class="auth-skip">Continue without account</button>
+        </div>
+      </div>
+      <div class="landing-hero">
+        <!-- Decorative only. Real app components, animated in css/styles.css "Login hero". -->
+        <div class="hero-stage" aria-hidden="true" inert>
+          <div class="hero-timeline">
+            <div class="hero-timeline-track">
+            <div class="hero-timeline-half">
+              <div class="hero-timeline-months"><div class="month-header" style="left:0%">October</div><div class="month-header" style="left:34%">November</div><div class="month-header" style="left:67%">December</div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar planner-bar--done" style="left:0%;width:15%;background:var(--category-cleaning-bg);color:var(--category-cleaning-text);border-left:3px solid var(--category-cleaning-text)"><span class="bar-label">Clear the deck</span></div><div class="planner-bar" style="left:50%;width:15%;background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text);border-left:3px solid var(--category-trade-quote-text)"><span class="bar-label">Tile splashback</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar planner-bar--done" style="left:7%;width:15%;background:var(--category-basic-repairs-bg);color:var(--category-basic-repairs-text);border-left:3px solid var(--category-basic-repairs-text)"><span class="bar-label">Replace boards</span></div><div class="planner-bar" style="left:57%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Paint hallway</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:14%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Sand the deck</span></div><div class="planner-bar" style="left:64%;width:15%;background:var(--category-organising-bg);color:var(--category-organising-text);border-left:3px solid var(--category-organising-text)"><span class="bar-label">Hang shelves</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:21%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Oil the deck</span></div><div class="planner-bar" style="left:71%;width:15%;background:var(--category-packing-bg);color:var(--category-packing-text);border-left:3px solid var(--category-packing-text)"><span class="bar-label">Pack the study</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:28%;width:15%;background:var(--category-buy-new-bg);color:var(--category-buy-new-text);border-left:3px solid var(--category-buy-new-text)"><span class="bar-label">Order tiles</span></div><div class="planner-bar" style="left:78%;width:15%;background:var(--category-selling-bg);color:var(--category-selling-text);border-left:3px solid var(--category-selling-text)"><span class="bar-label">List old couch</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:35%;width:15%;background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text);border-left:3px solid var(--category-trade-quote-text)"><span class="bar-label">Tile splashback</span></div><div class="planner-bar" style="left:85%;width:15%;background:var(--category-cleaning-bg);color:var(--category-cleaning-text);border-left:3px solid var(--category-cleaning-text)"><span class="bar-label">Clear the deck</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:42%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Paint hallway</span></div><div class="planner-bar" style="left:92%;width:15%;background:var(--category-basic-repairs-bg);color:var(--category-basic-repairs-text);border-left:3px solid var(--category-basic-repairs-text)"><span class="bar-label">Replace boards</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:49%;width:15%;background:var(--category-organising-bg);color:var(--category-organising-text);border-left:3px solid var(--category-organising-text)"><span class="bar-label">Hang shelves</span></div><div class="planner-bar" style="left:99%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Sand the deck</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:6%;width:15%;background:var(--category-packing-bg);color:var(--category-packing-text);border-left:3px solid var(--category-packing-text)"><span class="bar-label">Pack the study</span></div><div class="planner-bar" style="left:56%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Oil the deck</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:13%;width:15%;background:var(--category-selling-bg);color:var(--category-selling-text);border-left:3px solid var(--category-selling-text)"><span class="bar-label">List old couch</span></div><div class="planner-bar" style="left:63%;width:15%;background:var(--category-buy-new-bg);color:var(--category-buy-new-text);border-left:3px solid var(--category-buy-new-text)"><span class="bar-label">Order tiles</span></div></div></div>
+            </div>
+            <div class="hero-timeline-half">
+              <div class="hero-timeline-months"><div class="month-header" style="left:0%">October</div><div class="month-header" style="left:34%">November</div><div class="month-header" style="left:67%">December</div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar planner-bar--done" style="left:0%;width:15%;background:var(--category-cleaning-bg);color:var(--category-cleaning-text);border-left:3px solid var(--category-cleaning-text)"><span class="bar-label">Clear the deck</span></div><div class="planner-bar" style="left:50%;width:15%;background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text);border-left:3px solid var(--category-trade-quote-text)"><span class="bar-label">Tile splashback</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar planner-bar--done" style="left:7%;width:15%;background:var(--category-basic-repairs-bg);color:var(--category-basic-repairs-text);border-left:3px solid var(--category-basic-repairs-text)"><span class="bar-label">Replace boards</span></div><div class="planner-bar" style="left:57%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Paint hallway</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:14%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Sand the deck</span></div><div class="planner-bar" style="left:64%;width:15%;background:var(--category-organising-bg);color:var(--category-organising-text);border-left:3px solid var(--category-organising-text)"><span class="bar-label">Hang shelves</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:21%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Oil the deck</span></div><div class="planner-bar" style="left:71%;width:15%;background:var(--category-packing-bg);color:var(--category-packing-text);border-left:3px solid var(--category-packing-text)"><span class="bar-label">Pack the study</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:28%;width:15%;background:var(--category-buy-new-bg);color:var(--category-buy-new-text);border-left:3px solid var(--category-buy-new-text)"><span class="bar-label">Order tiles</span></div><div class="planner-bar" style="left:78%;width:15%;background:var(--category-selling-bg);color:var(--category-selling-text);border-left:3px solid var(--category-selling-text)"><span class="bar-label">List old couch</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:35%;width:15%;background:var(--category-trade-quote-bg);color:var(--category-trade-quote-text);border-left:3px solid var(--category-trade-quote-text)"><span class="bar-label">Tile splashback</span></div><div class="planner-bar" style="left:85%;width:15%;background:var(--category-cleaning-bg);color:var(--category-cleaning-text);border-left:3px solid var(--category-cleaning-text)"><span class="bar-label">Clear the deck</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:42%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Paint hallway</span></div><div class="planner-bar" style="left:92%;width:15%;background:var(--category-basic-repairs-bg);color:var(--category-basic-repairs-text);border-left:3px solid var(--category-basic-repairs-text)"><span class="bar-label">Replace boards</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:49%;width:15%;background:var(--category-organising-bg);color:var(--category-organising-text);border-left:3px solid var(--category-organising-text)"><span class="bar-label">Hang shelves</span></div><div class="planner-bar" style="left:99%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Sand the deck</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:6%;width:15%;background:var(--category-packing-bg);color:var(--category-packing-text);border-left:3px solid var(--category-packing-text)"><span class="bar-label">Pack the study</span></div><div class="planner-bar" style="left:56%;width:15%;background:var(--category-painting-bg);color:var(--category-painting-text);border-left:3px solid var(--category-painting-text)"><span class="bar-label">Oil the deck</span></div></div></div>
+              <div class="planner-row"><div class="planner-bar-container"><div class="planner-bar" style="left:13%;width:15%;background:var(--category-selling-bg);color:var(--category-selling-text);border-left:3px solid var(--category-selling-text)"><span class="bar-label">List old couch</span></div><div class="planner-bar" style="left:63%;width:15%;background:var(--category-buy-new-bg);color:var(--category-buy-new-text);border-left:3px solid var(--category-buy-new-text)"><span class="bar-label">Order tiles</span></div></div></div>
+            </div>
+            </div>
+          </div>
+          <div class="hero-board">
+            <div class="kanban-column hero-col hero-col--from">
+              <div class="kanban-column-header status-colored" style="background:var(--status-in-progress-bg);color:var(--status-in-progress-text)"><span class="column-title">In Progress</span></div>
+              <div class="hero-col-cards">
+              <div class="kanban-card hero-ticket">
+                <div class="card-room">Deck</div>
+                <div class="card-badges"><span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span></div>
+                <div class="card-title">Sand the deck</div>
+                <div class="card-footer"><span class="card-dates">20 – 24 Oct</span><div class="card-avatar-stack"><span class="card-avatar" style="background:var(--accent);color:var(--on-accent-primary1)">QP</span></div></div>
+              </div>
+              </div>
+            </div>
+            <div class="kanban-column hero-col">
+              <div class="kanban-column-header status-colored" style="background:var(--status-done-bg);color:var(--status-done-text)"><span class="column-title">Done</span></div>
+              <div class="hero-col-cards">
+                <div class="hero-slot"></div>
+              <div class="kanban-card">
+                <div class="card-room">Deck</div>
+                <div class="card-badges"><span class="category-badge" style="background:var(--category-basic-repairs-bg);color:var(--category-basic-repairs-text)">Basic repairs</span></div>
+                <div class="card-title">Replace boards</div>
+                <div class="card-footer"><span class="card-dates">13 – 17 Oct</span><div class="card-avatar-stack"><span class="card-avatar" style="background:#EC4899;color:#FFFFFF">MJ</span></div></div>
+              </div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-phone">
+            <div class="todo-month-header">October</div>
+            <div class="todo-item hero-todo hero-todo--1">
+              <div class="todo-checkbox"></div>
+              <div class="todo-col-meta"><span class="todo-room">Deck</span><span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span></div>
+              <div class="todo-col-main"><span class="todo-task-name">Sand the deck</span><div class="todo-footer"><span class="todo-dates">20 – 24 Oct</span><div class="card-avatar-stack"><span class="card-avatar" style="background:var(--accent);color:var(--on-accent-primary1)">QP</span></div></div></div>
+            </div>
+            <div class="todo-item hero-todo hero-todo--2">
+              <div class="todo-checkbox"></div>
+              <div class="todo-col-meta"><span class="todo-room">Deck</span><span class="category-badge" style="background:var(--category-painting-bg);color:var(--category-painting-text)">Painting</span></div>
+              <div class="todo-col-main"><span class="todo-task-name">Oil the deck</span><div class="todo-footer"><span class="todo-dates">27 – 29 Oct</span><div class="card-avatar-stack"><span class="card-avatar" style="background:var(--accent);color:var(--on-accent-primary1)">QP</span></div></div></div>
+            </div>
+            <div class="todo-item hero-todo hero-todo--3">
+              <div class="todo-checkbox"></div>
+              <div class="todo-col-meta"><span class="todo-room">Hall</span><span class="category-badge" style="background:var(--category-buy-new-bg);color:var(--category-buy-new-text)">Buy new</span></div>
+              <div class="todo-col-main"><span class="todo-task-name">Order tiles</span><div class="todo-footer"><span class="todo-dates">30 – 31 Oct</span><div class="card-avatar-stack"><span class="card-avatar" style="background:#6366F1;color:#FFFFFF">SK</span></div></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
