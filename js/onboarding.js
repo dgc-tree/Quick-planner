@@ -4,7 +4,18 @@
 import { hasVisited, markVisited, saveCustomColors, loadProjects, saveProjects, saveActiveProjectId } from './storage.js';
 import { applyCustomColors } from './theme-customizer.js';
 import { openColorPickerModal } from './color-picker.js';
-import { importCSV } from './projects.js';
+import { parseCSVPreview, mapRowsToTasks, REQUIRED_COLS } from './projects.js';
+
+const FIELD_HINTS = {
+  'Room': 'e.g. Kitchen, Bathroom - groups tasks together',
+  'Task': 'the name of the task itself - required',
+  'Status': 'e.g. To Do, In Progress, Done',
+  'Category': 'e.g. Trade, Planning, Finishing',
+  'Start date': 'must be day/month, e.g. 15/3 - other formats come through blank',
+  'End date': 'must be day/month, e.g. 15/3 - other formats come through blank',
+  'Assigned': 'names, comma-separated if more than one',
+  'Dependencies': 'free text - what this task is waiting on',
+};
 
 const PRESETS = [
   { hex: '#00E3FF', label: 'Cyan' },
@@ -92,7 +103,7 @@ export const TEMPLATES = [
     label: 'Renovation Quotes',
     icon: '📋',
     tasks: [
-      // Exterior Maintenance — grouped quote
+      // Exterior Maintenance - grouped quote
       { task: 'Tidy front & rear gardens', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: 'Part of exterior maintenance quote ($4,000)' },
       { task: 'Supply & install mulch to garden beds', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: null, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
       { task: 'Supply & install native plants to front', room: 'Exterior', category: 'Trade', status: 'To Do', assigned: [], startDate: null, endDate: null, dependencies: '', cost: 200, contact: 'DB Painting - Daniel - 0421 722 913', notes: '' },
@@ -129,6 +140,10 @@ export function showOnboarding(onFinish) {
   let selectedColor = '#00E3FF';
   let selectedTemplateId = null;
   let droppedFile = null;
+  let csvHeaders = null;
+  let csvRows = null;
+  let confirmedCsvTasks = null;
+  let confirmedCsvName = null;
   let step = 1;
   let selectedSurface = localStorage.getItem('qp-surface') || 'frost';
   let selectedMode = localStorage.getItem('qp-theme') || 'system';
@@ -224,7 +239,7 @@ export function showOnboarding(onFinish) {
 
     const uploadBtn = document.createElement('button');
     uploadBtn.className = 'modal-btn modal-save';
-    uploadBtn.textContent = 'Upload';
+    uploadBtn.textContent = 'Match columns →';
     uploadBtn.style.display = 'none';
     actions.appendChild(uploadBtn);
 
@@ -255,8 +270,11 @@ export function showOnboarding(onFinish) {
       if (!droppedFile) return;
       try {
         const text = await droppedFile.text();
-        importCSV(text); // validate — throws on bad CSV
+        const parsed = parseCSVPreview(text); // throws on unreadable/empty file only
+        csvHeaders = parsed.headers;
+        csvRows = parsed.rows;
         errorEl.style.display = 'none';
+        renderMappingScreen();
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.style.display = '';
@@ -293,18 +311,12 @@ export function showOnboarding(onFinish) {
 
     let projectId = null;
 
-    if (droppedFile) {
-      try {
-        const text = await droppedFile.text();
-        const tasks = importCSV(text);
-        projectId = crypto.randomUUID();
-        const projects = loadProjects();
-        projects.push({ id: projectId, name: droppedFile.name.replace(/\.csv$/i, ''), tasks });
-        saveProjects(projects);
-        saveActiveProjectId(projectId);
-      } catch (err) {
-        // Fall through to template or sheet
-      }
+    if (confirmedCsvTasks && confirmedCsvTasks.length) {
+      projectId = crypto.randomUUID();
+      const projects = loadProjects();
+      projects.push({ id: projectId, name: confirmedCsvName || 'Imported project', tasks: confirmedCsvTasks });
+      saveProjects(projects);
+      saveActiveProjectId(projectId);
     }
 
     if (!projectId && selectedTemplateId) {
@@ -365,8 +377,164 @@ export function showOnboarding(onFinish) {
   }
 
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatPreviewDate(d) {
+    if (!d) return '-';
+    return `${d.getDate()}/${d.getMonth() + 1}`;
+  }
+
+  function resetCsvState() {
+    droppedFile = null;
+    csvHeaders = null;
+    csvRows = null;
+    confirmedCsvTasks = null;
+    confirmedCsvName = null;
+  }
+
+  function renderMappingScreen() {
+    dialog.classList.add('ob-wide');
+    dialog.innerHTML = `
+      <h2 class="ob-title">Match your columns</h2>
+      <p class="ob-intro">Tell us which column in <strong>${escapeHtml(droppedFile.name)}</strong> is which. Nothing is guessed - pick each one yourself so the import is exactly right.</p>
+      <div class="ob-map-grid"></div>
+      <p class="ob-map-preview-label">Preview</p>
+      <div class="ob-map-preview"></div>
+      <div class="ob-map-error"></div>
+      <div class="ob-footer">
+        <button class="modal-btn modal-cancel ob-back">← Back</button>
+        ${dots(3)}
+        <button class="modal-btn modal-save ob-finish" disabled>Finish</button>
+      </div>
+    `;
+
+    const grid = dialog.querySelector('.ob-map-grid');
+    const previewEl = dialog.querySelector('.ob-map-preview');
+    const errorEl = dialog.querySelector('.ob-map-error');
+    const finishBtn = dialog.querySelector('.ob-finish');
+
+    REQUIRED_COLS.forEach(field => {
+      const wrap = document.createElement('div');
+      wrap.className = 'modal-field ob-map-field';
+      const select = document.createElement('select');
+      select.dataset.field = field;
+
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Choose a column…';
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      select.appendChild(placeholder);
+
+      if (field !== 'Task') {
+        const none = document.createElement('option');
+        none.value = '__none__';
+        none.textContent = 'Not in my file';
+        select.appendChild(none);
+      }
+
+      csvHeaders.forEach(h => {
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = h;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener('change', () => {
+        select.classList.toggle('ob-map-chosen', !!select.value);
+        updateMappingState();
+      });
+
+      wrap.innerHTML = `<span>${escapeHtml(field)}</span>`;
+      wrap.appendChild(select);
+      const hint = document.createElement('div');
+      hint.className = 'ob-map-hint';
+      hint.textContent = FIELD_HINTS[field] || '';
+      wrap.appendChild(hint);
+      grid.appendChild(wrap);
+    });
+
+    function currentMapping() {
+      const mapping = {};
+      grid.querySelectorAll('select').forEach(sel => {
+        mapping[sel.dataset.field] = sel.value && sel.value !== '__none__' ? sel.value : null;
+      });
+      return mapping;
+    }
+
+    function allFieldsChosen() {
+      return Array.from(grid.querySelectorAll('select')).every(sel => sel.value !== '');
+    }
+
+    function updateMappingState() {
+      finishBtn.disabled = !allFieldsChosen();
+      errorEl.style.display = 'none';
+
+      const mapping = currentMapping();
+      const anyChosen = Object.values(mapping).some(v => v);
+      if (!anyChosen) {
+        previewEl.innerHTML = '<p class="ob-map-hint">Pick some columns to see a preview.</p>';
+        return;
+      }
+
+      const sample = mapRowsToTasks(csvRows.slice(0, 3), mapping);
+      if (sample.length === 0) {
+        previewEl.innerHTML = '<p class="ob-map-hint">No rows have a Task value yet.</p>';
+        return;
+      }
+
+      const rowsHtml = sample.map(t => `
+        <tr>
+          <td>${escapeHtml(t.room) || '-'}</td>
+          <td>${escapeHtml(t.task) || '-'}</td>
+          <td>${escapeHtml(t.status) || '-'}</td>
+          <td>${escapeHtml(t.category) || '-'}</td>
+          <td>${formatPreviewDate(t.startDate)}</td>
+          <td>${formatPreviewDate(t.endDate)}</td>
+          <td>${escapeHtml(t.assigned.join(', ')) || '-'}</td>
+          <td>${escapeHtml(t.dependencies) || '-'}</td>
+        </tr>
+      `).join('');
+
+      previewEl.innerHTML = `
+        <table class="ob-map-preview-table">
+          <thead><tr><th>Room</th><th>Task</th><th>Status</th><th>Category</th><th>Start</th><th>End</th><th>Assigned</th><th>Dependencies</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      `;
+    }
+
+    updateMappingState();
+
+    dialog.querySelector('.ob-back').addEventListener('click', () => {
+      resetCsvState();
+      renderStep(3);
+    });
+
+    finishBtn.addEventListener('click', () => {
+      const mapping = currentMapping();
+      const tasks = mapRowsToTasks(csvRows, mapping);
+      if (tasks.length === 0) {
+        errorEl.textContent = 'No tasks found - check your Task column mapping.';
+        errorEl.style.display = '';
+        return;
+      }
+      confirmedCsvTasks = tasks;
+      confirmedCsvName = droppedFile.name.replace(/\.csv$/i, '');
+      finish();
+    });
+  }
+
   function renderStep(n) {
     step = n;
+    dialog.classList.remove('ob-wide');
     dialog.innerHTML = '';
 
     if (n === 1) {

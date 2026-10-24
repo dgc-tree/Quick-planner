@@ -5178,7 +5178,21 @@ body:has(#settings-view:not(.hidden)) .fab-add { display: none; }
 
 .ob-error { font-size: var(--text-sm); color: var(--danger-text); margin-top: var(--space-8); }
 
+.ob-map-grid { display: flex; flex-direction: column; gap: var(--space-14); margin-bottom: var(--space-16); }
+.ob-map-field select { border-color: var(--input-border); }
+.ob-map-field select.ob-map-chosen { border-color: var(--accent-primary1); }
+.ob-map-hint { font-size: var(--text-xs); color: var(--text-secondary); margin-top: var(--space-2); }
+
+.ob-map-preview-label { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-8); }
+.ob-map-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.ob-map-preview-table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); white-space: nowrap; }
+.ob-map-preview-table th,
+.ob-map-preview-table td { padding: var(--space-6) var(--space-10); text-align: left; border-bottom: 1px solid var(--border); }
+.ob-map-preview-table th { color: var(--text-secondary); font-weight: var(--weight-semibold); }
+.ob-map-preview-table tr:last-child td { border-bottom: none; }
+
 @media (min-width: 768px) {
+  .ob-map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-14) var(--space-20); }
   .ob-two-pane { display: flex; gap: var(--space-20); }
   .ob-pane { flex: 1; }
   .ob-pane-left { border-right: 1px solid var(--border); padding-right: var(--space-20); }
